@@ -1,0 +1,9 @@
+site_name: Delivery Notes for Perfex CRM
+theme: readthedocs
+nav:
+    - Home: index.md
+    - Installation: installation.md
+    - Configuration: configuration.md
+    - Usage: usage.md
+    - Faq: faq.md
+    - Credit: credit.md

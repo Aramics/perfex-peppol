@@ -22,10 +22,10 @@ class Peppol_provider_factory
         if (self::$initialized) {
             return;
         }
-        
+
         // Collect provider configurations via hooks
         self::$provider_configs = hooks()->apply_filters('peppol_register_providers', []);
-        
+
         self::$initialized = true;
     }
 
@@ -38,7 +38,7 @@ class Peppol_provider_factory
     public static function register_provider($key, $config)
     {
         self::init();
-        
+
         // Validate required configuration keys
         $required_keys = ['name', 'class', 'config_fields', 'required_fields', 'endpoints', 'features', 'authentication'];
         foreach ($required_keys as $required_key) {
@@ -46,9 +46,9 @@ class Peppol_provider_factory
                 throw new Exception("Missing required configuration key: {$required_key}");
             }
         }
-        
+
         self::$provider_configs[$key] = $config;
-        
+
         // Clear cached provider instance if it exists
         if (isset(self::$providers[$key])) {
             unset(self::$providers[$key]);
@@ -63,11 +63,11 @@ class Peppol_provider_factory
     public static function unregister_provider($key)
     {
         self::init();
-        
+
         if (isset(self::$provider_configs[$key])) {
             unset(self::$provider_configs[$key]);
         }
-        
+
         if (isset(self::$providers[$key])) {
             unset(self::$providers[$key]);
         }
@@ -106,15 +106,15 @@ class Peppol_provider_factory
     public static function get_provider($provider_name = null)
     {
         self::init();
-        
+
         if (!$provider_name) {
             $provider_name = get_active_peppol_provider();
         }
-        
+
         if (!isset(self::$providers[$provider_name])) {
             self::$providers[$provider_name] = self::create_provider($provider_name);
         }
-        
+
         return self::$providers[$provider_name];
     }
 
@@ -130,27 +130,27 @@ class Peppol_provider_factory
         if (!isset(self::$provider_configs[$provider_name])) {
             throw new Exception("Provider '{$provider_name}' not found");
         }
-        
+
         $config = self::$provider_configs[$provider_name];
         $class_name = $config['class'];
-        $class_file = APPPATH . 'modules/peppol/libraries/providers/' . $class_name . '.php';
-        
+        $class_file = APP_MODULES_PATH . PEPPOL_MODULE_NAME . '/libraries/providers/' . $class_name . '.php';
+
         if (!file_exists($class_file)) {
             throw new Exception("Provider class file not found: {$class_file}");
         }
-        
+
         require_once $class_file;
-        
+
         if (!class_exists($class_name)) {
             throw new Exception("Provider class not found: {$class_name}");
         }
-        
+
         $provider = new $class_name();
-        
+
         if (!$provider instanceof Peppol_provider_interface) {
             throw new Exception("Provider '{$provider_name}' does not implement Peppol_provider_interface");
         }
-        
+
         return $provider;
     }
 
@@ -175,17 +175,17 @@ class Peppol_provider_factory
     public static function is_provider_configured($provider_name)
     {
         $config = self::get_provider_config($provider_name);
-        
+
         if (!$config) {
             return false;
         }
-        
+
         foreach ($config['required_fields'] as $field) {
             if (empty(get_option($field))) {
                 return false;
             }
         }
-        
+
         return true;
     }
 
@@ -254,29 +254,29 @@ class Peppol_provider_factory
     public static function validate_provider_config($provider_name)
     {
         $config = self::get_provider_config($provider_name);
-        
+
         if (!$config) {
             return [
                 'valid' => false,
                 'errors' => ["Provider '{$provider_name}' not found"]
             ];
         }
-        
+
         $errors = [];
-        
+
         // Check required fields
         foreach ($config['required_fields'] as $field) {
             if (empty(get_option($field))) {
                 $errors[] = "Missing required field: {$field}";
             }
         }
-        
+
         // Check endpoint configuration
         $environment = get_option('peppol_environment', 'sandbox');
         if (empty($config['endpoints'][$environment])) {
             $errors[] = "No endpoint configured for {$environment} environment";
         }
-        
+
         return [
             'valid' => empty($errors),
             'errors' => $errors

@@ -6,15 +6,13 @@ require_once(__DIR__ . '/Peppol_provider_interface.php');
 
 class Recommand_provider extends Abstract_peppol_provider
 {
-    private $CI;
     private $api_key;
     private $endpoint_url;
     private $company_id;
-    private $environment;
 
     public function __construct()
     {
-        $this->CI = &get_instance();
+        parent::__construct();
         $this->load_config();
     }
 
@@ -25,7 +23,6 @@ class Recommand_provider extends Abstract_peppol_provider
     {
         $this->api_key = get_option('peppol_recommand_api_key');
         $this->company_id = get_option('peppol_recommand_company_id');
-        $this->environment = get_option('peppol_environment', 'sandbox');
         
         if ($this->environment === 'sandbox') {
             $this->endpoint_url = get_option('peppol_recommand_sandbox_endpoint', 'https://sandbox-peppol.recommand.eu/api');
@@ -182,6 +179,8 @@ class Recommand_provider extends Abstract_peppol_provider
             if (empty($this->api_key)) {
                 throw new Exception('API key not configured');
             }
+
+            // Note: Recommand uses static API key, no token caching needed
 
             $headers = [
                 'Authorization: Bearer ' . $this->api_key,

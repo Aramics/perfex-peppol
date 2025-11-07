@@ -6,15 +6,13 @@ require_once(__DIR__ . '/Peppol_provider_interface.php');
 
 class Unit4_provider extends Abstract_peppol_provider
 {
-    private $CI;
     private $username;
     private $password;
     private $endpoint_url;
-    private $environment;
 
     public function __construct()
     {
-        $this->CI = &get_instance();
+        parent::__construct();
         $this->load_config();
     }
 
@@ -25,7 +23,6 @@ class Unit4_provider extends Abstract_peppol_provider
     {
         $this->username = get_option('peppol_unit4_username');
         $this->password = get_option('peppol_unit4_password');
-        $this->environment = get_option('peppol_environment', 'sandbox');
         
         if ($this->environment === 'sandbox') {
             $this->endpoint_url = get_option('peppol_unit4_sandbox_endpoint', 'https://test-ap.unit4.com');
@@ -105,6 +102,8 @@ class Unit4_provider extends Abstract_peppol_provider
             if (empty($this->username) || empty($this->password)) {
                 throw new Exception('Username and password not configured');
             }
+
+            // Note: Unit4 uses basic auth, no token caching needed
 
             $headers = [
                 'Authorization: Basic ' . base64_encode($this->username . ':' . $this->password),

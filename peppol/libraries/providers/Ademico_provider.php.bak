@@ -8,18 +8,11 @@ class Ademico_provider extends Abstract_peppol_provider
 {
     private $client_id;
     private $client_secret;
+    private $jwt_token;
+    private $token_expires_at;
     private $endpoint_url;
     private $token_url;
-
-    // Ademico API endpoints mapping
-    const ENDPOINTS = [
-        'connectivity' => '/api/peppol/v1/tools/connectivity',
-        'invoices' => '/api/peppol/v1/invoices/ubl-submissions',
-        'notifications' => '/api/peppol/v1/notifications',
-        'legal_entities' => '/api/peppol/v1/legal-entities',
-        'legal_entity' => '/api/peppol/v1/legal-entities/%s', // %s for entity ID
-        'documents' => '/documents/%s/content' // %s for document ID
-    ];
+    private $environment;
 
     public function __construct()
     {
@@ -34,6 +27,7 @@ class Ademico_provider extends Abstract_peppol_provider
     {
         $this->client_id = get_option('peppol_ademico_oauth2_client_identifier');
         $this->client_secret = get_option('peppol_ademico_oauth2_client_secret');
+        $this->environment = get_option('peppol_environment', 'sandbox');
 
         // Set OAuth2 URLs based on environment
         $this->endpoint_url = ($this->environment === 'sandbox')
@@ -49,11 +43,72 @@ class Ademico_provider extends Abstract_peppol_provider
      */
     private function get_oauth_token()
     {
-        return $this->get_or_refresh_token('ademico_oauth', function() {
-            return $this->refresh_oauth_token();
-        });
+        // Check if we have a valid cached token
+        if ($this->is_token_valid()) {
+            return $this->jwt_token;
+        }
+
+        // Try to load token from session cache
+        $cached_token = $this->get_cached_token();
+        if ($cached_token && $this->is_cached_token_valid($cached_token)) {
+            $this->jwt_token = $cached_token['access_token'];
+            $this->token_expires_at = $cached_token['expires_at'];
+            return $this->jwt_token;
+        }
+
+        // Generate new token
+        $this->jwt_token = null;
+        $this->token_expires_at = null;
+        
+        return $this->refresh_oauth_token();
     }
 
+    /**
+     * Check if current token is valid
+     */
+    private function is_token_valid()
+    {
+        return $this->jwt_token && 
+               $this->token_expires_at && 
+               $this->token_expires_at > time();
+    }
+
+    /**
+     * Get cached token from session
+     */
+    private function get_cached_token()
+    {
+        $cache_key = 'ademico_oauth_token_' . $this->environment . '_' . md5($this->client_id);
+        return $this->CI->session->userdata($cache_key);
+    }
+
+    /**
+     * Check if cached token is valid
+     */
+    private function is_cached_token_valid($cached_token)
+    {
+        return isset($cached_token['access_token']) && 
+               isset($cached_token['expires_at']) && 
+               $cached_token['expires_at'] > time();
+    }
+
+    /**
+     * Cache token in session
+     */
+    private function cache_token($access_token, $expires_in)
+    {
+        $cache_key = 'ademico_oauth_token_' . $this->environment . '_' . md5($this->client_id);
+        $expires_at = time() + $expires_in - 60; // Expire 1 minute early for safety
+        
+        $token_data = [
+            'access_token' => $access_token,
+            'expires_at' => $expires_at,
+            'created_at' => time()
+        ];
+        
+        $this->CI->session->set_userdata($cache_key, $token_data);
+        $this->token_expires_at = $expires_at;
+    }
 
     /**
      * Refresh OAuth2 token
@@ -79,15 +134,18 @@ class Ademico_provider extends Abstract_peppol_provider
             throw new Exception('OAuth2 authentication failed: ' . $response['message']);
         }
 
-        $response_data = json_decode($response['response'], true);
-        if (!isset($response_data['access_token'])) {
+        $token_data = json_decode($response['response'], true);
+        if (!isset($token_data['access_token'])) {
             throw new Exception('Invalid OAuth2 response: missing access_token');
         }
 
-        return [
-            'access_token' => $response_data['access_token'],
-            'expires_in' => $response_data['expires_in'] ?? 3600
-        ];
+        $this->jwt_token = $token_data['access_token'];
+        $expires_in = $token_data['expires_in'] ?? 3600; // Default to 1 hour
+        
+        // Cache the token
+        $this->cache_token($this->jwt_token, $expires_in);
+        
+        return $this->jwt_token;
     }
 
     /**
@@ -96,48 +154,8 @@ class Ademico_provider extends Abstract_peppol_provider
     private function get_auth_headers()
     {
         $jwt_token = $this->get_oauth_token();
-        // Per Ademico API specification: Pass JWT token directly without 'Bearer' prefix
+        // Note: Ademico API documentation says NOT to use 'Bearer' prefix for JWT
         return ['Authorization: ' . $jwt_token];
-    }
-
-    /**
-     * Get standardized JSON headers with authentication
-     */
-    private function get_json_headers()
-    {
-        return array_merge([
-            'Accept: application/json',
-            'Content-Type: application/json'
-        ], $this->get_auth_headers());
-    }
-
-    /**
-     * Get read-only headers with authentication (no Content-Type)
-     */
-    private function get_read_headers()
-    {
-        return array_merge([
-            'Accept: application/json'
-        ], $this->get_auth_headers());
-    }
-
-    /**
-     * Get endpoint URL by key
-     */
-    private function get_endpoint($key, $params = [])
-    {
-        if (!isset(self::ENDPOINTS[$key])) {
-            throw new Exception("Unknown endpoint key: {$key}");
-        }
-        
-        $endpoint = self::ENDPOINTS[$key];
-        
-        // Replace placeholders if params provided
-        if (!empty($params)) {
-            $endpoint = vsprintf($endpoint, $params);
-        }
-        
-        return $endpoint;
     }
 
     /**
@@ -158,7 +176,9 @@ class Ademico_provider extends Abstract_peppol_provider
         try {
             $this->validate_auth_config();
 
-            $endpoint = $this->get_endpoint('invoices');
+            // Use correct Ademico API endpoint for invoice submissions
+            $endpoint = '/api/peppol/v1/invoices/ubl-submissions';
+
             $auth_headers = $this->get_auth_headers();
 
             // Ademico API expects multipart/form-data with UBL XML file
@@ -204,11 +224,12 @@ class Ademico_provider extends Abstract_peppol_provider
 
             $this->validate_auth_config();
 
-            // Clear cached token to force fresh authentication for testing
-            $this->clear_token_cache();
+            $auth_headers = $this->get_auth_headers();
+            $headers = array_merge([
+                'Accept: application/json'
+            ], $auth_headers);
 
-            $endpoint = $this->get_endpoint('connectivity');
-            $response = $this->make_api_request($endpoint, 'GET', null, $this->get_read_headers());
+            $response = $this->make_api_request('/api/peppol/v1/tools/connectivity', 'GET', null, $headers);
 
             if (isset($environment)) {
                 $this->environment = $old_env;
@@ -248,9 +269,14 @@ class Ademico_provider extends Abstract_peppol_provider
     public function get_delivery_status($transmission_id)
     {
         try {
-            // Use Ademico's unified notifications API with query parameter
-            $endpoint = $this->get_endpoint('notifications') . '?transmissionId=' . urlencode($transmission_id);
-            $response = $this->make_api_request($endpoint, 'GET', null, $this->get_read_headers());
+            $auth_headers = $this->get_auth_headers();
+            $headers = array_merge([
+                'Accept: application/json'
+            ], $auth_headers);
+
+            // Use Ademico's unified notifications API
+            $endpoint = '/api/peppol/v1/notifications?transmissionId=' . urlencode($transmission_id);
+            $response = $this->make_api_request($endpoint, 'GET', null, $headers);
 
             if ($response['success']) {
                 $notifications = $response['data'];
@@ -560,12 +586,12 @@ class Ademico_provider extends Abstract_peppol_provider
      */
     private function download_document($document_id)
     {
-        $endpoint = $this->get_endpoint('documents', [urlencode($document_id)]);
+        $auth_headers = $this->get_auth_headers();
         $headers = array_merge([
             'Accept: application/xml'
-        ], $this->get_auth_headers());
+        ], $auth_headers);
 
-        $response = $this->make_api_request($endpoint, 'GET', null, $headers);
+        $response = $this->make_api_request('/documents/' . $document_id . '/content', 'GET', null, $headers);
 
         if ($response['success']) {
             return $response['raw_data']; // Return raw XML content
@@ -644,259 +670,5 @@ class Ademico_provider extends Abstract_peppol_provider
             'http_code' => $http_code,
             'raw_response' => $response
         ];
-    }
-
-    /**
-     * Clear cached OAuth token (useful for testing or when token is invalid)
-     */
-    public function clear_token_cache($provider_key = "ademico_oauth")
-    {
-        parent::clear_token_cache($provider_key);
-    }
-
-    /**
-     * Get token expiration info for debugging
-     */
-    public function get_token_info($provider_key = "ademico_oauth")
-    {
-        return parent::get_token_info($provider_key);
-    }
-
-    // ========================================
-    // LEGAL ENTITY MANAGEMENT
-    // ========================================
-
-    /**
-     * Get list of legal entities available for the account
-     */
-    public function get_legal_entities()
-    {
-        try {
-            $endpoint = $this->get_endpoint('legal_entities');
-            $response = $this->make_api_request($endpoint, 'GET', null, $this->get_read_headers());
-
-            if ($response['success']) {
-                $entities = $response['data'] ?? [];
-                return [
-                    'success' => true,
-                    'entities' => $entities,
-                    'message' => 'Legal entities retrieved successfully'
-                ];
-            } else {
-                return [
-                    'success' => false,
-                    'message' => $response['message'] ?? 'Failed to retrieve legal entities',
-                    'entities' => []
-                ];
-            }
-        } catch (Exception $e) {
-            return [
-                'success' => false,
-                'message' => $e->getMessage(),
-                'entities' => []
-            ];
-        }
-    }
-
-    /**
-     * Create a new legal entity
-     */
-    public function create_legal_entity($entity_data)
-    {
-        try {
-            $this->validate_auth_config();
-            $endpoint = $this->get_endpoint('legal_entities');
-            $ademico_entity = $this->prepare_legal_entity_data($entity_data);
-
-            $response = $this->make_api_request($endpoint, 'POST', $ademico_entity, $this->get_json_headers());
-
-            if ($response['success']) {
-                $created_entity = $response['data'] ?? [];
-                return [
-                    'success' => true,
-                    'entity_id' => $created_entity['id'] ?? $created_entity['entityId'] ?? null,
-                    'message' => 'Legal entity created successfully',
-                    'entity' => $created_entity
-                ];
-            } else {
-                return [
-                    'success' => false,
-                    'message' => $response['message'] ?? 'Failed to create legal entity'
-                ];
-            }
-        } catch (Exception $e) {
-            return [
-                'success' => false,
-                'message' => $e->getMessage()
-            ];
-        }
-    }
-
-    /**
-     * Update an existing legal entity
-     */
-    public function update_legal_entity($entity_id, $entity_data)
-    {
-        try {
-            $this->validate_auth_config();
-            $endpoint = $this->get_endpoint('legal_entity', [urlencode($entity_id)]);
-            $ademico_entity = $this->prepare_legal_entity_data($entity_data);
-
-            $response = $this->make_api_request($endpoint, 'PUT', $ademico_entity, $this->get_json_headers());
-
-            if ($response['success']) {
-                return [
-                    'success' => true,
-                    'message' => 'Legal entity updated successfully',
-                    'entity' => $response['data'] ?? []
-                ];
-            } else {
-                return [
-                    'success' => false,
-                    'message' => $response['message'] ?? 'Failed to update legal entity'
-                ];
-            }
-        } catch (Exception $e) {
-            return [
-                'success' => false,
-                'message' => $e->getMessage()
-            ];
-        }
-    }
-
-    /**
-     * Delete a legal entity
-     */
-    public function delete_legal_entity($entity_id)
-    {
-        try {
-            $this->validate_auth_config();
-            $endpoint = $this->get_endpoint('legal_entity', [urlencode($entity_id)]);
-
-            $response = $this->make_api_request($endpoint, 'DELETE', null, $this->get_read_headers());
-
-            if ($response['success']) {
-                return [
-                    'success' => true,
-                    'message' => 'Legal entity deleted successfully'
-                ];
-            } else {
-                return [
-                    'success' => false,
-                    'message' => $response['message'] ?? 'Failed to delete legal entity'
-                ];
-            }
-        } catch (Exception $e) {
-            return [
-                'success' => false,
-                'message' => $e->getMessage()
-            ];
-        }
-    }
-
-    /**
-     * Get details of a specific legal entity
-     */
-    public function get_legal_entity($entity_id)
-    {
-        try {
-            $endpoint = $this->get_endpoint('legal_entity', [urlencode($entity_id)]);
-            $response = $this->make_api_request($endpoint, 'GET', null, $this->get_read_headers());
-
-            if ($response['success']) {
-                return [
-                    'success' => true,
-                    'entity' => $response['data'] ?? [],
-                    'message' => 'Legal entity retrieved successfully'
-                ];
-            } else {
-                return [
-                    'success' => false,
-                    'message' => $response['message'] ?? 'Failed to retrieve legal entity',
-                    'entity' => null
-                ];
-            }
-        } catch (Exception $e) {
-            return [
-                'success' => false,
-                'message' => $e->getMessage(),
-                'entity' => null
-            ];
-        }
-    }
-
-    /**
-     * Prepare legal entity data for Ademico API format
-     */
-    private function prepare_legal_entity_data($entity_data)
-    {
-        // Map common fields to Ademico API format
-        $ademico_entity = [];
-
-        // Required fields
-        if (isset($entity_data['name'])) {
-            $ademico_entity['name'] = $entity_data['name'];
-        }
-
-        if (isset($entity_data['identifier'])) {
-            $ademico_entity['identifier'] = $entity_data['identifier'];
-        }
-
-        if (isset($entity_data['scheme_id'])) {
-            $ademico_entity['schemeId'] = $entity_data['scheme_id'];
-        }
-
-        // Company registration details
-        if (isset($entity_data['registration_number'])) {
-            $ademico_entity['registrationNumber'] = $entity_data['registration_number'];
-        }
-
-        if (isset($entity_data['vat_number'])) {
-            $ademico_entity['vatNumber'] = $entity_data['vat_number'];
-        }
-
-        // Address information
-        if (isset($entity_data['address'])) {
-            $ademico_entity['address'] = [
-                'street' => $entity_data['address']['street'] ?? '',
-                'city' => $entity_data['address']['city'] ?? '',
-                'postalCode' => $entity_data['address']['postal_code'] ?? '',
-                'country' => $entity_data['address']['country'] ?? '',
-                'countryCode' => $entity_data['address']['country_code'] ?? ''
-            ];
-        }
-
-        // Contact information
-        if (isset($entity_data['contact'])) {
-            $ademico_entity['contact'] = [
-                'name' => $entity_data['contact']['name'] ?? '',
-                'email' => $entity_data['contact']['email'] ?? '',
-                'phone' => $entity_data['contact']['phone'] ?? ''
-            ];
-        }
-
-        // PEPPOL specific settings
-        if (isset($entity_data['peppol_identifier'])) {
-            $ademico_entity['peppolIdentifier'] = $entity_data['peppol_identifier'];
-        }
-
-        if (isset($entity_data['peppol_scheme'])) {
-            $ademico_entity['peppolScheme'] = $entity_data['peppol_scheme'];
-        }
-
-        // Document types this entity can send/receive
-        if (isset($entity_data['document_types'])) {
-            $ademico_entity['documentTypes'] = $entity_data['document_types'];
-        } else {
-            // Default to invoice if not specified
-            $ademico_entity['documentTypes'] = ['invoice'];
-        }
-
-        // Additional settings
-        if (isset($entity_data['settings'])) {
-            $ademico_entity['settings'] = $entity_data['settings'];
-        }
-
-        return $ademico_entity;
     }
 }

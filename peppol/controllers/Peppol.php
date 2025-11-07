@@ -7,8 +7,8 @@ class Peppol extends AdminController
     public function __construct()
     {
         parent::__construct();
-        $this->load->model('peppol_model');
-        $this->load->library('peppol_service');
+        $this->load->model(PEPPOL_MODULE_NAME . '/peppol_model');
+        $this->load->library(PEPPOL_MODULE_NAME . '/peppol_service');
     }
 
     /**
@@ -66,7 +66,7 @@ class Peppol extends AdminController
         }
 
         $peppol_invoice = $this->peppol_model->get_peppol_invoice($peppol_invoice_id);
-        
+
         if (!$peppol_invoice) {
             show_404();
         }
@@ -92,7 +92,7 @@ class Peppol extends AdminController
         }
 
         $peppol_invoice = $this->peppol_model->get_peppol_invoice($peppol_invoice_id);
-        
+
         if (!$peppol_invoice || empty($peppol_invoice->ubl_content)) {
             show_404();
         }
@@ -111,13 +111,13 @@ class Peppol extends AdminController
         }
 
         $peppol_invoice = $this->peppol_model->get_peppol_invoice($peppol_invoice_id);
-        
+
         if (!$peppol_invoice || empty($peppol_invoice->ubl_content)) {
             show_404();
         }
 
         $filename = 'invoice_' . $peppol_invoice->invoice_id . '_ubl.xml';
-        
+
         header('Content-Type: application/xml');
         header('Content-Disposition: attachment; filename="' . $filename . '"');
         echo $peppol_invoice->ubl_content;
@@ -159,7 +159,7 @@ class Peppol extends AdminController
 
         $provider = $this->input->post('provider');
         $environment = $this->input->post('environment');
-        
+
         $result = $this->peppol_service->test_connection($provider, $environment);
 
         header('Content-Type: application/json');
@@ -223,7 +223,7 @@ class Peppol extends AdminController
         }
 
         $document = $this->peppol_model->get_received_document($document_id);
-        
+
         if (!$document) {
             show_404();
         }

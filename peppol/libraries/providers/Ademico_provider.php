@@ -49,7 +49,7 @@ class Ademico_provider extends Abstract_peppol_provider
      */
     private function get_oauth_token()
     {
-        return $this->get_or_refresh_token('ademico_oauth', function() {
+        return $this->get_or_refresh_token('ademico_oauth', function () {
             return $this->refresh_oauth_token();
         });
     }
@@ -129,14 +129,14 @@ class Ademico_provider extends Abstract_peppol_provider
         if (!isset(self::ENDPOINTS[$key])) {
             throw new Exception("Unknown endpoint key: {$key}");
         }
-        
+
         $endpoint = self::ENDPOINTS[$key];
-        
+
         // Replace placeholders if params provided
         if (!empty($params)) {
             $endpoint = vsprintf($endpoint, $params);
         }
-        
+
         return $endpoint;
     }
 
@@ -202,10 +202,10 @@ class Ademico_provider extends Abstract_peppol_provider
                 $this->load_config();
             }
 
-            $this->validate_auth_config();
-
             // Clear cached token to force fresh authentication for testing
             $this->clear_token_cache();
+
+            $this->validate_auth_config();
 
             $endpoint = $this->get_endpoint('connectivity');
             $response = $this->make_api_request($endpoint, 'GET', null, $this->get_read_headers());

@@ -32,8 +32,14 @@ class Ademico_provider extends Abstract_peppol_provider
      */
     private function load_config()
     {
-        $this->client_id = get_option('peppol_ademico_oauth2_client_identifier');
-        $this->client_secret = get_option('peppol_ademico_oauth2_client_secret');
+        // Use test credentials when in sandbox mode, production credentials when in live mode
+        if ($this->environment === 'sandbox') {
+            $this->client_id = get_option('peppol_ademico_oauth2_client_identifier_test');
+            $this->client_secret = get_option('peppol_ademico_oauth2_client_secret_test');
+        } else {
+            $this->client_id = get_option('peppol_ademico_oauth2_client_identifier');
+            $this->client_secret = get_option('peppol_ademico_oauth2_client_secret');
+        }
 
         // Set OAuth2 URLs based on environment
         $this->endpoint_url = ($this->environment === 'sandbox')

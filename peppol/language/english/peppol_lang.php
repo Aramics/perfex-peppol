@@ -91,6 +91,13 @@ $lang['peppol_provider_selection_help'] = 'Choose your PEPPOL access point provi
 $lang['peppol_provider_features'] = 'Provider Features';
 $lang['peppol_provider_documentation'] = 'Provider Documentation';
 
+// Test credentials configuration
+$lang['peppol_test_credentials'] = 'Test/Sandbox Credentials';
+$lang['peppol_test_credentials_note'] = 'Important Security Notice';
+$lang['peppol_test_credentials_help'] = 'These test credentials are used when running automated tests or validating your provider configuration. They should be different from your production credentials and only work in sandbox environments.';
+$lang['peppol_production_credentials'] = 'Production Credentials';
+$lang['peppol_endpoint_configuration'] = 'Endpoint Configuration';
+
 // Ademico Provider
 $lang['peppol_ademico_settings'] = 'Ademico Software Configuration';
 $lang['peppol_ademico_description'] = 'Ademico provides comprehensive PEPPOL services with JSON API integration';
@@ -111,8 +118,12 @@ $lang['peppol_ademico_client_id'] = 'OAuth2 Client Identifier';
 $lang['peppol_ademico_client_id_help'] = 'OAuth2 client identifier provided by Ademico for JWT token authentication. Keep this secure.';
 $lang['peppol_ademico_client_secret'] = 'OAuth2 Client Secret';
 $lang['peppol_ademico_client_secret_help'] = 'OAuth2 client secret provided by Ademico. This is used to generate secure JWT tokens for API access.';
-$lang['peppol_oauth2_authentication'] = 'OAuth2 Authentication';
-$lang['peppol_ademico_oauth2_help'] = 'Ademico uses OAuth2 with client credentials flow to generate secure JWT tokens for API authentication. This is the recommended and most secure authentication method.';
+
+// Ademico test credentials
+$lang['peppol_ademico_client_id_test'] = 'Test OAuth2 Client Identifier';
+$lang['peppol_ademico_client_id_test_help'] = 'OAuth2 client identifier for testing/sandbox environment provided by Ademico. Used for automated tests and validation.';
+$lang['peppol_ademico_client_secret_test'] = 'Test OAuth2 Client Secret';
+$lang['peppol_ademico_client_secret_test_help'] = 'OAuth2 client secret for testing/sandbox environment. This should be different from your production credentials.';
 
 // ========================================
 // UNIT4 PROVIDER SETTINGS
@@ -129,6 +140,12 @@ $lang['peppol_unit4_sandbox_endpoint_help'] = 'Unit4 sandbox endpoint for develo
 $lang['peppol_unit4_certificate'] = 'Client Certificate';
 $lang['peppol_unit4_certificate_help'] = 'Optional client certificate for enhanced security';
 
+// Unit4 test credentials
+$lang['peppol_unit4_username_test'] = 'Test Username';
+$lang['peppol_unit4_username_test_help'] = 'Unit4 username for testing/sandbox environment. Used for automated tests and validation.';
+$lang['peppol_unit4_password_test'] = 'Test Password';
+$lang['peppol_unit4_password_test_help'] = 'Unit4 password for testing/sandbox environment. This should be different from your production credentials.';
+
 // ========================================
 // RECOMMAND PROVIDER SETTINGS
 // ========================================
@@ -143,6 +160,12 @@ $lang['peppol_recommand_sandbox_endpoint'] = 'Sandbox API URL';
 $lang['peppol_recommand_sandbox_endpoint_help'] = 'Recommand testing environment for safe development';
 $lang['peppol_recommand_webhook_token'] = 'Webhook Verification Token';
 $lang['peppol_recommand_webhook_token_help'] = 'Token used to verify incoming webhook authenticity';
+
+// Recommand test credentials
+$lang['peppol_recommand_api_key_test'] = 'Test API Key';
+$lang['peppol_recommand_api_key_test_help'] = 'Recommand API key for testing/sandbox environment. Used for automated tests and validation.';
+$lang['peppol_recommand_company_id_test'] = 'Test Company ID';
+$lang['peppol_recommand_company_id_test_help'] = 'Recommand company identifier for testing/sandbox environment. This should be different from your production company ID.';
 
 // ========================================
 // CLIENT/CUSTOMER PEPPOL SETTINGS
@@ -207,6 +230,28 @@ $lang['peppol_refresh_status'] = 'Refresh Status';
 $lang['peppol_bulk_send'] = 'Bulk Send Invoices';
 $lang['peppol_bulk_resend'] = 'Bulk Resend Failed';
 $lang['peppol_force_send'] = 'Force Send (Override Checks)';
+
+// Test Suite Runner
+$lang['peppol_run_tests'] = 'Run Tests';
+$lang['peppol_stop_tests'] = 'Stop Tests';
+$lang['peppol_tests'] = 'Tests';
+$lang['peppol_test_suite'] = 'Automated Test Suite';
+$lang['peppol_test_suite_help'] = 'Run automated tests to validate your PEPPOL provider configuration and credentials. Tests will use the configured test credentials and run against sandbox environments.';
+$lang['peppol_test_configuration'] = 'Test Configuration';
+$lang['peppol_test_provider'] = 'Test Provider';
+$lang['peppol_test_provider_help'] = 'Select which PEPPOL provider to run tests against. The active provider is pre-selected.';
+$lang['peppol_test_suite_type'] = 'Test Type';
+$lang['peppol_test_suite_type_help'] = 'Choose which tests to run. "All Tests" runs comprehensive validation including legal entities and documents.';
+$lang['peppol_test_legal_entities'] = 'Legal Entity Tests';
+$lang['peppol_test_documents'] = 'Document Processing Tests';
+$lang['peppol_test_all'] = 'All Tests';
+$lang['peppol_test_results'] = 'Test Results';
+$lang['peppol_test_completed'] = 'Test execution completed';
+$lang['peppol_test_failed'] = 'Some tests failed';
+$lang['peppol_test_passed'] = 'All tests passed successfully';
+$lang['peppol_running_tests'] = 'Running Tests...';
+$lang['peppol_test_error'] = 'Error executing tests';
+$lang['peppol_test_stopped'] = 'Test execution stopped';
 
 // ========================================
 // SUCCESS & INFORMATION MESSAGES
@@ -501,4 +546,3 @@ $lang['peppol_quota_status'] = 'Monthly quota: %d of %d documents used (%d%% rem
 $lang['peppol_last_successful_transmission'] = 'Last successful transmission: %s';
 
 // End of PEPPOL language file
-?>

@@ -21,12 +21,14 @@ class Unit4_provider extends Abstract_peppol_provider
      */
     private function load_config()
     {
-        $this->username = get_option('peppol_unit4_username');
-        $this->password = get_option('peppol_unit4_password');
-        
+        // Use test credentials when in sandbox mode, production credentials when in live mode
         if ($this->environment === 'sandbox') {
+            $this->username = get_option('peppol_unit4_username_test');
+            $this->password = get_option('peppol_unit4_password_test');
             $this->endpoint_url = get_option('peppol_unit4_sandbox_endpoint', 'https://test-ap.unit4.com');
         } else {
+            $this->username = get_option('peppol_unit4_username');
+            $this->password = get_option('peppol_unit4_password');
             $this->endpoint_url = get_option('peppol_unit4_endpoint_url', 'https://ap.unit4.com');
         }
     }

@@ -21,12 +21,14 @@ class Recommand_provider extends Abstract_peppol_provider
      */
     private function load_config()
     {
-        $this->api_key = get_option('peppol_recommand_api_key');
-        $this->company_id = get_option('peppol_recommand_company_id');
-        
+        // Use test credentials when in sandbox mode, production credentials when in live mode
         if ($this->environment === 'sandbox') {
+            $this->api_key = get_option('peppol_recommand_api_key_test');
+            $this->company_id = get_option('peppol_recommand_company_id_test');
             $this->endpoint_url = get_option('peppol_recommand_sandbox_endpoint', 'https://sandbox-peppol.recommand.eu/api');
         } else {
+            $this->api_key = get_option('peppol_recommand_api_key');
+            $this->company_id = get_option('peppol_recommand_company_id');
             $this->endpoint_url = get_option('peppol_recommand_endpoint_url', 'https://peppol.recommand.eu/api');
         }
     }

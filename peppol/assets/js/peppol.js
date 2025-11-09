@@ -240,6 +240,16 @@ $(document).ready(function () {
 			);
 		}
 
+		// Validate PEPPOL scheme format
+		var scheme = $(
+			'input[name="settings[peppol_company_scheme]"]'
+		).val();
+		if (scheme && !/^[0-9]{4}$/.test(scheme)) {
+			errors.push(
+				"PEPPOL scheme must be exactly 4 digits."
+			);
+		}
+
 		// Validate required fields for active provider
 		var activeProvider = $(
 			'select[name="settings[peppol_active_provider]"]'

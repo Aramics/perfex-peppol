@@ -47,3 +47,19 @@
         <?php echo render_yes_no_option('peppol_auto_process_received', _l('peppol_auto_process_received'), _l('peppol_auto_process_help')); ?>
     </div>
 </div>
+
+<div class="tw-mt-4 tw-mb-4">
+    <hr />
+</div>
+
+<!-- Legal Entity Management Settings -->
+<h5><?php echo _l('peppol_legal_entity_management'); ?></h5>
+
+<div class="row">
+    <div class="col-md-6">
+        <?php echo render_yes_no_option('peppol_auto_register_legal_entities', _l('peppol_auto_register_legal_entities'), _l('peppol_auto_register_legal_entities_help')); ?>
+    </div>
+    <div class="col-md-6">
+        <?php echo render_yes_no_option('peppol_auto_sync_legal_entities', _l('peppol_auto_sync_legal_entities'), _l('peppol_auto_sync_legal_entities_help')); ?>
+    </div>
+</div>

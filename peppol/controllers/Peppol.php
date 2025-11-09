@@ -381,4 +381,169 @@ class Peppol extends AdminController
         header('Content-Type: application/xml');
         echo $document->document_content;
     }
+
+    // ========================================
+    // LEGAL ENTITY MANAGEMENT
+    // ========================================
+
+    /**
+     * Register client as legal entity with PEPPOL provider
+     */
+    public function register_legal_entity($client_id = null)
+    {
+        if (!staff_can('create', 'peppol')) {
+            ajax_access_denied();
+        }
+
+        if (!$client_id) {
+            $client_id = $this->input->post('client_id');
+        }
+
+        $provider = $this->input->post('provider') ?: null;
+
+        $result = $this->peppol_service->create_or_update_client_legal_entity($client_id, $provider);
+
+        if ($this->input->is_ajax_request()) {
+            echo json_encode($result);
+            return;
+        }
+
+        if ($result['success']) {
+            set_alert('success', _l('peppol_legal_entity_registered'));
+        } else {
+            set_alert('danger', _l('peppol_legal_entity_registration_failed') . ': ' . $result['message']);
+        }
+
+        redirect(admin_url('clients/client/' . $client_id));
+    }
+
+    /**
+     * Get legal entity registration status for a client
+     */
+    public function get_legal_entity_status($client_id)
+    {
+        if (!staff_can('view', 'peppol')) {
+            ajax_access_denied();
+        }
+
+        $provider = $this->input->get('provider');
+        $status = $this->peppol_service->get_client_legal_entity_status($client_id, $provider);
+
+        echo json_encode($status);
+    }
+
+    /**
+     * Sync legal entity data with provider
+     */
+    public function sync_legal_entity($client_id)
+    {
+        if (!staff_can('edit', 'peppol')) {
+            ajax_access_denied();
+        }
+
+        $provider = $this->input->post('provider');
+        if (!$provider) {
+            echo json_encode(['success' => false, 'message' => 'Provider not specified']);
+            return;
+        }
+
+        $result = $this->peppol_service->sync_client_legal_entity($client_id, $provider);
+
+        echo json_encode($result);
+    }
+
+    /**
+     * Bulk register clients as legal entities
+     */
+    public function bulk_register_legal_entities()
+    {
+        if (!staff_can('create', 'peppol')) {
+            ajax_access_denied();
+        }
+
+        $client_ids = $this->input->post('client_ids');
+        $provider = $this->input->post('provider');
+
+        if (!$client_ids || !is_array($client_ids)) {
+            echo json_encode(['success' => false, 'message' => 'No clients selected']);
+            return;
+        }
+
+        $results = [];
+        $success_count = 0;
+        $error_count = 0;
+
+        foreach ($client_ids as $client_id) {
+            $result = $this->peppol_service->create_or_update_client_legal_entity($client_id, $provider);
+            $results[$client_id] = $result;
+            
+            if ($result['success']) {
+                $success_count++;
+            } else {
+                $error_count++;
+            }
+        }
+
+        echo json_encode([
+            'success' => $error_count === 0,
+            'message' => sprintf(
+                _l('peppol_bulk_registration_complete'),
+                $success_count,
+                count($client_ids),
+                $error_count
+            ),
+            'success_count' => $success_count,
+            'error_count' => $error_count,
+            'results' => $results
+        ]);
+    }
+
+    /**
+     * Run database migrations for PEPPOL module
+     */
+    public function migrate_database()
+    {
+        if (!is_admin()) {
+            access_denied('admin');
+        }
+
+        $this->load->dbforge();
+        
+        try {
+            // Add client_id column to existing peppol_logs table if it doesn't exist
+            if (!$this->db->field_exists('client_id', db_prefix() . 'peppol_logs')) {
+                $this->db->query('ALTER TABLE `' . db_prefix() . 'peppol_logs` ADD `client_id` int(11) DEFAULT NULL AFTER `invoice_id`');
+                $this->db->query('ALTER TABLE `' . db_prefix() . 'peppol_logs` ADD KEY `client_id` (`client_id`)');
+                echo "✅ Added client_id column to peppol_logs table<br>";
+            } else {
+                echo "✅ client_id column already exists in peppol_logs table<br>";
+            }
+            
+            // Add missing test credential options
+            $test_options = [
+                'peppol_ademico_oauth2_client_identifier_test',
+                'peppol_ademico_oauth2_client_secret_test',
+                'peppol_unit4_username_test',
+                'peppol_unit4_password_test',
+                'peppol_recommand_api_key_test',
+                'peppol_recommand_company_id_test',
+                'peppol_auto_register_legal_entities',
+                'peppol_auto_sync_legal_entities'
+            ];
+            
+            foreach ($test_options as $option) {
+                if (!get_option($option)) {
+                    add_option($option, '');
+                    echo "✅ Added option: $option<br>";
+                } else {
+                    echo "✅ Option already exists: $option<br>";
+                }
+            }
+            
+            echo "<br>🎉 Database migration completed successfully!";
+            
+        } catch (Exception $e) {
+            echo "❌ Migration failed: " . $e->getMessage();
+        }
+    }
 }

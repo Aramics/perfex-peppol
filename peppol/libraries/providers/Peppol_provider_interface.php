@@ -95,7 +95,7 @@ abstract class Abstract_peppol_provider implements Peppol_provider_interface
     protected $environment;
     protected $auth_token;
     protected $token_expires_at;
-    
+
     public function __construct()
     {
         $this->CI = &get_instance();
@@ -129,14 +129,14 @@ abstract class Abstract_peppol_provider implements Peppol_provider_interface
     protected function log_activity($action, $status, $message, $additional_data = [])
     {
         $this->CI->load->model('peppol/peppol_model');
-        
+
         $log_data = array_merge([
             'provider' => $this->get_provider_name(),
             'action' => $action,
             'status' => $status,
             'message' => $message
         ], $additional_data);
-        
+
         $this->CI->peppol_model->log_activity($log_data);
     }
 
@@ -166,15 +166,15 @@ abstract class Abstract_peppol_provider implements Peppol_provider_interface
             'success' => $success,
             'message' => $message
         ];
-        
+
         if ($data !== null) {
             $response['response'] = $data;
         }
-        
+
         if ($document_id !== null) {
             $response['document_id'] = $document_id;
         }
-        
+
         return $response;
     }
 
@@ -224,7 +224,7 @@ abstract class Abstract_peppol_provider implements Peppol_provider_interface
     {
         $dom = new DOMDocument();
         libxml_use_internal_errors(true);
-        
+
         if (!$dom->loadXML($ubl_content)) {
             return false;
         }
@@ -232,7 +232,7 @@ abstract class Abstract_peppol_provider implements Peppol_provider_interface
         // Check for basic PEPPOL elements
         $xpath = new DOMXPath($dom);
         $xpath->registerNamespace('cbc', 'urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2');
-        
+
         $customization_id = $xpath->query('//cbc:CustomizationID')->item(0);
         if (!$customization_id) {
             return false;
@@ -262,9 +262,9 @@ abstract class Abstract_peppol_provider implements Peppol_provider_interface
      */
     protected function is_token_valid()
     {
-        return $this->auth_token && 
-               $this->token_expires_at && 
-               $this->token_expires_at > time();
+        return $this->auth_token &&
+            $this->token_expires_at &&
+            $this->token_expires_at > time();
     }
 
     /**
@@ -283,9 +283,9 @@ abstract class Abstract_peppol_provider implements Peppol_provider_interface
      */
     protected function is_cached_token_valid($cached_token)
     {
-        return isset($cached_token['access_token']) && 
-               isset($cached_token['expires_at']) && 
-               $cached_token['expires_at'] > time();
+        return isset($cached_token['access_token']) &&
+            isset($cached_token['expires_at']) &&
+            $cached_token['expires_at'] > time();
     }
 
     /**
@@ -299,13 +299,13 @@ abstract class Abstract_peppol_provider implements Peppol_provider_interface
     {
         $cache_key = $provider_key . '_token_' . $this->environment . '_' . md5(get_staff_user_id());
         $expires_at = time() + $expires_in - 60; // Expire 1 minute early for safety
-        
+
         $token_data = [
             'access_token' => $access_token,
             'expires_at' => $expires_at,
             'created_at' => time()
         ];
-        
+
         $this->CI->session->set_userdata($cache_key, $token_data);
         $this->token_expires_at = $expires_at;
     }
@@ -366,7 +366,7 @@ abstract class Abstract_peppol_provider implements Peppol_provider_interface
         // Generate new token using provider-specific callback
         $this->auth_token = null;
         $this->token_expires_at = null;
-        
+
         $token_data = $refresh_callback();
         if (!isset($token_data['access_token'])) {
             throw new Exception('Token refresh callback must return array with access_token');
@@ -374,10 +374,10 @@ abstract class Abstract_peppol_provider implements Peppol_provider_interface
 
         $this->auth_token = $token_data['access_token'];
         $expires_in = $token_data['expires_in'] ?? 3600; // Default to 1 hour
-        
+
         // Cache the token
         $this->cache_token($provider_key, $this->auth_token, $expires_in);
-        
+
         return $this->auth_token;
     }
 

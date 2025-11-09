@@ -277,6 +277,9 @@ $lang['peppol_recipient_verified'] = 'Recipient PEPPOL ID verified and can recei
 
 $lang['peppol_invoice_send_failed'] = 'Failed to transmit invoice via PEPPOL network';
 $lang['peppol_connection_test_failed'] = 'Provider connection test failed - check your configuration';
+$lang['peppol_missing_required_fields'] = 'Missing required fields for PEPPOL registration';
+$lang['peppol_identifier_required_error'] = 'PEPPOL Identifier is required for legal entity registration. Please set the PEPPOL Identifier for this client.';
+$lang['peppol_scheme_required_error'] = 'PEPPOL Scheme is required for legal entity registration. Please set the PEPPOL Scheme for this client.';
 $lang['peppol_not_configured'] = 'PEPPOL module is not properly configured. Please complete the setup in settings.';
 $lang['peppol_client_no_identifier'] = 'Customer does not have a PEPPOL identifier configured. Electronic transmission is not possible.';
 $lang['peppol_document_processing_failed'] = 'Failed to process the received PEPPOL document';
@@ -544,5 +547,73 @@ $lang['peppol_performance_good'] = 'PEPPOL performance is within normal paramete
 $lang['peppol_performance_slow'] = 'PEPPOL response times are slower than usual';
 $lang['peppol_quota_status'] = 'Monthly quota: %d of %d documents used (%d%% remaining)';
 $lang['peppol_last_successful_transmission'] = 'Last successful transmission: %s';
+
+// ========================================
+// LEGAL ENTITY MANAGEMENT
+// ========================================
+
+// Legal entity registration
+$lang['peppol_legal_entity'] = 'PEPPOL Legal Entity';
+$lang['peppol_legal_entity_management'] = 'Legal Entity Management';
+$lang['peppol_legal_entity_registration'] = 'Legal Entity Registration';
+$lang['peppol_legal_entity_registered'] = 'Legal entity registered successfully with PEPPOL provider';
+$lang['peppol_legal_entity_registration_failed'] = 'Failed to register legal entity';
+$lang['peppol_legal_entity_updated'] = 'Legal entity information updated successfully';
+$lang['peppol_legal_entity_sync_failed'] = 'Failed to synchronize legal entity with provider';
+
+// Legal entity status
+$lang['peppol_legal_entity_status'] = 'Registration Status';
+$lang['peppol_legal_entity_status_none'] = 'Not Registered';
+$lang['peppol_legal_entity_status_pending'] = 'Registration Pending';
+$lang['peppol_legal_entity_status_registered'] = 'Registered';
+$lang['peppol_legal_entity_status_failed'] = 'Registration Failed';
+$lang['peppol_legal_entity_last_sync'] = 'Last Synchronized';
+
+// Legal entity actions
+$lang['peppol_register_legal_entity'] = 'Register with PEPPOL';
+$lang['peppol_sync_legal_entity'] = 'Sync Entity Data';
+$lang['peppol_update_legal_entity'] = 'Update Registration';
+$lang['peppol_view_legal_entity'] = 'View Entity Details';
+
+// Provider-specific entity IDs
+$lang['peppol_ademico_entity_id'] = 'Ademico Entity ID';
+$lang['peppol_unit4_entity_id'] = 'Unit4 Entity ID';
+$lang['peppol_recommand_entity_id'] = 'Recommand Entity ID';
+
+// Custom field labels
+$lang['peppol_registration_notes'] = 'Registration Notes';
+$lang['peppol_last_sync_date'] = 'Last Sync Date';
+
+// Bulk operations
+$lang['peppol_bulk_register_legal_entities'] = 'Bulk Register Legal Entities';
+$lang['peppol_bulk_registration_complete'] = 'Bulk registration completed: %d successful, %d total, %d errors';
+$lang['peppol_select_clients_for_registration'] = 'Select clients to register as legal entities';
+
+// Registration dialog
+$lang['peppol_legal_entity_registration_dialog'] = 'Register Legal Entity';
+$lang['peppol_select_provider_for_registration'] = 'Select PEPPOL provider for registration';
+$lang['peppol_confirm_legal_entity_registration'] = 'Register this client as a legal entity with %s?';
+$lang['peppol_legal_entity_data_will_be_mapped'] = 'Client company information will be automatically mapped to PEPPOL legal entity format';
+
+// Validation and errors
+$lang['peppol_legal_entity_missing_company_info'] = 'Client must have company name and address for PEPPOL registration';
+$lang['peppol_legal_entity_missing_vat'] = 'VAT number is required for legal entity registration';
+$lang['peppol_legal_entity_invalid_address'] = 'Complete address information is required for registration';
+$lang['peppol_legal_entity_provider_not_configured'] = 'PEPPOL provider is not properly configured';
+
+// Help text
+$lang['peppol_legal_entity_help'] = 'Register your clients as legal entities with PEPPOL providers to enable electronic document exchange';
+$lang['peppol_legal_entity_sync_help'] = 'Synchronize client information with registered PEPPOL legal entities to keep data up-to-date';
+
+// Auto registration settings
+$lang['peppol_auto_register_legal_entities'] = 'Auto-register Legal Entities';
+$lang['peppol_auto_register_legal_entities_help'] = 'Automatically register new clients as legal entities with the active PEPPOL provider when they are created';
+$lang['peppol_auto_sync_legal_entities'] = 'Auto-sync Legal Entities';
+$lang['peppol_auto_sync_legal_entities_help'] = 'Automatically synchronize legal entity data when client information is updated (only for clients already registered as legal entities)';
+
+// Client profile UI elements
+$lang['peppol_provider_registration_status'] = 'Provider Registration Status';
+$lang['peppol_active_provider'] = 'Active Provider';
+$lang['peppol_confirm_legal_entity_sync'] = 'Synchronize legal entity data with PEPPOL providers? This will update their records with current client information.';
 
 // End of PEPPOL language file

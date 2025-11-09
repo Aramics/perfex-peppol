@@ -25,7 +25,7 @@ if (!function_exists('render_peppol_client_fields')) {
             'title' => _l('peppol_client_identifier_help')
         ]);
         echo '</div>';
-        
+
         echo '<div class="col-md-6">';
         echo render_select('peppol_scheme', [
             ['id' => '0088', 'name' => '0088 - GLN'],
@@ -53,7 +53,7 @@ if (!function_exists('render_peppol_invoice_action')) {
         $CI = &get_instance();
         $CI->load->model('clients_model');
         $client = $CI->clients_model->get($invoice->clientid);
-        
+
         if (!$client || empty($client->peppol_identifier)) {
             echo '<div class="alert alert-info mtop15">';
             echo '<i class="fa fa-info-circle"></i> ';
@@ -69,17 +69,17 @@ if (!function_exists('render_peppol_invoice_action')) {
             echo '<div class="alert alert-info mtop15">';
             echo '<i class="fa fa-paper-plane"></i> ';
             echo _l('peppol_status') . ': <strong>' . _l('peppol_status_' . $peppol_invoice->status) . '</strong>';
-            
+
             if ($peppol_invoice->peppol_document_id) {
                 echo '<br>' . _l('peppol_document_id') . ': ' . $peppol_invoice->peppol_document_id;
             }
-            
+
             if ($peppol_invoice->status == 'failed') {
                 echo '<br><a href="' . admin_url('peppol/resend/' . $peppol_invoice->id) . '" class="btn btn-warning btn-xs mtop5" onclick="return confirm(\'' . _l('peppol_confirm_resend') . '\')">';
                 echo '<i class="fa fa-refresh"></i> ' . _l('peppol_resend');
                 echo '</a>';
             }
-            
+
             echo '</div>';
         } else if ($invoice->status == 2) { // Sent status
             echo '<div class="mtop15">';
@@ -110,9 +110,9 @@ if (!function_exists('get_peppol_status_label')) {
             'processed' => 'success',
             'received' => 'info'
         ];
-        
+
         $class = isset($status_classes[$status]) ? $status_classes[$status] : 'default';
-        
+
         return '<span class="label label-' . $class . '">' . _l('peppol_status_' . $status) . '</span>';
     }
 }
@@ -130,11 +130,11 @@ if (!function_exists('format_peppol_identifier')) {
         if (empty($identifier)) {
             return '-';
         }
-        
+
         if ($scheme) {
             return $scheme . ':' . $identifier;
         }
-        
+
         return $identifier;
     }
 }
@@ -179,7 +179,7 @@ if (!function_exists('validate_peppol_identifier')) {
                 'message' => _l('peppol_validation_identifier_required')
             ];
         }
-        
+
         // Basic alphanumeric validation
         if (!preg_match('/^[0-9A-Za-z]+$/', $identifier)) {
             return [
@@ -187,7 +187,7 @@ if (!function_exists('validate_peppol_identifier')) {
                 'message' => _l('peppol_validation_identifier_format')
             ];
         }
-        
+
         // Scheme-specific validation
         switch ($scheme) {
             case '0088': // GLN - 13 digits
@@ -198,7 +198,7 @@ if (!function_exists('validate_peppol_identifier')) {
                     ];
                 }
                 break;
-                
+
             case '0060': // DUNS - 9 digits
                 if (!preg_match('/^\d{9}$/', $identifier)) {
                     return [
@@ -207,7 +207,7 @@ if (!function_exists('validate_peppol_identifier')) {
                     ];
                 }
                 break;
-                
+
             case '0184': // Danish CVR - 8 digits
                 if (!preg_match('/^\d{8}$/', $identifier)) {
                     return [
@@ -217,7 +217,7 @@ if (!function_exists('validate_peppol_identifier')) {
                 }
                 break;
         }
-        
+
         return [
             'success' => true,
             'message' => 'Valid PEPPOL identifier'
@@ -239,7 +239,7 @@ if (!function_exists('get_peppol_provider_icon')) {
             'unit4' => 'fa fa-server',
             'recommand' => 'fa fa-cogs'
         ];
-        
+
         return isset($icons[$provider]) ? $icons[$provider] : 'fa fa-plug';
     }
 }
@@ -256,10 +256,10 @@ if (!function_exists('format_peppol_file_size')) {
         if ($bytes === 0) {
             return '0 B';
         }
-        
+
         $units = ['B', 'KB', 'MB', 'GB'];
         $factor = floor((strlen($bytes) - 1) / 3);
-        
+
         return sprintf("%.2f %s", $bytes / pow(1024, $factor), $units[$factor]);
     }
 }
@@ -276,7 +276,7 @@ if (!function_exists('get_peppol_environment_badge')) {
         if (!$environment) {
             $environment = get_option('peppol_environment', 'sandbox');
         }
-        
+
         if ($environment === 'live') {
             return '<span class="label label-success">Live</span>';
         } else {
@@ -359,7 +359,7 @@ if (!function_exists('get_peppol_provider_config')) {
         if (!$provider_key) {
             $provider_key = get_active_peppol_provider();
         }
-        
+
         $providers = get_peppol_providers();
         return isset($providers[$provider_key]) ? $providers[$provider_key] : null;
     }
@@ -376,11 +376,11 @@ if (!function_exists('peppol_provider_supports_feature')) {
     function peppol_provider_supports_feature($feature, $provider_key = null)
     {
         $config = get_peppol_provider_config($provider_key);
-        
+
         if (!$config || !isset($config['features'])) {
             return false;
         }
-        
+
         return in_array($feature, $config['features']);
     }
 }
@@ -395,7 +395,7 @@ if (!function_exists('get_peppol_provider_webhook_config')) {
     function get_peppol_provider_webhook_config($provider_key = null)
     {
         $config = get_peppol_provider_config($provider_key);
-        
+
         return isset($config['webhooks']) ? $config['webhooks'] : null;
     }
 }
@@ -410,7 +410,49 @@ if (!function_exists('format_peppol_provider_name')) {
     function format_peppol_provider_name($provider_key = null)
     {
         $config = get_peppol_provider_config($provider_key);
-        
+
         return $config ? $config['name'] : 'Unknown Provider';
+    }
+}
+
+if (!function_exists('render_peppol_legal_entity_section')) {
+    /**
+     * Render simple PEPPOL legal entity button for client profile
+     * 
+     * @param object $client Client object
+     * @return string HTML output
+     */
+    function render_peppol_legal_entity_section($client)
+    {
+        if (!$client) {
+            return '';
+        }
+
+        $CI = &get_instance();
+        $CI->load->library('peppol/peppol_service');
+
+        // Get legal entity status for active provider only
+        $active_provider = get_option('peppol_active_provider', 'ademico');
+        $status = $CI->peppol_service->get_client_legal_entity_status($client->userid, $active_provider);
+        $providers = get_peppol_providers();
+        $provider_name = isset($providers[$active_provider]) ? $providers[$active_provider]['name'] : $active_provider;
+        
+        // Check if required PEPPOL fields are set
+        $peppol_identifier = get_custom_field_value($client->userid, 'peppol_identifier', 'customers');
+        $peppol_scheme = get_custom_field_value($client->userid, 'peppol_scheme', 'customers');
+        $has_required_fields = !empty($peppol_identifier) && !empty($peppol_scheme);
+
+        // Load the view with the variables
+        $data = [
+            'client' => $client,
+            'status' => $status,
+            'active_provider' => $active_provider,
+            'provider_name' => $provider_name,
+            'has_required_fields' => $has_required_fields,
+            'peppol_identifier' => $peppol_identifier,
+            'peppol_scheme' => $peppol_scheme
+        ];
+
+        return $CI->load->view('peppol/client/legal_entity_section', $data, true);
     }
 }

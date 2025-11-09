@@ -23,7 +23,7 @@ class Ademico_provider extends Abstract_peppol_provider
 
     public function __construct()
     {
-        $this->CI = &get_instance();
+        parent::__construct();
         $this->load_config();
     }
 
@@ -80,7 +80,7 @@ class Ademico_provider extends Abstract_peppol_provider
         ];
 
         $response = $this->make_form_request($this->token_url, $data, $headers);
-
+        dd($this->token_url, $this->client_id, $this->client_secret, $credentials, $response);
         if (!$response['success']) {
             throw new Exception('OAuth2 authentication failed: ' . $response['message']);
         }
@@ -836,71 +836,43 @@ class Ademico_provider extends Abstract_peppol_provider
      */
     private function prepare_legal_entity_data($entity_data)
     {
-        // Map common fields to Ademico API format
-        $ademico_entity = [];
-
-        // Required fields
-        if (isset($entity_data['name'])) {
-            $ademico_entity['name'] = $entity_data['name'];
+        // Validate that we have the expected PEPPOL structure
+        if (!isset($entity_data['legalEntityDetails']) || !isset($entity_data['peppolRegistrations'])) {
+            throw new Exception('Invalid entity data structure - expected PEPPOL legal entity format');
         }
 
-        if (isset($entity_data['identifier'])) {
-            $ademico_entity['identifier'] = $entity_data['identifier'];
-        }
+        $legal_details = $entity_data['legalEntityDetails'];
+        $peppol_registrations = $entity_data['peppolRegistrations'];
 
-        if (isset($entity_data['scheme_id'])) {
-            $ademico_entity['schemeId'] = $entity_data['scheme_id'];
-        }
+        // Map PEPPOL structure to Ademico API format
+        $ademico_entity = [
+            'legalEntityDetails' => [
+                'publishInPeppolDirectory' => $legal_details['publishInPeppolDirectory'] ?? true,
+                'name' => $legal_details['name'],
+                'countryCode' => $legal_details['countryCode'],
+                'geographicalInformation' => $legal_details['geographicalInformation'],
+                'websiteURL' => $legal_details['websiteURL'] ?? '',
+                'contacts' => $legal_details['contacts'] ?? [],
+                'additionalInformation' => $legal_details['additionalInformation'] ?? ''
+            ],
+            'peppolRegistrations' => []
+        ];
 
-        // Company registration details
-        if (isset($entity_data['registration_number'])) {
-            $ademico_entity['registrationNumber'] = $entity_data['registration_number'];
-        }
-
-        if (isset($entity_data['vat_number'])) {
-            $ademico_entity['vatNumber'] = $entity_data['vat_number'];
-        }
-
-        // Address information
-        if (isset($entity_data['address'])) {
-            $ademico_entity['address'] = [
-                'street' => $entity_data['address']['street'] ?? '',
-                'city' => $entity_data['address']['city'] ?? '',
-                'postalCode' => $entity_data['address']['postal_code'] ?? '',
-                'country' => $entity_data['address']['country'] ?? '',
-                'countryCode' => $entity_data['address']['country_code'] ?? ''
+        // Map PEPPOL registrations
+        foreach ($peppol_registrations as $registration) {
+            $ademico_entity['peppolRegistrations'][] = [
+                'peppolIdentifier' => [
+                    'scheme' => $registration['peppolIdentifier']['scheme'],
+                    'identifier' => $registration['peppolIdentifier']['identifier']
+                ],
+                'supportedDocuments' => $registration['supportedDocuments'] ?? [
+                    'PEPPOL_BIS_BILLING_UBL_INVOICE_V3',
+                    'PEPPOL_BIS_BILLING_UBL_CREDIT_NOTE_V3',
+                    'PEPPOL_MESSAGE_LEVEL_RESPONSE_TRANSACTION_3_0',
+                    'PEPPOL_INVOICE_RESPONSE_TRANSACTION_3_0'
+                ],
+                'peppolRegistration' => $registration['peppolRegistration'] ?? true
             ];
-        }
-
-        // Contact information
-        if (isset($entity_data['contact'])) {
-            $ademico_entity['contact'] = [
-                'name' => $entity_data['contact']['name'] ?? '',
-                'email' => $entity_data['contact']['email'] ?? '',
-                'phone' => $entity_data['contact']['phone'] ?? ''
-            ];
-        }
-
-        // PEPPOL specific settings
-        if (isset($entity_data['peppol_identifier'])) {
-            $ademico_entity['peppolIdentifier'] = $entity_data['peppol_identifier'];
-        }
-
-        if (isset($entity_data['peppol_scheme'])) {
-            $ademico_entity['peppolScheme'] = $entity_data['peppol_scheme'];
-        }
-
-        // Document types this entity can send/receive
-        if (isset($entity_data['document_types'])) {
-            $ademico_entity['documentTypes'] = $entity_data['document_types'];
-        } else {
-            // Default to invoice if not specified
-            $ademico_entity['documentTypes'] = ['invoice'];
-        }
-
-        // Additional settings
-        if (isset($entity_data['settings'])) {
-            $ademico_entity['settings'] = $entity_data['settings'];
         }
 
         return $ademico_entity;

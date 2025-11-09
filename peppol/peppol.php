@@ -180,11 +180,11 @@ function peppol_client_created($client_id)
 
     $CI = &get_instance();
     $CI->load->library('peppol/peppol_service');
-    
+
     // Run in background to avoid blocking client creation
     try {
         $result = $CI->peppol_service->create_or_update_client_legal_entity($client_id);
-        
+
         if ($result['success']) {
             $CI->load->model('peppol/peppol_model');
             $CI->peppol_model->log_activity([
@@ -212,11 +212,11 @@ function peppol_client_updated($data)
 
     $client_id = $data['client_id'];
     $CI = &get_instance();
-    
+
     // Check if client has any existing legal entity registrations
     $CI->load->library('peppol/peppol_service');
     $status = $CI->peppol_service->get_client_legal_entity_status($client_id);
-    
+
     // Only sync if client is already registered with at least one provider
     $has_registration = false;
     foreach ($status['providers'] as $provider_status) {
@@ -225,7 +225,7 @@ function peppol_client_updated($data)
             break;
         }
     }
-    
+
     if (!$has_registration) {
         return;
     }
@@ -233,14 +233,14 @@ function peppol_client_updated($data)
     // Check if significant data changed
     $significant_fields = ['company', 'vat', 'address', 'city', 'zip', 'country', 'billing_street', 'billing_city', 'billing_zip', 'billing_country'];
     $data_changed = false;
-    
+
     foreach ($significant_fields as $field) {
         if (isset($data['data'][$field]) && $data['data'][$field] != $data['original_data'][$field]) {
             $data_changed = true;
             break;
         }
     }
-    
+
     if (!$data_changed) {
         return;
     }
@@ -252,15 +252,14 @@ function peppol_client_updated($data)
                 $CI->peppol_service->sync_client_legal_entity($client_id, $provider);
             }
         }
-        
+
         $CI->load->model('peppol/peppol_model');
         $CI->peppol_model->log_activity([
             'client_id' => $client_id,
             'action' => 'auto_legal_entity_sync',
-            'status' => 'success', 
+            'status' => 'success',
             'message' => 'Legal entity data automatically synchronized after client update'
         ]);
-        
     } catch (Exception $e) {
         // Log error but don't fail client update
         log_message('error', 'PEPPOL auto legal entity sync failed for client ' . $client_id . ': ' . $e->getMessage());

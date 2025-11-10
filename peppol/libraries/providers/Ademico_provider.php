@@ -80,7 +80,6 @@ class Ademico_provider extends Abstract_peppol_provider
         ];
 
         $response = $this->make_form_request($this->token_url, $data, $headers);
-        dd($this->token_url, $this->client_id, $this->client_secret, $credentials, $response);
         if (!$response['success']) {
             throw new Exception('OAuth2 authentication failed: ' . $response['message']);
         }

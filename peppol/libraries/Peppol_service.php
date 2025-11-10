@@ -665,7 +665,7 @@ class Peppol_service
                 $result = $provider_instance->create_legal_entity($entity_data);
                 $result['action'] = 'created';
             }
-            dd($result);
+
             // Log the activity
             $this->CI->peppol_model->log_activity([
                 'client_id' => $client_id,

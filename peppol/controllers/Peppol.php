@@ -546,4 +546,167 @@ class Peppol extends AdminController
             echo "❌ Migration failed: " . $e->getMessage();
         }
     }
+
+    /**
+     * Bulk send invoices via PEPPOL
+     */
+    public function bulk_send()
+    {
+        if (!staff_can('create', 'peppol') || !$this->input->post()) {
+            access_denied('peppol');
+        }
+
+        $invoice_ids = $this->input->post('invoice_ids');
+        
+        if (empty($invoice_ids) || !is_array($invoice_ids)) {
+            echo json_encode([
+                'success' => false,
+                'message' => _l('peppol_no_invoices_selected')
+            ]);
+            return;
+        }
+
+        // Initialize progress tracking
+        $total = count($invoice_ids);
+        $success = 0;
+        $errors = 0;
+        $error_messages = [];
+
+        // Process each invoice
+        foreach ($invoice_ids as $invoice_id) {
+            try {
+                $result = $this->peppol_service->send_invoice($invoice_id);
+                
+                if ($result['success']) {
+                    $success++;
+                } else {
+                    $errors++;
+                    $error_messages[] = "Invoice #{$invoice_id}: " . $result['message'];
+                }
+            } catch (Exception $e) {
+                $errors++;
+                $error_messages[] = "Invoice #{$invoice_id}: " . $e->getMessage();
+            }
+        }
+
+        // Prepare response
+        $response = [
+            'success' => $success > 0,
+            'progress' => [
+                'total' => $total,
+                'completed' => $total,
+                'success' => $success,
+                'errors' => $errors
+            ]
+        ];
+
+        if ($errors === 0) {
+            $response['message'] = _l('peppol_bulk_send_completed');
+        } elseif ($success > 0) {
+            $response['message'] = _l('peppol_bulk_send_partial');
+        } else {
+            $response['message'] = _l('peppol_bulk_operation_failed');
+            $response['success'] = false;
+        }
+
+        if (!empty($error_messages)) {
+            $response['errors'] = $error_messages;
+        }
+
+        echo json_encode($response);
+    }
+
+    /**
+     * Bulk download UBL files
+     */
+    public function bulk_download_ubl()
+    {
+        if (!staff_can('view', 'peppol') || !$this->input->post()) {
+            access_denied('peppol');
+        }
+
+        $invoice_ids = $this->input->post('invoice_ids');
+        
+        if (empty($invoice_ids) || !is_array($invoice_ids)) {
+            set_alert('danger', _l('peppol_no_invoices_selected'));
+            redirect(admin_url('invoices'));
+            return;
+        }
+
+        $this->load->library('zip');
+        $zip_filename = 'peppol_ubl_files_' . date('Y-m-d_H-i-s') . '.zip';
+        
+        $temp_dir = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'peppol_bulk_' . time();
+        if (!mkdir($temp_dir, 0755, true)) {
+            set_alert('danger', _l('peppol_bulk_operation_failed'));
+            redirect(admin_url('invoices'));
+            return;
+        }
+
+        $files_added = 0;
+        
+        try {
+            foreach ($invoice_ids as $invoice_id) {
+                // Get invoice details
+                $this->load->model('invoices_model');
+                $invoice = $this->invoices_model->get($invoice_id);
+                
+                if (!$invoice) {
+                    continue;
+                }
+
+                // Generate UBL content
+                try {
+                    $this->load->library(PEPPOL_MODULE_NAME . '/ubl_generator');
+                    $ubl_content = $this->ubl_generator->generate_invoice_ubl($invoice);
+                    
+                    // Create filename
+                    $filename = sprintf('invoice_%s_%s.xml', 
+                        $invoice->number, 
+                        date('Y-m-d', strtotime($invoice->date))
+                    );
+                    
+                    // Save UBL to temp file
+                    $temp_file = $temp_dir . DIRECTORY_SEPARATOR . $filename;
+                    if (file_put_contents($temp_file, $ubl_content)) {
+                        $this->zip->add_data($filename, $ubl_content);
+                        $files_added++;
+                    }
+                    
+                } catch (Exception $e) {
+                    // Log error but continue with other files
+                    log_message('error', 'PEPPOL UBL generation failed for invoice ' . $invoice_id . ': ' . $e->getMessage());
+                }
+            }
+
+            if ($files_added === 0) {
+                set_alert('danger', _l('peppol_bulk_operation_failed'));
+                redirect(admin_url('invoices'));
+                return;
+            }
+
+            // Create and download ZIP file
+            $zip_data = $this->zip->get_zip();
+            
+            if (empty($zip_data)) {
+                set_alert('danger', _l('peppol_bulk_operation_failed'));
+                redirect(admin_url('invoices'));
+                return;
+            }
+
+            // Set headers for download
+            $this->output
+                ->set_content_type('application/zip')
+                ->set_header('Content-Disposition: attachment; filename="' . $zip_filename . '"')
+                ->set_header('Content-Length: ' . strlen($zip_data))
+                ->set_output($zip_data);
+
+        } finally {
+            // Clean up temp directory
+            if (is_dir($temp_dir)) {
+                array_map('unlink', glob($temp_dir . DIRECTORY_SEPARATOR . '*'));
+                rmdir($temp_dir);
+            }
+        }
+    }
 }

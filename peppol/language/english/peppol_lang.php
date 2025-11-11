@@ -296,6 +296,21 @@ $lang['peppol_unsupported_document'] = 'Document type is not supported for PEPPO
 $lang['peppol_duplicate_transmission'] = 'This document has already been transmitted via PEPPOL';
 
 // ========================================
+// BULK ACTION MESSAGES
+// ========================================
+$lang['peppol_batch_action'] = 'PEPPOL Batch Action';
+$lang['peppol_send_selected'] = 'Send Selected Invoices';
+$lang['peppol_download_selected'] = 'Download UBL Files';
+$lang['peppol_no_invoices_selected'] = 'No invoices selected. Please select at least one invoice.';
+$lang['peppol_confirm_bulk_send'] = 'Are you sure you want to send the selected invoices via PEPPOL? This action cannot be undone.';
+$lang['peppol_sending_invoices'] = 'Sending Invoices via PEPPOL';
+$lang['peppol_bulk_operation_failed'] = 'Bulk operation failed. Please try again or contact support.';
+$lang['peppol_preparing_download'] = 'Preparing UBL files for download...';
+$lang['peppol_bulk_send_completed'] = 'Bulk send operation completed';
+$lang['peppol_bulk_download_completed'] = 'UBL files prepared for download';
+$lang['peppol_bulk_send_partial'] = 'Some invoices failed to send. Check the logs for details.';
+
+// ========================================
 // TECHNICAL ERROR MESSAGES
 // ========================================
 

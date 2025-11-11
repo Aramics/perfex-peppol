@@ -110,6 +110,83 @@
     margin-top: 5px;
 }
 
+/* PEPPOL Status Column Styling */
+.peppol-status-column {
+    text-align: center;
+    white-space: nowrap;
+}
+
+.peppol-status-column .label {
+    margin-right: 5px;
+    display: inline-block;
+    min-width: 60px;
+}
+
+.peppol-status-column .btn {
+    padding: 2px 8px;
+    font-size: 11px;
+    margin: 0;
+}
+
+.peppol-send-single {
+    background-color: #5cb85c;
+    border-color: #4cae4c;
+    color: white;
+}
+
+.peppol-send-single:hover {
+    background-color: #449d44;
+    border-color: #398439;
+    color: white;
+}
+
+.peppol-retry {
+    font-size: 12px;
+    margin-left: 3px;
+    text-decoration: none;
+}
+
+.peppol-retry:hover {
+    text-decoration: none;
+}
+
+/* Bulk Actions Dropdown */
+#peppol_bulk_actions_dropdown {
+    margin-left: 5px;
+}
+
+#peppol_bulk_actions_dropdown .dropdown-menu {
+    min-width: 200px;
+}
+
+#peppol_bulk_actions_dropdown .dropdown-menu li a {
+    padding: 8px 15px;
+}
+
+#peppol_bulk_actions_dropdown .dropdown-menu li a i {
+    width: 15px;
+    margin-right: 8px;
+}
+
+/* Progress Modal Styling */
+#bulk-progress-modal .progress {
+    margin-bottom: 15px;
+}
+
+#bulk-progress-modal .progress-text {
+    position: absolute;
+    width: 100%;
+    text-align: center;
+    line-height: 20px;
+    color: #333;
+    font-weight: bold;
+}
+
+#bulk-progress-modal .progress-details {
+    margin-top: 15px;
+    font-size: 13px;
+}
+
 @media (max-width: 768px) {
     .peppol-action-buttons .btn {
         display: block;
@@ -120,5 +197,15 @@
     .peppol-document-preview {
         font-size: 10px;
         max-height: 200px;
+    }
+    
+    .peppol-status-column {
+        min-width: 120px;
+    }
+    
+    .peppol-status-column .label {
+        display: block;
+        margin-bottom: 3px;
+        min-width: auto;
     }
 }

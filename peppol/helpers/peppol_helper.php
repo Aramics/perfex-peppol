@@ -456,3 +456,59 @@ if (!function_exists('render_peppol_legal_entity_section')) {
         return $CI->load->view('peppol/client/legal_entity_section', $data, true);
     }
 }
+
+if (!function_exists('render_peppol_status_column')) {
+    /**
+     * Render PEPPOL status column for invoice table - Status display only
+     */
+    function render_peppol_status_column($status = null, $invoice_id, $peppol_invoice = null)
+    {
+        if (!staff_can('view', 'peppol') || !is_peppol_configured()) {
+            return '<span class="text-muted">-</span>';
+        }
+
+        if ($status === null) {
+            // No PEPPOL record - show not sent status
+            return '<span class="text-muted">' . _l('peppol_not_sent') . '</span>';
+        }
+
+        // Has PEPPOL record - show status badge only
+        $badge_class = 'label-default';
+        $icon = 'fa-circle-o';
+
+        switch ($status) {
+            case 'pending':
+            case 'queued':
+                $badge_class = 'label-warning';
+                $icon = 'fa-clock-o';
+                break;
+            
+            case 'sent':
+            case 'delivered':
+                $badge_class = 'label-success';
+                $icon = 'fa-check';
+                break;
+            
+            case 'failed':
+                $badge_class = 'label-danger';
+                $icon = 'fa-times';
+                break;
+            
+            case 'received':
+                $badge_class = 'label-info';
+                $icon = 'fa-download';
+                break;
+            
+            case 'processed':
+                $badge_class = 'label-primary';
+                $icon = 'fa-check-circle';
+                break;
+        }
+
+        $status_text = ucfirst($status);
+        return '<span class="label ' . $badge_class . ' peppol-status-badge" 
+                data-invoice-id="' . $invoice_id . '" data-status="' . $status . '">
+                <i class="fa ' . $icon . '"></i> ' . $status_text . '
+                </span>';
+    }
+}

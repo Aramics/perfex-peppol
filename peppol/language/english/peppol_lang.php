@@ -311,6 +311,20 @@ $lang['peppol_bulk_download_completed'] = 'UBL files prepared for download';
 $lang['peppol_bulk_send_partial'] = 'Some invoices failed to send. Check the logs for details.';
 
 // ========================================
+// STATUS COLUMN MESSAGES
+// ========================================
+$lang['peppol_status'] = 'PEPPOL Status';
+$lang['peppol_send_invoice'] = 'Send via PEPPOL';
+$lang['peppol_not_sent'] = 'Not Sent';
+$lang['peppol_retry_send'] = 'Retry Send';
+$lang['peppol_view_ubl'] = 'View UBL Document';
+$lang['peppol_bulk_actions_by_status'] = 'Bulk Actions by Status';
+$lang['peppol_select_invoices_by_status'] = 'Select Invoices by Status';
+$lang['peppol_send_all_unsent'] = 'Send All Unsent Invoices';
+$lang['peppol_download_all_sent'] = 'Download All Sent UBL Files';
+$lang['peppol_retry_all_failed'] = 'Retry All Failed Invoices';
+
+// ========================================
 // TECHNICAL ERROR MESSAGES
 // ========================================
 

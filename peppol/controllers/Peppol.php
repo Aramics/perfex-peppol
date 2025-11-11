@@ -548,6 +548,81 @@ class Peppol extends AdminController
     }
 
     /**
+     * Get statistics for bulk actions
+     */
+    public function bulk_action_stats()
+    {
+        if (!staff_can('view', 'peppol') || !$this->input->post()) {
+            access_denied('peppol');
+        }
+
+        $action = $this->input->post('action');
+        $stats = [];
+
+        switch ($action) {
+            case 'send_unsent':
+                // Count invoices that don't have PEPPOL records
+                $this->db->select('COUNT(i.id) as count');
+                $this->db->from(db_prefix() . 'invoices i');
+                $this->db->join(db_prefix() . 'peppol_invoices pi', 'pi.invoice_id = i.id', 'left');
+                $this->db->where('pi.id IS NULL');
+                $this->db->where('i.status', 2); // Only sent invoices
+                $result = $this->db->get()->row();
+                
+                $stats = [
+                    'action' => 'send_unsent',
+                    'count' => (int)$result->count,
+                    'description' => 'Send all unsent invoices via PEPPOL',
+                    'operation_type' => 'send'
+                ];
+                break;
+
+            case 'download_sent':
+                // Count invoices with 'sent' or 'delivered' status
+                $this->db->select('COUNT(*) as count');
+                $this->db->from(db_prefix() . 'peppol_invoices');
+                $this->db->where_in('status', ['sent', 'delivered']);
+                $result = $this->db->get()->row();
+                
+                $stats = [
+                    'action' => 'download_sent',
+                    'count' => (int)$result->count,
+                    'description' => 'Download UBL files for all sent invoices',
+                    'operation_type' => 'download'
+                ];
+                break;
+
+            case 'retry_failed':
+                // Count invoices with 'failed' status
+                $this->db->select('COUNT(*) as count');
+                $this->db->from(db_prefix() . 'peppol_invoices');
+                $this->db->where('status', 'failed');
+                $result = $this->db->get()->row();
+                
+                $stats = [
+                    'action' => 'retry_failed',
+                    'count' => (int)$result->count,
+                    'description' => 'Retry sending all failed invoices',
+                    'operation_type' => 'send'
+                ];
+                break;
+
+            default:
+                $stats = [
+                    'action' => 'unknown',
+                    'count' => 0,
+                    'description' => 'Unknown action',
+                    'operation_type' => 'unknown'
+                ];
+        }
+
+        echo json_encode([
+            'success' => true,
+            'stats' => $stats
+        ]);
+    }
+
+    /**
      * Bulk send invoices via PEPPOL
      */
     public function bulk_send()
@@ -556,12 +631,43 @@ class Peppol extends AdminController
             access_denied('peppol');
         }
 
-        $invoice_ids = $this->input->post('invoice_ids');
-        
-        if (empty($invoice_ids) || !is_array($invoice_ids)) {
+        $action = $this->input->post('action');
+        $invoice_ids = [];
+
+        // Get invoice IDs based on action
+        switch ($action) {
+            case 'send_unsent':
+                // Get invoices without PEPPOL records
+                $this->db->select('i.id');
+                $this->db->from(db_prefix() . 'invoices i');
+                $this->db->join(db_prefix() . 'peppol_invoices pi', 'pi.invoice_id = i.id', 'left');
+                $this->db->where('pi.id IS NULL');
+                $this->db->where('i.status', 2); // Only sent invoices
+                $results = $this->db->get()->result();
+                $invoice_ids = array_column($results, 'id');
+                break;
+
+            case 'retry_failed':
+                // Get failed PEPPOL invoices
+                $this->db->select('invoice_id');
+                $this->db->from(db_prefix() . 'peppol_invoices');
+                $this->db->where('status', 'failed');
+                $results = $this->db->get()->result();
+                $invoice_ids = array_column($results, 'invoice_id');
+                break;
+
+            default:
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Invalid action specified'
+                ]);
+                return;
+        }
+
+        if (empty($invoice_ids)) {
             echo json_encode([
                 'success' => false,
-                'message' => _l('peppol_no_invoices_selected')
+                'message' => 'No invoices found to process'
             ]);
             return;
         }
@@ -625,9 +731,27 @@ class Peppol extends AdminController
             access_denied('peppol');
         }
 
-        $invoice_ids = $this->input->post('invoice_ids');
+        $action = $this->input->post('action');
+        $invoice_ids = [];
+
+        // Get invoice IDs based on action
+        switch ($action) {
+            case 'download_sent':
+                // Get invoices with 'sent' or 'delivered' status
+                $this->db->select('pi.invoice_id');
+                $this->db->from(db_prefix() . 'peppol_invoices pi');
+                $this->db->where_in('pi.status', ['sent', 'delivered']);
+                $results = $this->db->get()->result();
+                $invoice_ids = array_column($results, 'invoice_id');
+                break;
+
+            default:
+                set_alert('danger', _l('peppol_invalid_action'));
+                redirect(admin_url('invoices'));
+                return;
+        }
         
-        if (empty($invoice_ids) || !is_array($invoice_ids)) {
+        if (empty($invoice_ids)) {
             set_alert('danger', _l('peppol_no_invoices_selected'));
             redirect(admin_url('invoices'));
             return;
@@ -707,6 +831,225 @@ class Peppol extends AdminController
                 array_map('unlink', glob($temp_dir . DIRECTORY_SEPARATOR . '*'));
                 rmdir($temp_dir);
             }
+        }
+    }
+
+    /**
+     * Bulk send with real-time progress tracking
+     */
+    public function bulk_send_with_progress()
+    {
+        if (!staff_can('create', 'peppol') || !$this->input->post()) {
+            access_denied('peppol');
+        }
+
+        $action = $this->input->post('action');
+        $operation_id = $this->input->post('operation_id');
+        
+        if (!$operation_id) {
+            $operation_id = 'bulk_' . time();
+        }
+
+        $invoice_ids = [];
+
+        // Get invoice IDs based on action
+        switch ($action) {
+            case 'send_unsent':
+                $this->db->select('i.id');
+                $this->db->from(db_prefix() . 'invoices i');
+                $this->db->join(db_prefix() . 'peppol_invoices pi', 'pi.invoice_id = i.id', 'left');
+                $this->db->where('pi.id IS NULL');
+                $this->db->where('i.status', 2);
+                $results = $this->db->get()->result();
+                $invoice_ids = array_column($results, 'id');
+                break;
+
+            case 'retry_failed':
+                $this->db->select('invoice_id');
+                $this->db->from(db_prefix() . 'peppol_invoices');
+                $this->db->where('status', 'failed');
+                $results = $this->db->get()->result();
+                $invoice_ids = array_column($results, 'invoice_id');
+                break;
+
+            default:
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Invalid action specified'
+                ]);
+                return;
+        }
+
+        if (empty($invoice_ids)) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'No invoices found to process'
+            ]);
+            return;
+        }
+
+        // Initialize progress tracking in cache/session
+        $total = count($invoice_ids);
+        $progress_data = [
+            'total' => $total,
+            'completed' => 0,
+            'success' => 0,
+            'errors' => 0,
+            'started' => time(),
+            'error_messages' => []
+        ];
+
+        $this->set_bulk_operation_progress($operation_id, $progress_data);
+
+        // Process invoices with progress updates
+        $batch_size = 5; // Process in smaller batches for progress updates
+        $current_batch = 0;
+        $total_batches = ceil($total / $batch_size);
+
+        for ($i = 0; $i < $total; $i += $batch_size) {
+            $batch_invoices = array_slice($invoice_ids, $i, $batch_size);
+            
+            foreach ($batch_invoices as $invoice_id) {
+                try {
+                    $result = $this->peppol_service->send_invoice($invoice_id);
+                    
+                    if ($result['success']) {
+                        $progress_data['success']++;
+                    } else {
+                        $progress_data['errors']++;
+                        $progress_data['error_messages'][] = "Invoice #{$invoice_id}: " . $result['message'];
+                    }
+                    
+                    $progress_data['completed']++;
+                    
+                } catch (Exception $e) {
+                    $progress_data['errors']++;
+                    $progress_data['error_messages'][] = "Invoice #{$invoice_id}: " . $e->getMessage();
+                    $progress_data['completed']++;
+                }
+                
+                // Update progress after each invoice
+                $this->set_bulk_operation_progress($operation_id, $progress_data);
+            }
+            
+            $current_batch++;
+            
+            // Small delay between batches to prevent overwhelming the system
+            if ($current_batch < $total_batches) {
+                usleep(500000); // 0.5 second delay
+            }
+        }
+
+        // Final response
+        $response = [
+            'success' => $progress_data['success'] > 0,
+            'progress' => [
+                'total' => $total,
+                'completed' => $progress_data['completed'],
+                'success' => $progress_data['success'],
+                'errors' => $progress_data['errors']
+            ]
+        ];
+
+        if ($progress_data['errors'] === 0) {
+            $response['message'] = _l('peppol_bulk_send_completed');
+        } elseif ($progress_data['success'] > 0) {
+            $response['message'] = _l('peppol_bulk_send_partial');
+        } else {
+            $response['message'] = _l('peppol_bulk_operation_failed');
+            $response['success'] = false;
+        }
+
+        if (!empty($progress_data['error_messages'])) {
+            $response['errors'] = array_slice($progress_data['error_messages'], 0, 10); // Limit to 10 errors
+        }
+
+        // Clean up progress data
+        $this->clear_bulk_operation_progress($operation_id);
+
+        echo json_encode($response);
+    }
+
+    /**
+     * Get bulk operation progress
+     */
+    public function bulk_progress()
+    {
+        if (!staff_can('view', 'peppol') || !$this->input->post()) {
+            ajax_access_denied();
+        }
+
+        $operation_id = $this->input->post('operation_id');
+        
+        if (!$operation_id) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'No operation ID provided'
+            ]);
+            return;
+        }
+
+        $progress = $this->get_bulk_operation_progress($operation_id);
+
+        if ($progress === false) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Operation not found or completed'
+            ]);
+            return;
+        }
+
+        echo json_encode([
+            'success' => true,
+            'progress' => $progress
+        ]);
+    }
+
+    /**
+     * Store bulk operation progress
+     */
+    private function set_bulk_operation_progress($operation_id, $progress_data)
+    {
+        // Store in cache with 10 minute expiry
+        $cache_key = 'peppol_bulk_progress_' . $operation_id;
+        
+        // For now, we'll use session as a simple cache mechanism
+        // In production, you might want to use Redis or database
+        if (!isset($_SESSION['peppol_bulk_operations'])) {
+            $_SESSION['peppol_bulk_operations'] = [];
+        }
+        
+        $_SESSION['peppol_bulk_operations'][$operation_id] = $progress_data;
+        $_SESSION['peppol_bulk_operations'][$operation_id]['updated'] = time();
+    }
+
+    /**
+     * Get bulk operation progress
+     */
+    private function get_bulk_operation_progress($operation_id)
+    {
+        if (!isset($_SESSION['peppol_bulk_operations'][$operation_id])) {
+            return false;
+        }
+
+        $progress = $_SESSION['peppol_bulk_operations'][$operation_id];
+        
+        // Clean up old operations (older than 10 minutes)
+        if (time() - $progress['updated'] > 600) {
+            unset($_SESSION['peppol_bulk_operations'][$operation_id]);
+            return false;
+        }
+
+        return $progress;
+    }
+
+    /**
+     * Clear bulk operation progress
+     */
+    private function clear_bulk_operation_progress($operation_id)
+    {
+        if (isset($_SESSION['peppol_bulk_operations'][$operation_id])) {
+            unset($_SESSION['peppol_bulk_operations'][$operation_id]);
         }
     }
 }

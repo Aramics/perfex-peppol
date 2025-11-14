@@ -10,192 +10,86 @@ class Peppol_model extends App_Model
     }
 
     /**
-     * Get PEPPOL invoices
+     * Get PEPPOL document by type and document ID
      */
-    public function get_peppol_invoices($where = [])
+    public function get_peppol_document($document_type, $document_id)
     {
-        $this->db->select('pi.*, i.number as invoice_number, i.total, i.status as invoice_status, 
-                          c.company as client_name, CONCAT(c.firstname, " ", c.lastname) as contact_name');
-        $this->db->from(db_prefix() . 'peppol_invoices pi');
-        $this->db->join(db_prefix() . 'invoices i', 'i.id = pi.invoice_id', 'left');
-        $this->db->join(db_prefix() . 'clients c', 'c.userid = i.clientid', 'left');
-        
-        if (!empty($where)) {
-            $this->db->where($where);
-        }
-        
-        $this->db->order_by('pi.created_at', 'DESC');
-        
-        return $this->db->get()->result();
+        return $this->db->where('document_type', $document_type)
+                       ->where('document_id', $document_id)
+                       ->get(db_prefix() . 'peppol_documents')
+                       ->row();
     }
 
     /**
-     * Get single PEPPOL invoice
+     * Get PEPPOL invoice by invoice ID (legacy wrapper)
      */
-    public function get_peppol_invoice($id)
+    public function get_peppol_invoice_by_invoice($invoice_id)
+    {
+        return $this->get_peppol_document('invoice', $invoice_id);
+    }
+
+    /**
+     * Get PEPPOL credit note by credit note ID (legacy wrapper)
+     */
+    public function get_peppol_credit_note_by_credit_note($credit_note_id)
+    {
+        return $this->get_peppol_document('credit_note', $credit_note_id);
+    }
+
+    /**
+     * Create PEPPOL document record
+     */
+    public function create_peppol_document($data)
+    {
+        $this->db->insert(db_prefix() . 'peppol_documents', $data);
+        return $this->db->insert_id();
+    }
+
+    /**
+     * Create PEPPOL invoice record (legacy wrapper)
+     */
+    public function create_peppol_invoice($data)
+    {
+        $data['document_type'] = 'invoice';
+        $data['document_id'] = $data['invoice_id'];
+        unset($data['invoice_id']);
+        return $this->create_peppol_document($data);
+    }
+
+    /**
+     * Create PEPPOL credit note record (legacy wrapper)
+     */
+    public function create_peppol_credit_note($data)
+    {
+        $data['document_type'] = 'credit_note';
+        $data['document_id'] = $data['credit_note_id'];
+        unset($data['credit_note_id']);
+        return $this->create_peppol_document($data);
+    }
+
+    /**
+     * Update PEPPOL document
+     */
+    public function update_peppol_document($id, $data)
     {
         $this->db->where('id', $id);
-        return $this->db->get(db_prefix() . 'peppol_invoices')->row();
+        return $this->db->update(db_prefix() . 'peppol_documents', $data);
     }
 
     /**
-     * Get PEPPOL invoice by invoice ID and provider
+     * Update PEPPOL invoice (legacy wrapper)
      */
-    public function get_peppol_invoice_by_invoice($invoice_id, $provider = null)
+    public function update_peppol_invoice($id, $data)
     {
-        $this->db->where('invoice_id', $invoice_id);
-        
-        if ($provider) {
-            $this->db->where('provider', $provider);
-        }
-        
-        return $this->db->get(db_prefix() . 'peppol_invoices')->row();
+        return $this->update_peppol_document($id, $data);
     }
 
     /**
-     * Create or update PEPPOL invoice record
+     * Update PEPPOL credit note (legacy wrapper)
      */
-    public function save_peppol_invoice($data)
+    public function update_peppol_credit_note($id, $data)
     {
-        if (isset($data['id'])) {
-            $id = $data['id'];
-            unset($data['id']);
-            $data['updated_at'] = date('Y-m-d H:i:s');
-            
-            $this->db->where('id', $id);
-            $this->db->update(db_prefix() . 'peppol_invoices', $data);
-            
-            return $id;
-        } else {
-            $data['created_at'] = date('Y-m-d H:i:s');
-            $data['updated_at'] = date('Y-m-d H:i:s');
-            
-            $this->db->insert(db_prefix() . 'peppol_invoices', $data);
-            
-            return $this->db->insert_id();
-        }
-    }
-
-    /**
-     * Update PEPPOL invoice status
-     */
-    public function update_peppol_invoice_status($id, $status, $additional_data = [])
-    {
-        $data = array_merge(['status' => $status, 'updated_at' => date('Y-m-d H:i:s')], $additional_data);
-        
-        $this->db->where('id', $id);
-        return $this->db->update(db_prefix() . 'peppol_invoices', $data);
-    }
-
-    /**
-     * Queue invoice for sending
-     */
-    public function queue_invoice_for_sending($invoice_id)
-    {
-        $provider = get_active_peppol_provider();
-        
-        // Check if already exists
-        $existing = $this->get_peppol_invoice_by_invoice($invoice_id, $provider);
-        
-        if ($existing) {
-            // Update if in failed state
-            if ($existing->status == 'failed') {
-                $this->update_peppol_invoice_status($existing->id, 'pending');
-            }
-            return $existing->id;
-        }
-        
-        // Create new record
-        return $this->save_peppol_invoice([
-            'invoice_id' => $invoice_id,
-            'provider' => $provider,
-            'status' => 'pending'
-        ]);
-    }
-
-    /**
-     * Get received documents
-     */
-    public function get_received_documents($where = [])
-    {
-        if (!empty($where)) {
-            $this->db->where($where);
-        }
-        
-        $this->db->order_by('received_at', 'DESC');
-        
-        return $this->db->get(db_prefix() . 'peppol_received_documents')->result();
-    }
-
-    /**
-     * Get single received document
-     */
-    public function get_received_document($id)
-    {
-        $this->db->where('id', $id);
-        return $this->db->get(db_prefix() . 'peppol_received_documents')->row();
-    }
-
-    /**
-     * Save received document
-     */
-    public function save_received_document($data)
-    {
-        if (isset($data['id'])) {
-            $id = $data['id'];
-            unset($data['id']);
-            
-            $this->db->where('id', $id);
-            $this->db->update(db_prefix() . 'peppol_received_documents', $data);
-            
-            return $id;
-        } else {
-            $data['received_at'] = date('Y-m-d H:i:s');
-            
-            $this->db->insert(db_prefix() . 'peppol_received_documents', $data);
-            
-            return $this->db->insert_id();
-        }
-    }
-
-    /**
-     * Mark received document as processed
-     */
-    public function mark_document_processed($id, $invoice_id = null, $error_message = null)
-    {
-        $data = [
-            'processed' => 1,
-            'processed_at' => date('Y-m-d H:i:s')
-        ];
-        
-        if ($invoice_id) {
-            $data['invoice_id'] = $invoice_id;
-        }
-        
-        if ($error_message) {
-            $data['error_message'] = $error_message;
-        }
-        
-        $this->db->where('id', $id);
-        return $this->db->update(db_prefix() . 'peppol_received_documents', $data);
-    }
-
-    /**
-     * Get PEPPOL logs
-     */
-    public function get_logs($where = [])
-    {
-        $this->db->select('pl.*, i.number as invoice_number');
-        $this->db->from(db_prefix() . 'peppol_logs pl');
-        $this->db->join(db_prefix() . 'invoices i', 'i.id = pl.invoice_id', 'left');
-        
-        if (!empty($where)) {
-            $this->db->where($where);
-        }
-        
-        $this->db->order_by('pl.created_at', 'DESC');
-        
-        return $this->db->get()->result();
+        return $this->update_peppol_document($id, $data);
     }
 
     /**
@@ -205,112 +99,208 @@ class Peppol_model extends App_Model
     {
         $data['created_at'] = date('Y-m-d H:i:s');
         
-        return $this->db->insert(db_prefix() . 'peppol_logs', $data);
+        // Handle legacy invoice_id/credit_note_id fields
+        if (isset($data['invoice_id']) && !isset($data['document_type'])) {
+            $data['document_type'] = 'invoice';
+            $data['document_id'] = $data['invoice_id'];
+            unset($data['invoice_id']);
+        }
+        
+        if (isset($data['credit_note_id']) && !isset($data['document_type'])) {
+            $data['document_type'] = 'credit_note';
+            $data['document_id'] = $data['credit_note_id'];
+            unset($data['credit_note_id']);
+        }
+        
+        $this->db->insert(db_prefix() . 'peppol_logs', $data);
+        return $this->db->insert_id();
+    }
+
+    // ================================
+    // BULK OPERATION QUERY METHODS
+    // ================================
+
+    /**
+     * Count documents for bulk action statistics
+     */
+    public function count_documents_for_action($document_type, $action)
+    {
+        $table_map = [
+            'invoice' => 'invoices',
+            'credit_note' => 'creditnotes'
+        ];
+
+        $table = $table_map[$document_type];
+
+        switch ($action) {
+            case 'send_unsent':
+                // Count documents that don't have PEPPOL records
+                $this->db->select("COUNT(d.id) as count");
+                $this->db->from(db_prefix() . $table . ' d');
+                $this->db->join(db_prefix() . 'peppol_documents pd', 
+                    "pd.document_id = d.id AND pd.document_type = '$document_type'", 'left');
+                $this->db->where('pd.id IS NULL');
+                
+                if ($document_type === 'invoice') {
+                    $this->db->where_in('d.status', [Invoices_model::STATUS_UNPAID, Invoices_model::STATUS_PAID, Invoices_model::STATUS_OVERDUE]);
+                } else {
+                    $this->db->where('d.status >=', 1);
+                }
+                break;
+
+            case 'retry_failed':
+                // Count documents with 'failed' status
+                $this->db->select('COUNT(*) as count');
+                $this->db->from(db_prefix() . 'peppol_documents');
+                $this->db->where('document_type', $document_type);
+                $this->db->where('status', 'failed');
+                break;
+
+            case 'download_sent':
+                // Count documents with 'sent' or 'delivered' status
+                $this->db->select('COUNT(*) as count');
+                $this->db->from(db_prefix() . 'peppol_documents');
+                $this->db->where('document_type', $document_type);
+                $this->db->where_in('status', ['sent', 'delivered']);
+                break;
+
+            default:
+                return 0;
+        }
+
+        $result = $this->db->get()->row();
+        return (int)$result->count;
     }
 
     /**
-     * Log invoice event
+     * Get document IDs for bulk operations
      */
-    public function log_invoice_event($invoice_id, $action, $message, $status = 'info', $additional_data = [])
+    public function get_document_ids_for_action($document_type, $action)
     {
-        $data = array_merge([
-            'invoice_id' => $invoice_id,
-            'provider' => get_active_peppol_provider(),
-            'action' => $action,
-            'status' => $status,
-            'message' => $message
-        ], $additional_data);
-        
-        return $this->log_activity($data);
+        $table_map = [
+            'invoice' => 'invoices',
+            'credit_note' => 'creditnotes'
+        ];
+
+        $table = $table_map[$document_type];
+
+        switch ($action) {
+            case 'send_unsent':
+                // Get documents without PEPPOL records
+                $this->db->select('d.id');
+                $this->db->from(db_prefix() . $table . ' d');
+                $this->db->join(db_prefix() . 'peppol_documents pd', 
+                    "pd.document_id = d.id AND pd.document_type = '$document_type'", 'left');
+                $this->db->where('pd.id IS NULL');
+                
+                if ($document_type === 'invoice') {
+                    $this->db->where_in('d.status', [Invoices_model::STATUS_UNPAID, Invoices_model::STATUS_PAID, Invoices_model::STATUS_OVERDUE]);
+                } else {
+                    $this->db->where('d.status >=', 1);
+                }
+                
+                $results = $this->db->get()->result();
+                return array_column($results, 'id');
+
+            case 'retry_failed':
+                // Get failed PEPPOL documents
+                $this->db->select('document_id');
+                $this->db->from(db_prefix() . 'peppol_documents');
+                $this->db->where('document_type', $document_type);
+                $this->db->where('status', 'failed');
+                $results = $this->db->get()->result();
+                return array_column($results, 'document_id');
+
+            default:
+                return [];
+        }
     }
 
     /**
-     * Get pending invoices for sending
+     * Get documents by status for a document type
      */
-    public function get_pending_invoices()
+    public function get_documents_by_status($document_type, $status)
     {
-        $this->db->where('status', 'pending');
-        $this->db->or_where('status', 'queued');
-        
-        return $this->db->get(db_prefix() . 'peppol_invoices')->result();
+        return $this->db->where('document_type', $document_type)
+                       ->where('status', $status)
+                       ->get(db_prefix() . 'peppol_documents')
+                       ->result();
     }
 
     /**
-     * Get unprocessed received documents
+     * Get documents by multiple statuses for a document type
      */
-    public function get_unprocessed_documents()
+    public function get_documents_by_statuses($document_type, $statuses)
     {
-        $this->db->where('processed', 0);
-        
-        return $this->db->get(db_prefix() . 'peppol_received_documents')->result();
+        return $this->db->where('document_type', $document_type)
+                       ->where_in('status', $statuses)
+                       ->get(db_prefix() . 'peppol_documents')
+                       ->result();
     }
 
     /**
-     * Get invoice statistics
+     * Get all PEPPOL documents for a document type
      */
-    public function get_invoice_statistics()
+    public function get_all_documents($document_type, $limit = null, $offset = 0)
     {
-        $stats = [];
+        $this->db->where('document_type', $document_type);
+        $this->db->order_by('created_at', 'DESC');
         
-        // Total sent invoices
-        $this->db->where('status', 'sent');
-        $this->db->or_where('status', 'delivered');
-        $stats['total_sent'] = $this->db->count_all_results(db_prefix() . 'peppol_invoices');
+        if ($limit) {
+            $this->db->limit($limit, $offset);
+        }
         
-        // Failed invoices
-        $this->db->where('status', 'failed');
-        $stats['total_failed'] = $this->db->count_all_results(db_prefix() . 'peppol_invoices');
+        return $this->db->get(db_prefix() . 'peppol_documents')->result();
+    }
+
+    /**
+     * Get statistics for a document type
+     */
+    public function get_document_statistics($document_type)
+    {
+        // Count by status
+        $this->db->select('status, COUNT(*) as count');
+        $this->db->from(db_prefix() . 'peppol_documents');
+        $this->db->where('document_type', $document_type);
+        $this->db->group_by('status');
+        $status_counts = $this->db->get()->result();
+
+        // Count total unsent (documents not in peppol_documents)
+        $table_map = [
+            'invoice' => 'invoices',
+            'credit_note' => 'creditnotes'
+        ];
         
-        // Pending invoices
-        $this->db->where('status', 'pending');
-        $this->db->or_where('status', 'queued');
-        $stats['total_pending'] = $this->db->count_all_results(db_prefix() . 'peppol_invoices');
+        $table = $table_map[$document_type];
+        $this->db->select("COUNT(d.id) as count");
+        $this->db->from(db_prefix() . $table . ' d');
+        $this->db->join(db_prefix() . 'peppol_documents pd', 
+            "pd.document_id = d.id AND pd.document_type = '$document_type'", 'left');
+        $this->db->where('pd.id IS NULL');
         
-        // Received documents
-        $stats['total_received'] = $this->db->count_all_results(db_prefix() . 'peppol_received_documents');
+        if ($document_type === 'invoice') {
+            $this->db->where_in('d.status', [Invoices_model::STATUS_UNPAID, Invoices_model::STATUS_PAID, Invoices_model::STATUS_OVERDUE]);
+        } else {
+            $this->db->where('d.status >=', 1);
+        }
         
-        // Unprocessed documents
-        $this->db->where('processed', 0);
-        $stats['unprocessed_received'] = $this->db->count_all_results(db_prefix() . 'peppol_received_documents');
-        
+        $unsent_count = $this->db->get()->row()->count;
+
+        // Format results
+        $stats = [
+            'unsent' => $unsent_count,
+            'pending' => 0,
+            'sent' => 0,
+            'delivered' => 0,
+            'failed' => 0,
+            'total_processed' => 0
+        ];
+
+        foreach ($status_counts as $row) {
+            $stats[$row->status] = $row->count;
+            $stats['total_processed'] += $row->count;
+        }
+
         return $stats;
-    }
-
-    /**
-     * Clean old logs
-     */
-    public function clean_old_logs($days = 90)
-    {
-        $date = date('Y-m-d H:i:s', strtotime('-' . $days . ' days'));
-        
-        $this->db->where('created_at <', $date);
-        return $this->db->delete(db_prefix() . 'peppol_logs');
-    }
-
-    /**
-     * Delete PEPPOL invoice record
-     */
-    public function delete_peppol_invoice($id)
-    {
-        $this->db->where('id', $id);
-        return $this->db->delete(db_prefix() . 'peppol_invoices');
-    }
-
-    /**
-     * Delete received document
-     */
-    public function delete_received_document($id)
-    {
-        $this->db->where('id', $id);
-        return $this->db->delete(db_prefix() . 'peppol_received_documents');
-    }
-
-    /**
-     * Get PEPPOL invoice by document ID
-     */
-    public function get_peppol_invoice_by_document_id($document_id)
-    {
-        $this->db->where('peppol_document_id', $document_id);
-        return $this->db->get(db_prefix() . 'peppol_invoices')->row();
     }
 }

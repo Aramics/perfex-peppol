@@ -2,44 +2,92 @@
 
 defined('BASEPATH') or exit('No direct script access allowed');
 
-// Add PEPPOL Status column to the invoice table
-hooks()->add_filter('invoices_table_columns', function ($table_data) {
-    // Add PEPPOL Status as a new column
-    $table_data[] = _l('peppol_status');
-    return $table_data;
+/**
+ * PEPPOL Invoice Table Hooks - Simple bulk actions
+ */
+
+/**
+ * Add PEPPOL status column to invoice table
+ */
+hooks()->add_filter('invoices_table_columns', function ($columns) {
+    if (!staff_can('view', 'peppol')) {
+        return $columns;
+    }
+
+    $columns[] = _l('peppol_status');
+    return $columns;
 });
 
+/**
+ * Add PEPPOL status data to invoice table rows
+ */
 hooks()->add_filter('invoices_table_row_data', function ($row, $aRow = []) {
-    $CI = &get_instance();
-    $CI->load->helper(PEPPOL_MODULE_NAME . '/' . PEPPOL_MODULE_NAME);
-    $CI->load->model('peppol/peppol_model');
-    
-    // Get PEPPOL status for this invoice
-    $peppol_invoice = $CI->peppol_model->get_peppol_invoice_by_invoice($aRow['id']);
-    
-    $status_html = '';
-    
-    if (function_exists('render_peppol_status_column')) {
-        if ($peppol_invoice) {
-            $status = $peppol_invoice->status;
-            $status_html = render_peppol_status_column($status, $aRow['id'], $peppol_invoice);
-        } else {
-            // No PEPPOL record exists - show send action
-            $status_html = render_peppol_status_column(null, $aRow['id']);
-        }
-    } else {
-        // Fallback if function not available
-        $status_html = '<span class="text-muted">-</span>';
+    if (!staff_can('view', 'peppol')) {
+        return $row;
     }
-    
-    $row[] = $status_html;
+
+    $CI = &get_instance();
+    $CI->load->model('peppol/peppol_model');
+
+    $peppol_invoice = $CI->peppol_model->get_peppol_invoice_by_invoice($aRow['id']);
+
+    if ($peppol_invoice) {
+        $status = $peppol_invoice->status;
+        $row[] = render_peppol_status_column($status, $aRow['id'], $peppol_invoice);
+    } else {
+        $row[] = render_peppol_status_column(null, $aRow['id']);
+    }
+
     return $row;
 }, 10, 2);
 
 /**
- * Register admin footer hook
+ * Add PEPPOL bulk actions to invoice list page
  */
 hooks()->add_action('app_admin_footer', function () {
     $CI = &get_instance();
-    $CI->load->view(PEPPOL_MODULE_NAME . '/scripts/multiple_invoice_action');
+
+    // Only show on invoice list page
+    $controller = $CI->router->fetch_class();
+    $method = $CI->router->fetch_method();
+
+    if ($controller === 'invoices' && in_array($method, ['index', 'table'])) {
+        if (staff_can('view', 'peppol')) {
+            $data = ['document_type' => 'invoice'];
+            $CI->load->view(PEPPOL_MODULE_NAME . '/document_bulk_actions', $data);
+        }
+    }
+});
+
+/**
+ * Add PEPPOL actions to single invoice view
+ */
+hooks()->add_action('before_invoice_preview_more_menu_button', function ($invoice) {
+    if (!staff_can('view', 'peppol')) {
+        return;
+    }
+
+    $CI = &get_instance();
+    $CI->load->model('clients_model');
+    $CI->load->model('peppol/peppol_model');
+
+    $client = $CI->clients_model->get($invoice->clientid);
+    $peppol_invoice = $CI->peppol_model->get_peppol_invoice_by_invoice($invoice->id);
+
+    // Only show if client has PEPPOL identifier
+    if (!$client || empty($client->peppol_identifier)) {
+        // return;
+    }
+
+    $data = [
+        'document_type' => 'invoice',
+        'document' => $invoice,
+        'client' => $client,
+        'peppol_document' => $peppol_invoice,
+        // Legacy variables for backward compatibility
+        'invoice' => $invoice,
+        'peppol_invoice' => $peppol_invoice
+    ];
+
+    $CI->load->view(PEPPOL_MODULE_NAME . '/document_dropdown_actions', $data);
 });

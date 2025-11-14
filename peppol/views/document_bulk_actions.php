@@ -2,7 +2,6 @@
 
 <!-- Include modal template -->
 <?php $this->load->view(PEPPOL_MODULE_NAME . '/templates/bulk_results_modal'); ?>
-<?php $this->load->view(PEPPOL_MODULE_NAME . '/scripts/template-renderer'); ?>
 
 <?php
 /**
@@ -261,28 +260,43 @@ window.peppolBulkDownload<?php echo ucfirst(str_replace('_', '', $document_type)
 
 // Function to show detailed bulk operation results
 function showBulkOperationResults(progress, errors, message, documentType) {
-    // Prepare template data
-    var templateData = {
-        documentType: documentType,
-        message: message,
-        stats: {
-            total: progress ? progress.total : 0,
-            success: progress ? progress.success : 0,
-            errors: progress ? progress.errors : 0,
-            successRate: Math.round((progress && progress.total > 0) ? (progress.success / progress.total) * 100 :
-                0)
-        },
-        hasErrors: errors && errors.length > 0,
-        errorCount: errors ? errors.length : 0,
-        errors: errors || []
-    };
+    // Populate statistics
+    $('#stat-total').text(progress ? progress.total : 0);
+    $('#stat-success').text(progress ? progress.success : 0);
+    $('#stat-errors').text(progress ? progress.errors : 0);
+    $('#stat-rate').text(Math.round((progress && progress.total > 0) ? (progress.success / progress.total) * 100 : 0) +
+        '%');
 
-    // Render template
-    var modalHtml = PeppolModalRenderer.render('peppol-bulk-results-modal-template', templateData);
+    // Set document type
+    $('#modal-document-type').text(documentType);
 
-    // Remove existing modal and add new one
-    $('#peppolBulkResultsModal').remove();
-    $('body').append(modalHtml);
+    // Show/hide and populate message
+    if (message) {
+        $('#message-text').text(message);
+        $('#summary-message').show();
+    } else {
+        $('#summary-message').hide();
+    }
+
+    // Show/hide and populate errors
+    if (errors && errors.length > 0) {
+        $('#error-count').text(errors.length);
+
+        // Clear and populate errors container
+        var errorsHtml = '';
+        errors.forEach(function(error, index) {
+            errorsHtml += '<div class="alert alert-danger">' +
+                '<small class="text-muted">#' + (index + 1) + '</small><br>' +
+                $('<div>').text(error).html() + // Escape HTML
+                '</div>';
+        });
+        $('#errors-container').html(errorsHtml);
+        $('#errors-section').show();
+    } else {
+        $('#errors-section').hide();
+    }
+
+    // Show modal
     $('#peppolBulkResultsModal').modal('show');
 }
 </script>

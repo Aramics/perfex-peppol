@@ -28,6 +28,7 @@ $config = [
         'send_unsent_lang' => 'peppol_send_all_unsent',
         'retry_failed_lang' => 'peppol_retry_all_failed',
         'download_sent_lang' => 'peppol_download_all_sent',
+        'download_all_ubl_lang' => 'peppol_download_all_ubl',
         'item_name_lang' => 'peppol_invoices',
         'preparing_lang' => 'peppol_preparing_invoices'
     ],
@@ -42,6 +43,7 @@ $config = [
         'send_unsent_lang' => 'peppol_send_all_unsent_credit_notes',
         'retry_failed_lang' => 'peppol_retry_all_failed_credit_notes',
         'download_sent_lang' => 'peppol_download_all_sent_credit_note_ubl',
+        'download_all_ubl_lang' => 'peppol_download_all_credit_note_ubl',
         'item_name_lang' => 'peppol_credit_notes',
         'preparing_lang' => 'peppol_preparing_credit_notes'
     ]
@@ -66,6 +68,9 @@ $cfg = $config[$document_type];
         <li role="separator" class="divider"></li>
         <li><a href="#" onclick="<?php echo $cfg['function_name']; ?>('download_sent'); return false;">
                 <?php echo _l($cfg['download_sent_lang']); ?>
+            </a></li>
+        <li><a href="#" onclick="<?php echo $cfg['function_name']; ?>('download_all_ubl'); return false;">
+                <?php echo _l($cfg['download_all_ubl_lang']); ?>
             </a></li>
     </ul>
 </div>
@@ -160,7 +165,7 @@ window.<?php echo $cfg['function_name']; ?> = function(action) {
                     `${response.stats.description}\n\n<?php echo _l('peppol_will_affect'); ?> ${response.stats.count} <?php echo _l($cfg['item_name_lang']); ?>. <?php echo _l('continue'); ?>?`;
 
                 if (confirm(confirmMessage)) {
-                    if (action === 'download_sent') {
+                    if (action === 'download_sent' || action === 'download_all_ubl') {
                         peppolBulkDownload<?php echo ucfirst(str_replace('_', '', $document_type)); ?>(
                             action);
                     } else {

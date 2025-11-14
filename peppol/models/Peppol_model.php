@@ -164,6 +164,18 @@ class Peppol_model extends App_Model
                 $this->db->where_in('status', ['sent', 'delivered']);
                 break;
 
+            case 'download_all_ubl':
+                // Count all valid documents (sent and unsent)
+                $this->db->select("COUNT(d.id) as count");
+                $this->db->from(db_prefix() . $table . ' d');
+                
+                if ($document_type === 'invoice') {
+                    $this->db->where_in('d.status', [Invoices_model::STATUS_UNPAID, Invoices_model::STATUS_PAID, Invoices_model::STATUS_OVERDUE]);
+                } else {
+                    $this->db->where('d.status >=', 1);
+                }
+                break;
+
             default:
                 return 0;
         }

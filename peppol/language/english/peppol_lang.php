@@ -152,3 +152,9 @@ $lang['peppol_no_errors_found'] = 'No error details found';
 $lang['peppol_error_loading_details'] = 'Error loading error details';
 $lang['peppol_error_message'] = 'Error Message';
 $lang['peppol_technical_details'] = 'Technical Details';
+
+// UBL download translations
+$lang['peppol_download_all_ubl'] = 'Download All UBL Files';
+$lang['peppol_download_all_credit_note_ubl'] = 'Download All Credit Note UBL Files';
+$lang['peppol_generate_view_ubl'] = 'View UBL';
+$lang['peppol_generate_download_ubl'] = 'Download UBL';

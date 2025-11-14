@@ -29,6 +29,8 @@ $config = [
         'resend_url' => 'peppol/resend/' . ($peppol_document ? $peppol_document->id : ''),
         'view_ubl_url' => 'peppol/view_ubl/' . ($peppol_document ? $peppol_document->id : ''),
         'download_ubl_url' => 'peppol/download_ubl/' . ($peppol_document ? $peppol_document->id : ''),
+        'generate_view_ubl_url' => 'peppol/generate_view_ubl/invoice/' . $document->id,
+        'generate_download_ubl_url' => 'peppol/generate_download_ubl/invoice/' . $document->id,
         'send_lang' => 'peppol_send_invoice',
         'js_function' => 'sendPeppolInvoice',
         'js_global_key' => 'peppol_single_js_added'
@@ -38,6 +40,8 @@ $config = [
         'resend_url' => 'peppol/resend_credit_note/' . ($peppol_document ? $peppol_document->id : ''),
         'view_ubl_url' => 'peppol/view_credit_note_ubl/' . ($peppol_document ? $peppol_document->id : ''),
         'download_ubl_url' => 'peppol/download_credit_note_ubl/' . ($peppol_document ? $peppol_document->id : ''),
+        'generate_view_ubl_url' => 'peppol/generate_view_ubl/credit_note/' . $document->id,
+        'generate_download_ubl_url' => 'peppol/generate_download_ubl/credit_note/' . $document->id,
         'send_lang' => 'peppol_send_credit_note',
         'js_function' => 'sendPeppolCreditNote',
         'js_global_key' => 'peppol_credit_note_single_js_added'
@@ -96,12 +100,31 @@ $cfg = $config[$document_type];
         <!-- Send via PEPPOL -->
         <li>
             <a href="#" onclick="<?php echo $cfg['js_function']; ?>(<?php echo $document->id; ?>); return false;">
+                <i class="fa fa-paper-plane text-primary"></i>
                 <?php echo _l($cfg['send_lang']); ?>
+            </a>
+        </li>
+        <li class="divider"></li>
+        <?php endif; ?>
+        
+        <!-- Generate and Download UBL (available for all documents) -->
+        <?php if (staff_can('view', 'peppol')) : ?>
+        <li>
+            <a href="<?php echo admin_url($cfg['generate_view_ubl_url']); ?>" target="_blank">
+                <i class="fa fa-eye text-info"></i>
+                <?php echo _l('peppol_generate_view_ubl'); ?>
+            </a>
+        </li>
+        <li>
+            <a href="<?php echo admin_url($cfg['generate_download_ubl_url']); ?>">
+                <i class="fa fa-download text-success"></i>
+                <?php echo _l('peppol_generate_download_ubl'); ?>
             </a>
         </li>
         <?php else : ?>
         <li>
             <a href="#" class="text-muted">
+                <i class="fa fa-info-circle"></i>
                 <?php echo _l('peppol_not_available'); ?>
             </a>
         </li>

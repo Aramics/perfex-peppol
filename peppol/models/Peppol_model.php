@@ -303,4 +303,58 @@ class Peppol_model extends App_Model
 
         return $stats;
     }
+
+    /**
+     * Get latest error logs for a specific document
+     */
+    public function get_document_errors($document_type, $document_id, $limit = 5)
+    {
+        $this->db->select('message, data, created_at');
+        $this->db->from(db_prefix() . 'peppol_logs');
+        $this->db->where('document_type', $document_type);
+        $this->db->where('document_id', $document_id);
+        $this->db->where('type', 'error');
+        $this->db->order_by('created_at', 'DESC');
+        $this->db->limit($limit);
+        
+        return $this->db->get()->result();
+    }
+
+    /**
+     * Get latest error for a specific document (one liner)
+     */
+    public function get_latest_document_error($document_type, $document_id)
+    {
+        $errors = $this->get_document_errors($document_type, $document_id, 1);
+        return !empty($errors) ? $errors[0] : null;
+    }
+
+    /**
+     * Get error summary for failed documents in bulk operations
+     */
+    public function get_bulk_operation_errors($document_type, $document_ids)
+    {
+        if (empty($document_ids)) {
+            return [];
+        }
+
+        $this->db->select('document_id, message, data, created_at');
+        $this->db->from(db_prefix() . 'peppol_logs');
+        $this->db->where('document_type', $document_type);
+        $this->db->where_in('document_id', $document_ids);
+        $this->db->where('type', 'error');
+        $this->db->order_by('document_id, created_at DESC');
+        
+        $results = $this->db->get()->result();
+        
+        // Group by document_id and return latest error for each
+        $errors = [];
+        foreach ($results as $log) {
+            if (!isset($errors[$log->document_id])) {
+                $errors[$log->document_id] = $log;
+            }
+        }
+        
+        return $errors;
+    }
 }

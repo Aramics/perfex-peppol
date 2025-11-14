@@ -137,3 +137,18 @@ $lang['peppol_testing'] = 'Testing';
 $lang['peppol_production_warning'] = 'Are you sure you want to switch to PRODUCTION environment? This will send real documents via PEPPOL network.';
 $lang['peppol_manual_mode_notice'] = 'Manual mode is for testing only. No actual PEPPOL transmission will occur.';
 $lang['peppol_not_available'] = 'PEPPOL not available for this document';
+
+// Bulk operation results translations
+$lang['peppol_bulk_operation_results'] = 'PEPPOL Bulk Operation Results';
+$lang['peppol_operation_summary'] = 'Operation Summary';
+$lang['peppol_total_processed'] = 'Total';
+$lang['peppol_successful'] = 'Successful';
+$lang['peppol_failed'] = 'Failed';
+$lang['peppol_success_rate'] = 'Success Rate';
+$lang['peppol_error_details'] = 'Error Details';
+$lang['peppol_errors_shown'] = 'errors shown';
+$lang['peppol_view_error'] = 'View Error';
+$lang['peppol_no_errors_found'] = 'No error details found';
+$lang['peppol_error_loading_details'] = 'Error loading error details';
+$lang['peppol_error_message'] = 'Error Message';
+$lang['peppol_technical_details'] = 'Technical Details';

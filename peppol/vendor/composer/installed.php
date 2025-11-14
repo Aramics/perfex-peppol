@@ -1,0 +1,41 @@
+<?php return array(
+    'root' => array(
+        'name' => 'perfex/peppol-module',
+        'pretty_version' => 'dev-main',
+        'version' => 'dev-main',
+        'reference' => 'c3b5fa98c5d8a804f3c17b5f1ded0e2c8f3f2ccf',
+        'type' => 'library',
+        'install_path' => __DIR__ . '/../../',
+        'aliases' => array(),
+        'dev' => true,
+    ),
+    'versions' => array(
+        'josemmo/einvoicing' => array(
+            'pretty_version' => 'v0.3.1',
+            'version' => '0.3.1.0',
+            'reference' => '6e042d17a0722c698cc40c83a4dd0c70b1bfd73c',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../josemmo/einvoicing',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
+        'josemmo/uxml' => array(
+            'pretty_version' => 'v0.1.4',
+            'version' => '0.1.4.0',
+            'reference' => 'bcd7d8e410285c642116294e01581374d6be696f',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../josemmo/uxml',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
+        'perfex/peppol-module' => array(
+            'pretty_version' => 'dev-main',
+            'version' => 'dev-main',
+            'reference' => 'c3b5fa98c5d8a804f3c17b5f1ded0e2c8f3f2ccf',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../../',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
+    ),
+);

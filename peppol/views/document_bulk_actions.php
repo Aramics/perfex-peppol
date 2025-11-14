@@ -1,5 +1,9 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
 
+<!-- Include modal template -->
+<?php $this->load->view(PEPPOL_MODULE_NAME . '/templates/bulk_results_modal'); ?>
+<?php $this->load->view(PEPPOL_MODULE_NAME . '/scripts/template-renderer'); ?>
+
 <?php
 /**
  * Unified PEPPOL document bulk actions
@@ -257,90 +261,28 @@ window.peppolBulkDownload<?php echo ucfirst(str_replace('_', '', $document_type)
 
 // Function to show detailed bulk operation results
 function showBulkOperationResults(progress, errors, message, documentType) {
-    var modalContent = '<div class="modal fade" id="peppolBulkResultsModal" tabindex="-1">' +
-        '<div class="modal-dialog modal-lg">' +
-        '<div class="modal-content">' +
-        '<div class="modal-header">' +
-        '<button type="button" class="close" data-dismiss="modal" aria-label="<?php echo _l('close'); ?>"><span aria-hidden="true">&times;</span></button>' +
-        '<h4 class="modal-title">' +
-        '<i class="fa fa-list-alt"></i> ' +
-        '<?php echo _l('peppol_bulk_operation_results'); ?> (' + documentType + ')' +
-        '</h4>' +
-        '</div>' +
-        '<div class="modal-body">';
+    // Prepare template data
+    var templateData = {
+        documentType: documentType,
+        message: message,
+        stats: {
+            total: progress ? progress.total : 0,
+            success: progress ? progress.success : 0,
+            errors: progress ? progress.errors : 0,
+            successRate: Math.round((progress && progress.total > 0) ? (progress.success / progress.total) * 100 :
+                0)
+        },
+        hasErrors: errors && errors.length > 0,
+        errorCount: errors ? errors.length : 0,
+        errors: errors || []
+    };
 
-    // Summary section
-    modalContent += '<div class="row mb-3">' +
-        '<div class="col-sm-3 text-center">' +
-        '<div class="bg-info text-white p-3 tw-rounded-md">' +
-        '<span class="tw-text-3xl tw-font-bold tw-block">' + (progress ? progress.total : 0) + '</span>' +
-        '<p><?php echo _l('peppol_total_processed'); ?></p>' +
-        '</div>' +
-        '</div>' +
-        '<div class="col-sm-3 text-center">' +
-        '<div class="bg-success text-white p-3 tw-rounded-md">' +
-        '<span class="tw-text-3xl tw-font-bold tw-block">' + (progress ? progress.success : 0) + '</span>' +
-        '<p><?php echo _l('peppol_successful'); ?></p>' +
-        '</div>' +
-        '</div>' +
-        '<div class="col-sm-3 text-center">' +
-        '<div class="bg-danger text-white p-3 tw-rounded-md">' +
-        '<span class="tw-text-3xl tw-font-bold tw-block">' + (progress ? progress.errors : 0) + '</span>' +
-        '<p><?php echo _l('peppol_failed'); ?></p>' +
-        '</div>' +
-        '</div>' +
-        '<div class="col-sm-3 text-center">' +
-        '<div class="bg-warning text-white p-3 tw-rounded-md">' +
-        '<span class="tw-text-3xl tw-font-bold tw-block">' + Math.round((progress && progress.total > 0) ? (progress
-            .success / progress.total) * 100 : 0) + '%</span>' +
-        '<p><?php echo _l('peppol_success_rate'); ?></p>' +
-        '</div>' +
-        '</div>' +
-        '</div>';
-
-    if (message) {
-        modalContent += '<div class="alert alert-info tw-mt-4 tw-mb-8">' +
-            '<i class="fa fa-info-circle"></i> ' + escapeHtml(message) +
-            '</div>';
-    }
-
-    // Errors section
-    if (errors && errors.length > 0) {
-        modalContent += '<div class="row mt-3">' +
-            '<div class="col-md-12">' +
-            '<div class="panel panel-danger">' +
-            '<div class="panel-heading">' +
-            '<h4><?php echo _l('peppol_error_details'); ?> (' + errors.length +
-            ' <?php echo _l('peppol_errors_shown'); ?>)</h4>' +
-            '</div>' +
-            '<div class="panel-body" style="max-height: 300px; overflow-y: auto;">';
-
-        errors.forEach(function(error, index) {
-            modalContent += '<div class="alert alert-danger">' +
-                '<small class="text-muted">#' + (index + 1) + '</small><br>' +
-                escapeHtml(error) +
-                '</div>';
-        });
-
-        modalContent += '</div></div></div></div>';
-    }
-
-    modalContent += '</div>' +
-        '</div>' +
-        '</div>' +
-        '</div>';
+    // Render template
+    var modalHtml = PeppolModalRenderer.render('peppol-bulk-results-modal-template', templateData);
 
     // Remove existing modal and add new one
     $('#peppolBulkResultsModal').remove();
-    $('body').append(modalContent);
+    $('body').append(modalHtml);
     $('#peppolBulkResultsModal').modal('show');
-}
-
-// Utility function to escape HTML
-function escapeHtml(text) {
-    if (!text) return '';
-    var div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
 }
 </script>

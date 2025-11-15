@@ -53,35 +53,36 @@ function peppol_replace_custom_fields()
             var peppolHtml = `
                 <div class="col-md-12">
                     <div class="form-group">
-                        <label for="peppol_combined_identifier" class="control-label">
-                            ' . _l('peppol_client_identifier') . '
-                        </label>
-                        <div class="tw-flex tw-items-center tw-gap-2">
+                        <div class="tw-flex tw-items-center tw-gap-2 tw-mb-2">
                             ${schemeEditLink}
-                            <div class="input-group tw-flex-1">
-                                <input type="text" 
-                                       id="peppol_scheme_input" 
-                                       class="form-control" 
-                                       placeholder="0208" 
-                                       value="${currentScheme}"
-                                       style="max-width: 100px; border-right: 0;">
-                                <div class="input-group-addon" style="border-left: 0; border-right: 0; background: #f1f1f1;">:</div>
-                                
-                                <!-- Hidden fields for form submission -->
-                                <input type="hidden" name="custom_fields[customers][25]" id="hidden_identifier" value="${currentIdentifier}">
-                                <input type="hidden" name="custom_fields[customers][26]" id="hidden_scheme" value="${currentScheme}">
-                                
-                                <input type="text" 
-                                       id="peppol_identifier_input" 
-                                       class="form-control" 
-                                       placeholder="0123456789" 
-                                       value="${currentIdentifier}"
-                                       style="border-left: 0;">
-                            </div>
+                            <span style="color: #666; font-weight: bold;">:</span>
                             ${identifierEditLink}
+                            <label for="peppol_combined_identifier" class="control-label tw-mb-0">
+                                ' . _l('peppol_client_identifier') . '
+                            </label>
+                        </div>
+                        <div class="input-group" style="display: flex; align-items: stretch;">
+                            <input type="text" 
+                                   id="peppol_scheme_input" 
+                                   class="form-control" 
+                                   placeholder="0208" 
+                                   value="${currentScheme}"
+                                   style="max-width: 100px; min-width: 100px; flex: 0 0 100px; border-right: 0; border-radius: 4px 0 0 4px;">
+                            <span class="input-group-addon" style="border-left: 0; border-right: 0; background: #f1f1f1; padding: 6px 8px; border-radius: 0; flex: 0 0 auto;">:</span>
+                            
+                            <!-- Hidden fields for form submission -->
+                            <input type="hidden" name="custom_fields[customers][25]" id="hidden_identifier" value="${currentIdentifier}">
+                            <input type="hidden" name="custom_fields[customers][26]" id="hidden_scheme" value="${currentScheme}">
+                            
+                            <input type="text" 
+                                   id="peppol_identifier_input" 
+                                   class="form-control" 
+                                   placeholder="0123456789" 
+                                   value="${currentIdentifier}"
+                                   style="border-left: 0; flex: 1; border-radius: 0 4px 4px 0;">
                         </div>
                         <small class="help-block text-muted">
-                            ' . _l('peppol_client_identifier_help') . ' Format: scheme:identifier (e.g., 0208:0123456789)
+                            Enter the PEPPOL participant identifier. Format: scheme:identifier (e.g., 0208:0123456789)
                         </small>
                     </div>
                 </div>

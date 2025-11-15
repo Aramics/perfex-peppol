@@ -40,7 +40,8 @@ register_language_files(PEPPOL_MODULE_NAME, [PEPPOL_MODULE_NAME]);
 $hook_files = [
     'add_bulk_action_to_invoice_table.php',
     'add_bulk_action_to_credit_notes_table.php',
-    'add_settings_tab.php'
+    'add_settings_tab.php',
+    'client_form_enhancement.php'
 ];
 
 foreach ($hook_files as $hook_file) {

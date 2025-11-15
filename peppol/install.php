@@ -48,14 +48,8 @@ if (!$CI->db->table_exists(db_prefix() . 'peppol_logs')) {
     ');
 }
 
-// Add PEPPOL identifier fields to clients table if not exists
-if (!$CI->db->field_exists('peppol_identifier', db_prefix() . 'clients')) {
-    $CI->db->query('ALTER TABLE `' . db_prefix() . 'clients` ADD `peppol_identifier` varchar(100) DEFAULT NULL');
-}
-
-if (!$CI->db->field_exists('peppol_scheme', db_prefix() . 'clients')) {
-    $CI->db->query('ALTER TABLE `' . db_prefix() . 'clients` ADD `peppol_scheme` varchar(20) DEFAULT "0208"');
-}
+// Create PEPPOL custom fields for clients (preferred approach)
+peppol_create_custom_fields();
 
 // Add default options
 add_option('peppol_active_provider', 'manual');
@@ -65,3 +59,30 @@ add_option('peppol_company_scheme', '0208');
 add_option('peppol_test_mode', '1');
 add_option('peppol_auto_send', '0');
 add_option('peppol_webhook_url', '');
+
+/**
+ * Create PEPPOL custom fields for clients
+ */
+function peppol_create_custom_fields()
+{
+    $CI = &get_instance();
+    
+    // Check if custom fields already exist to avoid duplicates
+    $CI->db->where('fieldto', 'customers');
+    $CI->db->where('slug', 'customers_peppol_identifier');
+    $existing_identifier = $CI->db->get(db_prefix() . 'customfields')->row();
+    
+    if (!$existing_identifier) {
+        // Add PEPPOL Identifier field
+        $CI->db->query("INSERT INTO `" . db_prefix() . "customfields` (`fieldto`,`name`, `type`, `options`, `default_value`, `field_order`, `bs_column`, `slug`) VALUES ('customers', 'PEPPOL Identifier', 'input','','','1','12','customers_peppol_identifier');");
+    }
+    
+    $CI->db->where('fieldto', 'customers');
+    $CI->db->where('slug', 'customers_peppol_scheme');
+    $existing_scheme = $CI->db->get(db_prefix() . 'customfields')->row();
+    
+    if (!$existing_scheme) {
+        // Add PEPPOL Scheme field
+        $CI->db->query("INSERT INTO `" . db_prefix() . "customfields` (`fieldto`,`name`, `type`, `options`, `default_value`, `field_order`, `bs_column`, `slug`) VALUES ('customers', 'PEPPOL Scheme', 'input','','0208','2','12','customers_peppol_scheme');");
+    }
+}

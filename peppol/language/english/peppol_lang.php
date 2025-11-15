@@ -158,3 +158,11 @@ $lang['peppol_download_all_ubl'] = 'Download All UBL Files';
 $lang['peppol_download_all_credit_note_ubl'] = 'Download All Credit Note UBL Files';
 $lang['peppol_generate_view_ubl'] = 'View UBL';
 $lang['peppol_generate_download_ubl'] = 'Download UBL';
+
+// Client custom fields
+$lang['peppol_client_identifier'] = 'PEPPOL Identifier';
+$lang['peppol_client_scheme'] = 'PEPPOL Scheme';
+$lang['peppol_client_identifier_help'] = 'Enter the client\'s PEPPOL participant identifier (e.g., 0123456789)';
+$lang['peppol_client_scheme_help'] = 'Select the scheme used for the client\'s PEPPOL identifier';
+$lang['peppol_client_fields_section'] = 'PEPPOL Information';
+$lang['peppol_identifier_preview'] = 'PEPPOL Identifier Preview';

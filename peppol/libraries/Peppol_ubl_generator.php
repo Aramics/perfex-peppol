@@ -188,9 +188,9 @@ class Peppol_ubl_generator
     {
         $buyer = new Party();
 
-        // Get PEPPOL identifiers
-        $customer_identifier = $client->peppol_identifier ?? '';
-        $customer_scheme = $client->peppol_scheme ?? '0208';
+        // Get PEPPOL identifiers from custom fields
+        $customer_identifier = $this->_get_client_custom_field($client->userid, 'customers_peppol_identifier');
+        $customer_scheme = $this->_get_client_custom_field($client->userid, 'customers_peppol_scheme') ?: '0208';
 
         // Client name (company or individual)
         $client_name = $client->company ?: ($client->firstname . ' ' . $client->lastname);
@@ -232,6 +232,28 @@ class Peppol_ubl_generator
         $country = $this->CI->countries_model->get($country_id);
 
         return $country ? $country->iso2 : 'BE';
+    }
+
+    /**
+     * Get client custom field value
+     */
+    private function _get_client_custom_field($client_id, $field_slug)
+    {
+        // Get custom field ID for the given field slug
+        $this->CI->db->where('fieldto', 'customers');
+        $this->CI->db->where('slug', $field_slug);
+        $custom_field = $this->CI->db->get(db_prefix() . 'customfields')->row();
+        
+        if (!$custom_field) {
+            return '';
+        }
+        
+        // Get custom field value for the client
+        $this->CI->db->where('relid', $client_id);
+        $this->CI->db->where('fieldid', $custom_field->id);
+        $value_row = $this->CI->db->get(db_prefix() . 'customfieldsvalues')->row();
+        
+        return $value_row ? $value_row->value : '';
     }
 
     /**

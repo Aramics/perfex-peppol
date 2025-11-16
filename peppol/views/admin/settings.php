@@ -27,91 +27,18 @@
 <div class="tab-content">
     <!-- General Settings Tab -->
     <div role="tabpanel" class="tab-pane active" id="peppol_general">
-        <div class="form-group">
-            <label class="control-label clearfix">
-                <?php echo _l('peppol_company_identifier'); ?>
-            </label>
+        <?php
+        // Load the PEPPOL input helper
+        require_once(__DIR__ . '/../../helpers/peppol_input_helper.php');
 
-            <!-- PEPPOL Identifier with scheme:identifier format -->
-            <div class="peppol-identifier-group">
-                <div class="input-group">
-                    <input type="text" class="form-control peppol-scheme-input" name="settings[peppol_company_scheme]"
-                        value="<?php echo get_option('peppol_company_scheme'); ?>" list="peppol_scheme_suggestions"
-                        placeholder="0208" required>
+        // Use the reusable component for settings
+        echo render_peppol_settings_input(
+            get_option('peppol_company_scheme') ?: '0208',
+            get_option('peppol_company_identifier') ?: '',
+        );
+        ?>
 
-                    <span class="input-group-addon">:</span>
-
-                    <input type="text" class="form-control peppol-identifier-input"
-                        name="settings[peppol_company_identifier]"
-                        value="<?php echo get_option('peppol_company_identifier'); ?>" placeholder="0123456789"
-                        required>
-                </div>
-
-                <!-- Scheme suggestions datalist -->
-                <datalist id="peppol_scheme_suggestions">
-                    <option value="0002">0002 - SIRENE</option>
-                    <option value="0007">0007 - ODETTE</option>
-                    <option value="0009">0009 - EAN Location Code</option>
-                    <option value="0037">0037 - LY (Norwegian)</option>
-                    <option value="0060">0060 - DUNS (Data Universal Numbering System)</option>
-                    <option value="0088">0088 - GLN (Global Location Number)</option>
-                    <option value="0096">0096 - GTIN (Global Trade Item Number)</option>
-                    <option value="0135">0135 - SIA Object Identifiers</option>
-                    <option value="0142">0142 - SECETI Object Identifiers</option>
-                    <option value="0151">0151 - Australian Business Number</option>
-                    <option value="0183">0183 - Swiss Enterprise Identification Number</option>
-                    <option value="0184">0184 - Danish CVR / DIGSTØ Identifier</option>
-                    <option value="0190">0190 - Dutch Originator's Identification Number</option>
-                    <option value="0191">0191 - Centre for Research Libraries</option>
-                    <option value="0192">0192 - Belgian Enterprise Number / CBE</option>
-                    <option value="0193">0193 - UBL.BE Party Identifier</option>
-                    <option value="0195">0195 - Singapore UEN</option>
-                    <option value="0196">0196 - Kennitala (Iceland)</option>
-                    <option value="0198">0198 - ERSTORG</option>
-                    <option value="0199">0199 - Legal Entity Identifier (LEI)</option>
-                    <option value="0200">0200 - Legal entity code (Lithuania)</option>
-                    <option value="0201">0201 - Codice Univoco Unità Organizzativa iPA</option>
-                    <option value="0202">0202 - Indirizzo Telematico Ente</option>
-                    <option value="0203">0203 - Codice Fiscale</option>
-                    <option value="0204">0204 - Partita IVA</option>
-                    <option value="0208">0208 - Leitweg-ID (Germany)</option>
-                    <option value="0209">0209 - Entreprise ID</option>
-                    <option value="0210">0210 - CODICE IPA</option>
-                    <option value="0211">0211 - CODICE DESTINATARIO</option>
-                    <option value="0212">0212 - Leitweg-ID (Austria)</option>
-                    <option value="0213">0213 - Belgian KBO Number / CBE Number</option>
-                    <option value="9901">9901 - Danish Ministry ID</option>
-                    <option value="9902">9902 - Norwegian ID</option>
-                    <option value="9904">9904 - Hungarian VAT</option>
-                    <option value="9905">9905 - PEPPOL Contract Party ID</option>
-                    <option value="9906">9906 - Andes</option>
-                    <option value="9907">9907 - Andorra VAT</option>
-                    <option value="9910">9910 - Hungary VAT</option>
-                    <option value="9912">9912 - European Medicines Agency</option>
-                    <option value="9913">9913 - Business Registers Network</option>
-                    <option value="9914">9914 - Austrian Organisation Code</option>
-                    <option value="9915">9915 - Austrian Ersatzverfahren ID</option>
-                    <option value="9918">9918 - SWIFT BIC Code</option>
-                    <option value="9919">9919 - German Company Register</option>
-                    <option value="9920">9920 - Spanish VAT</option>
-                    <option value="9922">9922 - Andorra Registration</option>
-                    <option value="9923">9923 - French Enterprise Number</option>
-                    <option value="9924">9924 - RETGS (Galicia)</option>
-                    <option value="9925">9925 - VAT number (Generic)</option>
-                    <option value="9926">9926 - Belgian VAT Number</option>
-                    <option value="9955">9955 - Norwegian Organization Number</option>
-                    <option value="9956">9956 - Swedish Organization Number</option>
-                    <option value="9957">9957 - French VAT</option>
-                    <option value="9958">9958 - German VAT</option>
-                </datalist>
-            </div>
-            <small class="help-block">
-                <?php echo _l('peppol_company_scheme_help'); ?>.
-                <?php echo _l('peppol_identifier_format_help'); ?>
-            </small>
-
-            <hr />
-        </div>
+        <hr />
 
         <div class="form-group">
             <?php
@@ -251,7 +178,7 @@
 </style>
 
 <script>
-$(document).ready(function() {
+document.addEventListener("DOMContentLoaded", function() {
     var schemeInput = $('.peppol-scheme-input');
     var identifierInput = $('.peppol-identifier-input');
     var preview = $('#peppol-identifier-preview');
@@ -310,7 +237,7 @@ $(document).ready(function() {
             var description = selectedOption.text().split(' - ')[1];
             if (description) {
                 alert_float('info', '<?php echo _l('peppol_selected_scheme'); ?>: ' + description,
-                3000);
+                    3000);
             }
         }
         updatePeppolPreview();

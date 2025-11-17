@@ -32,6 +32,22 @@ $config = [
         'item_name_lang' => 'peppol_invoices',
         'preparing_lang' => 'peppol_preparing_invoices'
     ],
+    'client_invoice' => [
+        'dropdown_id' => 'peppol-client-invoice-bulk-actions-dropdown',
+        'function_name' => 'peppolClientInvoiceBulkAction',
+        'stats_url' => 'peppol/bulk_action_stats',
+        'bulk_send_url' => 'peppol/bulk_send',
+        'bulk_download_url' => 'peppol/bulk_download_ubl',
+        'table_selector' => 'a[data-target="#client_zip_invoices"]',
+        'insert_after' => 'a[data-target="#client_zip_invoices"]',
+        'extra_classes' => 'mbot15',
+        'send_unsent_lang' => 'peppol_send_all_unsent',
+        'retry_failed_lang' => 'peppol_retry_all_failed',
+        'download_sent_lang' => 'peppol_download_all_sent',
+        'download_all_ubl_lang' => 'peppol_download_all_ubl',
+        'item_name_lang' => 'peppol_invoices',
+        'preparing_lang' => 'peppol_preparing_invoices'
+    ],
     'credit_note' => [
         'dropdown_id' => 'peppol-credit-note-bulk-actions-dropdown',
         'function_name' => 'peppolCreditNoteBulkAction',
@@ -46,6 +62,22 @@ $config = [
         'download_all_ubl_lang' => 'peppol_download_all_credit_note_ubl',
         'item_name_lang' => 'peppol_credit_notes',
         'preparing_lang' => 'peppol_preparing_credit_notes'
+    ],
+    'client_credit_note' => [
+        'dropdown_id' => 'peppol-client-credit-note-bulk-actions-dropdown',
+        'function_name' => 'peppolClientCreditNoteBulkAction',
+        'stats_url' => 'peppol/credit_note_bulk_action_stats',
+        'bulk_send_url' => 'peppol/credit_note_bulk_send',
+        'bulk_download_url' => 'peppol/credit_note_bulk_download_ubl',
+        'table_selector' => 'a[data-target="#client_zip_credit_notes"]',
+        'insert_after' => 'a[data-target="#client_zip_credit_notes"]',
+        'extra_classes' => 'mbot15',
+        'send_unsent_lang' => 'peppol_send_all_unsent_credit_notes',
+        'retry_failed_lang' => 'peppol_retry_all_failed_credit_notes',
+        'download_sent_lang' => 'peppol_download_all_sent_credit_note_ubl',
+        'download_all_ubl_lang' => 'peppol_download_all_credit_note_ubl',
+        'item_name_lang' => 'peppol_credit_notes',
+        'preparing_lang' => 'peppol_preparing_credit_notes'
     ]
 ];
 
@@ -53,7 +85,7 @@ $cfg = $config[$document_type];
 ?>
 
 <!-- PEPPOL <?php echo ucfirst(str_replace('_', ' ', $document_type)); ?> Bulk Actions Dropdown -->
-<div class="btn-group mleft5" id="<?php echo $cfg['dropdown_id']; ?>" style="display: none;">
+<div class="btn-group mleft5 <?php echo isset($cfg['extra_classes']) ? $cfg['extra_classes'] : ''; ?>" id="<?php echo $cfg['dropdown_id']; ?>" style="display: none;">
     <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true"
         aria-expanded="false">
         <i class="fa fa-paper-plane"></i> <?php echo _l('peppol_bulk_actions'); ?> <span class="caret"></span>
@@ -145,7 +177,11 @@ window.hideProgressWidget = function() {
 $(document).ready(function() {
     // Show PEPPOL bulk actions dropdown on appropriate page
     if ($('<?php echo $cfg['table_selector']; ?>').length > 0) {
+        <?php if (isset($cfg['insert_after'])): ?>
+        $('#<?php echo $cfg['dropdown_id']; ?>').insertAfter('<?php echo $cfg['insert_after']; ?>').show();
+        <?php else: ?>
         $('#<?php echo $cfg['dropdown_id']; ?>').insertBefore('<?php echo $cfg['insert_before']; ?>').show();
+        <?php endif; ?>
     }
 });
 

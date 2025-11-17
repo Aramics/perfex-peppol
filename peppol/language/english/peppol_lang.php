@@ -18,6 +18,34 @@ $lang['peppol_status_failed'] = 'Failed';
 $lang['peppol_status_received'] = 'Received';
 $lang['peppol_status_processed'] = 'Processed';
 
+// Client bulk actions
+$lang['peppol_bulk_send'] = 'PEPPOL Send';
+$lang['peppol_bulk_send_credit_notes'] = 'PEPPOL Send Credit Notes';
+$lang['peppol_bulk_send_tooltip'] = 'Send selected documents via PEPPOL';
+$lang['peppol_bulk_send_invoices'] = 'Bulk Send Invoices via PEPPOL';
+$lang['peppol_client_bulk_send_info'] = 'Send multiple documents for this client via PEPPOL network. Select which documents to send and configure send options.';
+$lang['peppol_select_documents'] = 'Select Documents';
+$lang['peppol_send_selected_only'] = 'Send selected documents only';
+$lang['peppol_send_all_unsent'] = 'Send all unsent documents for this client';
+$lang['peppol_selected'] = 'selected';
+$lang['peppol_send_options'] = 'Send Options';
+$lang['peppol_test_mode_bulk'] = 'Test mode (no actual sending)';
+$lang['peppol_test_mode_bulk_help'] = 'Documents will be validated but not actually sent to PEPPOL network';
+$lang['peppol_force_send'] = 'Force send (ignore previous failures)';
+$lang['peppol_force_send_help'] = 'Resend documents that previously failed to send';
+$lang['peppol_sending_progress'] = 'Sending Progress';
+$lang['peppol_sent'] = 'Sent';
+$lang['peppol_failed'] = 'Failed';
+$lang['peppol_skipped'] = 'Skipped';
+$lang['peppol_total'] = 'Total';
+$lang['peppol_start_sending'] = 'Start Sending';
+$lang['peppol_sending'] = 'Sending';
+$lang['peppol_no_items_selected'] = 'No items selected. Please select at least one document to send.';
+$lang['peppol_bulk_send_error'] = 'Bulk send error';
+$lang['peppol_no_documents_found'] = 'No documents found for this client';
+$lang['peppol_test_completed'] = 'Test completed: %d of %d documents validated successfully';
+$lang['peppol_bulk_send_completed'] = 'Bulk send completed: %d of %d documents sent successfully';
+
 // Actions
 $lang['peppol_send_invoice'] = 'Send via PEPPOL';
 $lang['peppol_resend'] = 'Resend';

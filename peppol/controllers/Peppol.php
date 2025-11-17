@@ -96,6 +96,7 @@ class Peppol extends AdminController
         $this->_handle_bulk_send('credit_note');
     }
 
+
     /**
      * Bulk download UBL files for invoices
      */
@@ -194,6 +195,7 @@ class Peppol extends AdminController
 
         return $response;
     }
+
 
     /**
      * Handle bulk download UBL for any document type

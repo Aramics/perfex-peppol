@@ -47,13 +47,22 @@ hooks()->add_filter('credit_notes_table_row_data', function ($row, $aRow = []) {
 hooks()->add_action('app_admin_footer', function () {
     $CI = &get_instance();
 
-    // Only show on credit notes list page
+    // Show on credit notes list page or client credit notes page
     $controller = $CI->router->fetch_class();
     $method = $CI->router->fetch_method();
+    $group = $CI->input->get('group');
 
-    if ($controller === 'credit_notes' && in_array($method, ['index', 'table'])) {
+    $is_credit_notes_page = $controller === 'credit_notes' && in_array($method, ['index', 'table']);
+    $is_client_credit_notes_page = $controller === 'clients' && $method === 'client' && $group === 'credit_notes';
+
+    if ($is_credit_notes_page) {
         if (staff_can('view', 'peppol')) {
             $data = ['document_type' => 'credit_note'];
+            $CI->load->view(PEPPOL_MODULE_NAME . '/document_bulk_actions', $data);
+        }
+    } elseif ($is_client_credit_notes_page) {
+        if (staff_can('view', 'peppol')) {
+            $data = ['document_type' => 'client_credit_note'];
             $CI->load->view(PEPPOL_MODULE_NAME . '/document_bulk_actions', $data);
         }
     }

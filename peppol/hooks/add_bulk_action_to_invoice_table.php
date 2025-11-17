@@ -47,13 +47,22 @@ hooks()->add_filter('invoices_table_row_data', function ($row, $aRow = []) {
 hooks()->add_action('app_admin_footer', function () {
     $CI = &get_instance();
 
-    // Only show on invoice list page
+    // Show on invoice list page or client invoices page
     $controller = $CI->router->fetch_class();
     $method = $CI->router->fetch_method();
+    $group = $CI->input->get('group');
 
-    if ($controller === 'invoices' && in_array($method, ['index', 'table'])) {
+    $is_invoices_page = $controller === 'invoices' && in_array($method, ['index', 'table']);
+    $is_client_invoices_page = $controller === 'clients' && $method === 'client' && $group === 'invoices';
+
+    if ($is_invoices_page) {
         if (staff_can('view', 'peppol')) {
             $data = ['document_type' => 'invoice'];
+            $CI->load->view(PEPPOL_MODULE_NAME . '/document_bulk_actions', $data);
+        }
+    } elseif ($is_client_invoices_page) {
+        if (staff_can('view', 'peppol')) {
+            $data = ['document_type' => 'client_invoice'];
             $CI->load->view(PEPPOL_MODULE_NAME . '/document_bulk_actions', $data);
         }
     }

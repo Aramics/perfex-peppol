@@ -96,18 +96,18 @@ function render_peppol_scheme_identifier_input($config = [])
         'enable_autocomplete' => true,
         'container_id' => 'peppol_scheme_identifier_' . uniqid()
     ];
-    
+
     // Merge with provided config
     $config = array_merge($defaults, $config);
-    
+
     // Extract values for easier access
     extract($config);
-    
+
     // Generate unique IDs for inputs
     $scheme_id = $container_id . '_scheme';
     $identifier_id = $container_id . '_identifier';
     $datalist_id = $container_id . '_datalist';
-    
+
     // Build edit links HTML if provided
     $edit_links_html = '';
     if ($show_edit_links && !empty($edit_links)) {
@@ -115,15 +115,15 @@ function render_peppol_scheme_identifier_input($config = [])
         foreach ($edit_links as $link) {
             $links_parts[] = $link;
         }
-        $edit_links_html = '<div class="tw-flex tw-items-center tw-gap-2 tw-mb-2">' . 
-                          implode('<span style="color: #666; font-weight: bold;">:</span>', $links_parts) . 
-                          '</div>';
+        $edit_links_html = '<div class="tw-flex tw-items-center tw-gap-2 tw-mb-2">' .
+            implode('<span style="color: #666; font-weight: bold;">:</span>', $links_parts) .
+            '</div>';
     }
-    
+
     // Required attribute
     $required_attr = $required ? 'required' : '';
     $required_asterisk = $required ? ' <span style="color: red;">*</span>' : '';
-    
+
     // Build the HTML
     $html = '
     <div class="' . $wrapper_class . '" id="' . $container_id . '">
@@ -152,12 +152,12 @@ function render_peppol_scheme_identifier_input($config = [])
         
         <!-- PEPPOL scheme datalist -->
         <datalist id="' . $datalist_id . '">';
-    
+
     // Add all scheme options
     foreach (get_peppol_scheme_options() as $code => $description) {
         $html .= '<option value="' . $code . '">' . $description . '</option>';
     }
-    
+
     $html .= '</datalist>
         <small class="help-block text-muted">' . $help_text . '</small>
     </div>
@@ -197,7 +197,7 @@ function render_peppol_scheme_identifier_input($config = [])
     });
     
     </script>';
-    
+
     return $html;
 }
 
@@ -213,7 +213,7 @@ function render_peppol_settings_input($scheme_value = '0208', $identifier_value 
 {
     return render_peppol_scheme_identifier_input([
         'scheme_name' => 'settings[peppol_company_scheme]',
-        'identifier_name' => 'settings[peppol_company_identifier]', 
+        'identifier_name' => 'settings[peppol_company_identifier]',
         'scheme_value' => $scheme_value,
         'identifier_value' => $identifier_value,
         'label' => 'Company PEPPOL Identifier',
@@ -299,7 +299,7 @@ function get_peppol_custom_field_replacement_js()
                 replacementHtml += `<option value="${code}">${schemes[code]}</option>`;
             }
             
-            replacementHtml += `</datalist>`;
+            replacementHtml += `</datalist>
                         <small class="help-block text-muted">
                             Enter the PEPPOL participant identifier. Start typing in the scheme field to see suggestions. Format: scheme:identifier (e.g., 0208:0123456789)
                         </small>

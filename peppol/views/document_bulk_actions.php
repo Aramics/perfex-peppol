@@ -85,7 +85,8 @@ $cfg = $config[$document_type];
 ?>
 
 <!-- PEPPOL <?php echo ucfirst(str_replace('_', ' ', $document_type)); ?> Bulk Actions Dropdown -->
-<div class="btn-group mleft5 <?php echo isset($cfg['extra_classes']) ? $cfg['extra_classes'] : ''; ?>" id="<?php echo $cfg['dropdown_id']; ?>" style="display: none;">
+<div class="btn-group mleft5 <?php echo isset($cfg['extra_classes']) ? $cfg['extra_classes'] : ''; ?>"
+    id="<?php echo $cfg['dropdown_id']; ?>" style="display: none;">
     <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true"
         aria-expanded="false">
         <i class="fa fa-paper-plane"></i> <?php echo _l('peppol_bulk_actions'); ?> <span class="caret"></span>
@@ -181,12 +182,12 @@ $(document).ready(function() {
     if (pathMatch) {
         window.peppolClientId = pathMatch[1];
     }
-    
+
     // Show PEPPOL bulk actions dropdown on appropriate page
     if ($('<?php echo $cfg['table_selector']; ?>').length > 0) {
-        <?php if (isset($cfg['insert_after'])): ?>
+        <?php if (isset($cfg['insert_after'])) : ?>
         $('#<?php echo $cfg['dropdown_id']; ?>').insertAfter('<?php echo $cfg['insert_after']; ?>').show();
-        <?php else: ?>
+        <?php else : ?>
         $('#<?php echo $cfg['dropdown_id']; ?>').insertBefore('<?php echo $cfg['insert_before']; ?>').show();
         <?php endif; ?>
     }
@@ -198,12 +199,12 @@ window.<?php echo $cfg['function_name']; ?> = function(action) {
     var ajaxData = {
         action: action
     };
-    
+
     // Add client ID for client-specific filtering
     if (window.peppolClientId) {
         ajaxData.client_id = window.peppolClientId;
     }
-    
+
     $.ajax({
         url: admin_url + '<?php echo $cfg['stats_url']; ?>',
         type: 'POST',
@@ -239,7 +240,7 @@ window.peppolBulkSend<?php echo ucfirst(str_replace('_', '', $document_type)); ?
     var ajaxData = {
         action: action
     };
-    
+
     // Add client ID for client-specific filtering
     if (window.peppolClientId) {
         ajaxData.client_id = window.peppolClientId;
@@ -257,9 +258,9 @@ window.peppolBulkSend<?php echo ucfirst(str_replace('_', '', $document_type)); ?
                 setTimeout(function() {
                     hideProgressWidget();
                     // Reload table
-                    if ($('<?php echo $cfg['table_selector']; ?>').length && $(
-                            '<?php echo $cfg['table_selector']; ?>').DataTable()) {
-                        $('<?php echo $cfg['table_selector']; ?>').DataTable().ajax.reload();
+                    if ($('<?php echo $cfg['table_selector']; ?>').length) {
+                        $('<?= $cfg['table_refresh_selector'] ?? '.btn-dt-reload'; ?>')
+                            ?.click();
                     }
 
                     // Show detailed results if there are errors

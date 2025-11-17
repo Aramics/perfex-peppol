@@ -33,9 +33,9 @@ hooks()->add_filter('invoices_table_row_data', function ($row, $aRow = []) {
 
     if ($peppol_invoice) {
         $status = $peppol_invoice->status;
-        $row[] = render_peppol_status_column($status, $aRow['id'], $peppol_invoice);
+        $row[] = render_peppol_status_column($aRow['id'], $status);
     } else {
-        $row[] = render_peppol_status_column(null, $aRow['id']);
+        $row[] = render_peppol_status_column($aRow['id']);
     }
 
     return $row;

@@ -33,9 +33,9 @@ hooks()->add_filter('credit_notes_table_row_data', function ($row, $aRow = []) {
 
     if ($peppol_credit_note) {
         $status = $peppol_credit_note->status;
-        $row[] = render_peppol_status_column($status, $aRow['id'], $peppol_credit_note);
+        $row[] = render_peppol_status_column($aRow['id'], $status);
     } else {
-        $row[] = render_peppol_status_column(null, $aRow['id']);
+        $row[] = render_peppol_status_column($aRow['id']);
     }
 
     return $row;

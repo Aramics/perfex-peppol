@@ -175,6 +175,13 @@ window.hideProgressWidget = function() {
 
 <script>
 $(document).ready(function() {
+    // Detect client ID for client-specific filtering
+    window.peppolClientId = null;
+    var pathMatch = window.location.pathname.match(/\/admin\/clients\/client\/(\d+)/);
+    if (pathMatch) {
+        window.peppolClientId = pathMatch[1];
+    }
+    
     // Show PEPPOL bulk actions dropdown on appropriate page
     if ($('<?php echo $cfg['table_selector']; ?>').length > 0) {
         <?php if (isset($cfg['insert_after'])): ?>
@@ -188,12 +195,19 @@ $(document).ready(function() {
 // Document-specific bulk action function
 window.<?php echo $cfg['function_name']; ?> = function(action) {
     // Get stats first
+    var ajaxData = {
+        action: action
+    };
+    
+    // Add client ID for client-specific filtering
+    if (window.peppolClientId) {
+        ajaxData.client_id = window.peppolClientId;
+    }
+    
     $.ajax({
         url: admin_url + '<?php echo $cfg['stats_url']; ?>',
         type: 'POST',
-        data: {
-            action: action
-        },
+        data: ajaxData,
         dataType: 'json',
         success: function(response) {
             if (response.success && response.stats && response.stats.count > 0) {
@@ -222,12 +236,19 @@ window.<?php echo $cfg['function_name']; ?> = function(action) {
 window.peppolBulkSend<?php echo ucfirst(str_replace('_', '', $document_type)); ?> = function(action, totalCount) {
     showProgressWidget('<?php echo _l($cfg['preparing_lang']); ?>', totalCount);
 
+    var ajaxData = {
+        action: action
+    };
+    
+    // Add client ID for client-specific filtering
+    if (window.peppolClientId) {
+        ajaxData.client_id = window.peppolClientId;
+    }
+
     $.ajax({
         url: admin_url + '<?php echo $cfg['bulk_send_url']; ?>',
         type: 'POST',
-        data: {
-            action: action
-        },
+        data: ajaxData,
         dataType: 'json',
         timeout: 300000, // 5 minutes
         success: function(response) {
@@ -285,6 +306,15 @@ window.peppolBulkDownload<?php echo ucfirst(str_replace('_', '', $document_type)
     actionInput.name = 'action';
     actionInput.value = action;
     form.appendChild(actionInput);
+
+    // Add client ID for client-specific filtering
+    if (window.peppolClientId) {
+        const clientInput = document.createElement('input');
+        clientInput.type = 'hidden';
+        clientInput.name = 'client_id';
+        clientInput.value = window.peppolClientId;
+        form.appendChild(clientInput);
+    }
 
     const csrfInput = document.createElement('input');
     csrfInput.type = 'hidden';

@@ -41,7 +41,8 @@ class Peppol extends AdminController
         }
 
         $action = $this->input->post('action');
-        $stats = $this->_get_bulk_action_stats($document_type, $action);
+        $client_id = $this->input->post('client_id');
+        $stats = $this->_get_bulk_action_stats($document_type, $action, $client_id);
 
         echo json_encode([
             'success' => true,
@@ -52,7 +53,7 @@ class Peppol extends AdminController
     /**
      * Get bulk action statistics for a document type
      */
-    private function _get_bulk_action_stats($document_type, $action)
+    private function _get_bulk_action_stats($document_type, $action, $client_id = null)
     {
         $lang_map = [
             'invoice' => [
@@ -70,7 +71,7 @@ class Peppol extends AdminController
         ];
 
         $lang_keys = $lang_map[$document_type];
-        $count = $this->peppol_model->count_documents_for_action($document_type, $action);
+        $count = $this->peppol_model->count_documents_for_action($document_type, $action, $client_id);
 
         return [
             'action' => $action,
@@ -123,7 +124,8 @@ class Peppol extends AdminController
         }
 
         $action = $this->input->post('action');
-        $document_ids = $this->peppol_model->get_document_ids_for_action($document_type, $action);
+        $client_id = $this->input->post('client_id');
+        $document_ids = $this->peppol_model->get_document_ids_for_action($document_type, $action, $client_id);
 
         if (empty($document_ids)) {
             echo json_encode([
@@ -207,6 +209,7 @@ class Peppol extends AdminController
         }
 
         $action = $this->input->post('action');
+        $client_id = $this->input->post('client_id');
 
         // Create ZIP file with UBL files
         $zip = new ZipArchive();
@@ -223,7 +226,7 @@ class Peppol extends AdminController
 
         try {
             // Get documents based on action
-            $documents = $this->_get_documents_for_download($document_type, $action);
+            $documents = $this->_get_documents_for_download($document_type, $action, $client_id);
 
             foreach ($documents as $document) {
                 try {
@@ -261,7 +264,7 @@ class Peppol extends AdminController
     /**
      * Get documents for download based on action
      */
-    private function _get_documents_for_download($document_type, $action)
+    private function _get_documents_for_download($document_type, $action, $client_id = null)
     {
         if ($document_type === 'invoice') {
             $this->load->model('invoices_model');
@@ -273,6 +276,9 @@ class Peppol extends AdminController
                     $doc_ids = array_column($peppol_docs, 'document_id');
                     if (empty($doc_ids)) return [];
                     $this->db->where_in('id', $doc_ids);
+                    if ($client_id) {
+                        $this->db->where('clientid', $client_id);
+                    }
                     return $this->invoices_model->get('');
 
                 case 'download_all_ubl':
@@ -282,6 +288,9 @@ class Peppol extends AdminController
                         Invoices_model::STATUS_PAID,
                         Invoices_model::STATUS_OVERDUE
                     ]);
+                    if ($client_id) {
+                        $this->db->where('clientid', $client_id);
+                    }
                     return $this->invoices_model->get('');
 
                 default:
@@ -297,11 +306,17 @@ class Peppol extends AdminController
                     $doc_ids = array_column($peppol_docs, 'document_id');
                     if (empty($doc_ids)) return [];
                     $this->db->where_in('id', $doc_ids);
+                    if ($client_id) {
+                        $this->db->where('clientid', $client_id);
+                    }
                     return $this->credit_notes_model->get('');
 
                 case 'download_all_ubl':
                     // Get all valid credit notes  
                     $this->db->where('status >=', 1);
+                    if ($client_id) {
+                        $this->db->where('clientid', $client_id);
+                    }
                     return $this->credit_notes_model->get('');
 
                 default:

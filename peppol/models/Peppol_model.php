@@ -123,7 +123,7 @@ class Peppol_model extends App_Model
     /**
      * Count documents for bulk action statistics
      */
-    public function count_documents_for_action($document_type, $action)
+    public function count_documents_for_action($document_type, $action, $client_id = null)
     {
         $table_map = [
             'invoice' => 'invoices',
@@ -146,22 +146,36 @@ class Peppol_model extends App_Model
                 } else {
                     $this->db->where('d.status >=', 1);
                 }
+                
+                if ($client_id) {
+                    $this->db->where('d.clientid', $client_id);
+                }
                 break;
 
             case 'retry_failed':
                 // Count documents with 'failed' status
                 $this->db->select('COUNT(*) as count');
-                $this->db->from(db_prefix() . 'peppol_documents');
-                $this->db->where('document_type', $document_type);
-                $this->db->where('status', 'failed');
+                $this->db->from(db_prefix() . 'peppol_documents pd');
+                $this->db->where('pd.document_type', $document_type);
+                $this->db->where('pd.status', 'failed');
+                
+                if ($client_id) {
+                    $this->db->join(db_prefix() . $table . ' d', 'd.id = pd.document_id');
+                    $this->db->where('d.clientid', $client_id);
+                }
                 break;
 
             case 'download_sent':
                 // Count documents with 'sent' or 'delivered' status
                 $this->db->select('COUNT(*) as count');
-                $this->db->from(db_prefix() . 'peppol_documents');
-                $this->db->where('document_type', $document_type);
-                $this->db->where_in('status', ['sent', 'delivered']);
+                $this->db->from(db_prefix() . 'peppol_documents pd');
+                $this->db->where('pd.document_type', $document_type);
+                $this->db->where_in('pd.status', ['sent', 'delivered']);
+                
+                if ($client_id) {
+                    $this->db->join(db_prefix() . $table . ' d', 'd.id = pd.document_id');
+                    $this->db->where('d.clientid', $client_id);
+                }
                 break;
 
             case 'download_all_ubl':
@@ -173,6 +187,10 @@ class Peppol_model extends App_Model
                     $this->db->where_in('d.status', [Invoices_model::STATUS_UNPAID, Invoices_model::STATUS_PAID, Invoices_model::STATUS_OVERDUE]);
                 } else {
                     $this->db->where('d.status >=', 1);
+                }
+                
+                if ($client_id) {
+                    $this->db->where('d.clientid', $client_id);
                 }
                 break;
 
@@ -187,7 +205,7 @@ class Peppol_model extends App_Model
     /**
      * Get document IDs for bulk operations
      */
-    public function get_document_ids_for_action($document_type, $action)
+    public function get_document_ids_for_action($document_type, $action, $client_id = null)
     {
         $table_map = [
             'invoice' => 'invoices',
@@ -211,15 +229,25 @@ class Peppol_model extends App_Model
                     $this->db->where('d.status >=', 1);
                 }
                 
+                if ($client_id) {
+                    $this->db->where('d.clientid', $client_id);
+                }
+                
                 $results = $this->db->get()->result();
                 return array_column($results, 'id');
 
             case 'retry_failed':
                 // Get failed PEPPOL documents
-                $this->db->select('document_id');
-                $this->db->from(db_prefix() . 'peppol_documents');
-                $this->db->where('document_type', $document_type);
-                $this->db->where('status', 'failed');
+                $this->db->select('pd.document_id');
+                $this->db->from(db_prefix() . 'peppol_documents pd');
+                $this->db->where('pd.document_type', $document_type);
+                $this->db->where('pd.status', 'failed');
+                
+                if ($client_id) {
+                    $this->db->join(db_prefix() . $table . ' d', 'd.id = pd.document_id');
+                    $this->db->where('d.clientid', $client_id);
+                }
+                
                 $results = $this->db->get()->result();
                 return array_column($results, 'document_id');
 

@@ -17,9 +17,25 @@ defined('BASEPATH') or exit('No direct script access allowed');
 function peppol_get_registered_providers()
 {
     $providers = [];
-    
+
+    // Register default providers
+    $providers = peppol_register_default_providers($providers);
+
     // Allow other modules to register providers
     $providers = hooks()->apply_filters('peppol_register_providers', $providers);
-    
+
+    return $providers;
+}
+
+/**
+ * Register default PEPPOL providers
+ */
+function peppol_register_default_providers($providers)
+{
+    // Load and register Admico provider
+    require_once FCPATH . 'modules/peppol/libraries/providers/Admico_peppol_provider.php';
+    $admico_provider = new Admico_peppol_provider();
+    $providers[$admico_provider->get_id()] = $admico_provider;
+
     return $providers;
 }

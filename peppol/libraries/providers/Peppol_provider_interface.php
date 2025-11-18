@@ -73,4 +73,11 @@ interface Peppol_provider_interface
      * @return string HTML form fields
      */
     public function render_setting_inputs($inputs = [], $current_values = []);
+
+    /**
+     * Get the provider ID
+     * 
+     * @return string Provider unique identifier
+     */
+    public function get_id();
 }

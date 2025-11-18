@@ -13,18 +13,27 @@ require_once __DIR__ . '/Peppol_provider_interface.php';
 abstract class Abstract_peppol_provider implements Peppol_provider_interface
 {
     protected $CI;
-    protected $provider_id;
 
     public function __construct()
     {
         $this->CI = &get_instance();
-        $this->provider_id = $this->get_provider_info()['id'] ?? 'unknown';
     }
 
     /**
      * Get base provider information (must override in subclasses)
      */
     abstract public function get_provider_info();
+
+    /**
+     * Get the provider ID
+     * 
+     * @return string Provider unique identifier
+     */
+    public function get_id()
+    {
+        $info = $this->get_provider_info();
+        return $info['id'] ?: get_class($this);
+    }
 
     /**
      * Default implementation returns common supported documents
@@ -58,7 +67,7 @@ abstract class Abstract_peppol_provider implements Peppol_provider_interface
             if ($input['type'] === 'hidden') {
                 $settings[$key] = $input['default'] ?? '';
             } else {
-                $option_name = "peppol_{$this->provider_id}_{$key}";
+                $option_name = "peppol_{$this->get_id()}_{$key}";
                 $settings[$key] = get_option($option_name, $input['default'] ?? '');
             }
         }
@@ -80,7 +89,7 @@ abstract class Abstract_peppol_provider implements Peppol_provider_interface
                     continue;
                 }
 
-                $option_name = "peppol_{$this->provider_id}_{$key}";
+                $option_name = "peppol_{$this->get_id()}_{$key}";
                 update_option($option_name, $value);
             }
             return true;
@@ -124,7 +133,7 @@ abstract class Abstract_peppol_provider implements Peppol_provider_interface
 
         foreach ($inputs as $field_name => $config) {
             $value = $current_values[$field_name] ?? $config['default'] ?? '';
-            $field_name_with_prefix = "peppol_{$this->provider_id}_{$field_name}";
+            $field_name_with_prefix = "peppol_{$this->get_id()}_{$field_name}";
             $label = $config['label'] ?? ucfirst($field_name);
             $attributes = $config['attributes'] ?? [];
 

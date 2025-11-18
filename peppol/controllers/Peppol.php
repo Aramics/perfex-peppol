@@ -371,41 +371,6 @@ class Peppol extends AdminController
     // UTILITY METHODS
     // ================================
 
-    /**
-     * Test PEPPOL connection
-     */
-    public function test_connection()
-    {
-        if (!staff_can('view', 'peppol')) {
-            echo json_encode(['success' => false, 'message' => _l('peppol_access_denied')]);
-            return;
-        }
-
-        try {
-            // Basic configuration check
-            $company_identifier = get_option('peppol_company_identifier');
-            $provider = get_option('peppol_active_provider');
-
-            if (empty($company_identifier) || empty($provider)) {
-                echo json_encode([
-                    'success' => false,
-                    'message' => _l('peppol_configuration_incomplete')
-                ]);
-                return;
-            }
-
-            // Mock test for now - in real implementation, test actual connection
-            echo json_encode([
-                'success' => true,
-                'message' => _l('peppol_connection_test_success')
-            ]);
-        } catch (Exception $e) {
-            echo json_encode([
-                'success' => false,
-                'message' => _l('peppol_connection_test_failed') . ': ' . $e->getMessage()
-            ]);
-        }
-    }
 
     // ======================
     // UBL GENERATION METHODS

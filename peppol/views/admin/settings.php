@@ -1,29 +1,15 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
 
-<div class="horizontal-scrollable-tabs">
-    <div class="scroller arrow-left"><i class="fa fa-angle-left"></i></div>
-    <div class="scroller arrow-right"><i class="fa fa-angle-right"></i></div>
-    <div class="horizontal-tabs">
-        <ul class="nav nav-tabs nav-tabs-horizontal" role="tablist">
-            <li role="presentation" class="active">
-                <a href="#peppol_general" aria-controls="peppol_general" role="tab" data-toggle="tab">
-                    <?php echo _l('peppol_general_settings'); ?>
-                </a>
-            </li>
-            <li role="presentation">
-                <a href="#peppol_connection" aria-controls="peppol_connection" role="tab" data-toggle="tab">
-                    <?php echo _l('peppol_connection_settings'); ?>
-                </a>
-            </li>
-            <li role="presentation">
-                <a href="#peppol_automation" aria-controls="peppol_automation" role="tab" data-toggle="tab">
-                    <?php echo _l('peppol_automation_settings'); ?>
-                </a>
-            </li>
-        </ul>
-    </div>
-</div>
+<!-- Nav tabs -->
+<ul class="nav nav-tabs" role="tablist">
+    <li role="presentation" class="active">
+        <a href="#peppol_general" aria-controls="peppol_general" role="tab" data-toggle="tab">
+            <?php echo _l('peppol_general_settings'); ?>
+        </a>
+    </li>
+</ul>
 
+<!-- Tab panes -->
 <div class="tab-content">
     <!-- General Settings Tab -->
     <div role="tabpanel" class="tab-pane active" id="peppol_general">
@@ -37,95 +23,6 @@
             get_option('peppol_company_identifier') ?: '',
         );
         ?>
-
-        <hr />
-
-        <div class="form-group">
-            <?php
-            $providers = [
-                'manual' => _l('peppol_provider_manual'),
-                'peppol_service' => _l('peppol_provider_service'),
-                'custom' => _l('peppol_provider_custom')
-            ];
-            ?>
-            <label for="settings[peppol_active_provider]" class="control-label clearfix">
-                <?php echo _l('peppol_active_provider'); ?>
-            </label>
-            <select class="selectpicker" name="settings[peppol_active_provider]" data-width="100%" required>
-                <?php foreach ($providers as $value => $label) : ?>
-                <option value="<?php echo $value; ?>"
-                    <?php echo get_option('peppol_active_provider') == $value ? 'selected' : ''; ?>>
-                    <?php echo $label; ?>
-                </option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-
-        <div class="form-group">
-            <?php
-            $environments = [
-                'sandbox' => _l('peppol_environment_sandbox'),
-                'production' => _l('peppol_environment_production')
-            ];
-            ?>
-            <label for="settings[peppol_environment]" class="control-label clearfix">
-                <?php echo _l('peppol_environment'); ?>
-            </label>
-            <select class="selectpicker" name="settings[peppol_environment]" data-width="100%" required>
-                <?php foreach ($environments as $value => $label) : ?>
-                <option value="<?php echo $value; ?>"
-                    <?php echo get_option('peppol_environment') == $value ? 'selected' : ''; ?>>
-                    <?php echo $label; ?>
-                </option>
-                <?php endforeach; ?>
-            </select>
-            <hr />
-            <small class="help-block"><?php echo _l('peppol_environment_help'); ?></small>
-        </div>
-    </div>
-
-    <!-- Connection Settings Tab -->
-    <div role="tabpanel" class="tab-pane" id="peppol_connection">
-        <div class="form-group">
-            <label for="settings[peppol_webhook_url]" class="control-label clearfix">
-                <?php echo _l('peppol_webhook_url'); ?>
-            </label>
-            <input type="url" class="form-control" name="settings[peppol_webhook_url]"
-                value="<?php echo get_option('peppol_webhook_url'); ?>">
-            <hr />
-            <small class="help-block"><?php echo _l('peppol_webhook_url_help'); ?></small>
-        </div>
-
-        <div class="form-group">
-            <button type="button" class="btn btn-info" id="test-connection-btn">
-                <i class="fa fa-plug"></i> <?php echo _l('peppol_test_connection'); ?>
-            </button>
-            <hr />
-            <small class="help-block"><?php echo _l('peppol_test_connection_help'); ?></small>
-        </div>
-    </div>
-
-    <!-- Automation Settings Tab -->
-    <div role="tabpanel" class="tab-pane" id="peppol_automation">
-        <div class="form-group">
-            <div class="checkbox checkbox-primary">
-                <input type="checkbox" id="peppol_test_mode" name="settings[peppol_test_mode]" value="1"
-                    <?php echo get_option('peppol_test_mode') == '1' ? 'checked' : ''; ?>>
-                <label for="peppol_test_mode"><?php echo _l('peppol_test_mode'); ?></label>
-            </div>
-            <hr />
-            <small class="help-block"><?php echo _l('peppol_test_mode_help'); ?></small>
-        </div>
-
-        <div class="form-group">
-            <div class="checkbox checkbox-primary">
-                <input type="checkbox" id="peppol_auto_send" name="settings[peppol_auto_send]" value="1"
-                    <?php echo get_option('peppol_auto_send') == '1' ? 'checked' : ''; ?>>
-                <label for="peppol_auto_send"><?php echo _l('peppol_auto_send'); ?></label>
-            </div>
-            <hr />
-            <small class="help-block"><?php echo _l('peppol_auto_send_help'); ?></small>
-        </div>
     </div>
 </div>
 
@@ -243,54 +140,5 @@ document.addEventListener("DOMContentLoaded", function() {
         updatePeppolPreview();
     });
 
-    // Test Connection
-    $('#test-connection-btn').on('click', function() {
-        var btn = $(this);
-        var originalText = btn.html();
-
-        btn.html('<i class="fa fa-spinner fa-spin"></i> <?php echo _l('peppol_testing'); ?>...').prop(
-            'disabled', true);
-
-        $.ajax({
-            url: admin_url + 'peppol/test_connection',
-            type: 'POST',
-            dataType: 'json',
-            data: {
-                [csrfData.token_name]: csrfData.hash
-            },
-            success: function(response) {
-                if (response.success) {
-                    alert_float('success', response.message);
-                } else {
-                    alert_float('danger', response.message);
-                }
-            },
-            error: function(xhr, status, error) {
-                alert_float('danger', 'Connection test failed: ' + error);
-            },
-            complete: function() {
-                btn.html(originalText).prop('disabled', false);
-            }
-        });
-    });
-
-    // Environment change warning
-    $('select[name="settings[peppol_environment]"]').on('change', function() {
-        if ($(this).val() === 'production') {
-            if (!confirm('<?php echo _l('peppol_production_warning'); ?>')) {
-                $(this).val('sandbox');
-                $(this).selectpicker('refresh');
-            }
-        }
-    });
-
-    // Provider change handling
-    $('select[name="settings[peppol_active_provider]"]').on('change', function() {
-        var provider = $(this).val();
-
-        if (provider === 'manual') {
-            alert_float('info', '<?php echo _l('peppol_manual_mode_notice'); ?>');
-        }
-    });
 });
 </script>

@@ -13,9 +13,8 @@ if (!function_exists('is_peppol_configured')) {
     function is_peppol_configured()
     {
         $company_identifier = get_option('peppol_company_identifier');
-        $active_provider = get_option('peppol_active_provider');
 
-        return !empty($company_identifier) && !empty($active_provider);
+        return !empty($company_identifier);
     }
 }
 

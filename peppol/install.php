@@ -51,13 +51,8 @@ if (!$CI->db->table_exists(db_prefix() . 'peppol_logs')) {
 peppol_create_custom_fields();
 
 // Add default options
-add_option('peppol_active_provider', 'manual');
-add_option('peppol_environment', 'sandbox');
 add_option('peppol_company_identifier', '');
 add_option('peppol_company_scheme', '0208');
-add_option('peppol_test_mode', '1');
-add_option('peppol_auto_send', '0');
-add_option('peppol_webhook_url', '');
 
 /**
  * Create PEPPOL custom fields for clients

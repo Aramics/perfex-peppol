@@ -28,12 +28,38 @@
         // Load the PEPPOL input helper
         require_once(__DIR__ . '/../../helpers/peppol_input_helper.php');
 
-        // Use the reusable component for settings
-        echo render_peppol_settings_input(
-            get_option('peppol_company_scheme') ?: '0208',
-            get_option('peppol_company_identifier') ?: '',
-        );
+        // Get current values
+        $scheme_value = get_option('peppol_company_scheme') ?: '0208';
+        $identifier_value = get_option('peppol_company_identifier') ?: '';
+        $country_value = get_option('peppol_company_country_code') ?: 'BE';
         ?>
+
+        <!-- PEPPOL Company Identifier -->
+        <?php echo render_peppol_scheme_identifier_input([
+            'scheme_name' => 'settings[peppol_company_scheme]',
+            'identifier_name' => 'settings[peppol_company_identifier]',
+            'scheme_value' => $scheme_value,
+            'identifier_value' => $identifier_value,
+            'label' => 'Company PEPPOL Identifier',
+            'help_text' => 'Enter your company\'s PEPPOL participant identifier. Start typing in the scheme field to see suggestions. Format: scheme:identifier (e.g., 0208:0123456789)',
+            'required' => false,
+            'enable_autocomplete' => true,
+            'container_id' => 'peppol_company_identifier'
+        ]); ?>
+
+        <!-- Company Country -->
+        <div class="form-group">
+            <label for="peppol-company-country-code"><?php echo _l('country'); ?></label>
+            <select name="settings[peppol_company_country_code]" class="form-control" id="peppol-company-country-code">
+                <?php foreach (get_all_countries() as $country) { ?>
+                    <option value="<?php echo $country['iso2']; ?>" <?php if ($country_value == $country['iso2']) echo 'selected'; ?>>
+                        <?php echo $country['short_name']; ?>
+                    </option>
+                <?php } ?>
+            </select>
+            <small class="help-block text-muted">Select the country for your company. This will be used in UBL documents
+                and PEPPOL transmission.</small>
+        </div>
     </div>
 
     <!-- Providers Tab -->
@@ -68,7 +94,7 @@
 
                 <!-- Active Provider Selection -->
                 <div class="form-group">
-                    <?php echo render_select('peppol_active_provider', $providers, ['id', 'name'], _l('peppol_active_provider'), $active_provider, ['onchange' => 'peppolProviderChanged()']); ?>
+                    <?php echo render_select('settings[peppol_active_provider]', $providers, ['id', 'name'], _l('peppol_active_provider'), $active_provider, ['onchange' => 'peppolProviderChanged()']); ?>
                     <small class="help-block"><?php echo _l('peppol_active_provider_help'); ?></small>
                 </div>
 
@@ -111,7 +137,7 @@
 
 <script>
     function peppolProviderChanged() {
-        var activeProvider = $('select[name="peppol_active_provider"]').val();
+        var activeProvider = $('select[name="settings[peppol_active_provider]"]').val();
 
         // Hide all provider configs
         $('.provider-config').hide();

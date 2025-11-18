@@ -437,13 +437,24 @@ class Peppol extends AdminController
             throw new Exception(ucfirst($document_type) . ' not found');
         }
 
-        // Always generate fresh UBL content (don't store in DB)
+        // Load client data
+        $client = $this->peppol_service->get_client($document->clientid);
+
+        // Prepare sender info using service
+        $sender_info = $this->peppol_service->prepare_sender_info();
+
+        // Prepare receiver info using service
+        $receiver_info = $this->peppol_service->prepare_receiver_info($client);
+
+        // Generate UBL content with complete data
         if ($document_type === 'invoice') {
-            return $this->peppol_service->generate_invoice_ubl($document);
+            return $this->peppol_service->generate_invoice_ubl($document, $client, $sender_info, $receiver_info);
         } else {
-            return $this->peppol_service->generate_credit_note_ubl($document);
+            return $this->peppol_service->generate_credit_note_ubl($document, $client, $sender_info, $receiver_info);
         }
     }
+
+
 
     // ================================
     // PROVIDER MANAGEMENT METHODS

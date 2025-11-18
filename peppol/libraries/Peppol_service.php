@@ -10,7 +10,7 @@ class Peppol_service
     {
         $this->CI = &get_instance();
         $this->CI->load->model('peppol/peppol_model');
-        
+
         // Load the advanced UBL generator if available
         $this->CI->load->library('peppol/peppol_ubl_generator');
     }
@@ -21,72 +21,19 @@ class Peppol_service
     public function send_invoice($invoice_id)
     {
         try {
-            // Load invoice
-            $this->CI->load->model('invoices_model');
-            $invoice = $this->CI->invoices_model->get($invoice_id);
-
-            if (!$invoice) {
-                return [
-                    'success' => false,
-                    'message' => _l('peppol_invoice_not_found')
-                ];
+            // Prepare and validate data
+            $data = $this->_prepare_document_data('invoice', $invoice_id);
+            if (!$data['success']) {
+                return $data;
             }
 
-            // Check if client has PEPPOL identifier
-            $this->CI->load->model('clients_model');
-            $client = $this->CI->clients_model->get($invoice->clientid);
-            
-            if (!$client) {
-                return [
-                    'success' => false,
-                    'message' => sprintf(_l('peppol_client_no_identifier'), $invoice->clientid)
-                ];
-            }
+            // Generate UBL content with complete data
+            $ubl_content = $this->generate_invoice_ubl($data['document'], $data['client'], $data['sender_info'], $data['receiver_info']);
 
-            // Check PEPPOL identifier from custom field
-            $customer_identifier = $this->_get_client_custom_field($client->userid, 'customers_peppol_identifier');
-            if (empty($customer_identifier)) {
-                return [
-                    'success' => false,
-                    'message' => sprintf(_l('peppol_client_no_identifier'), $invoice->clientid)
-                ];
-            }
+            // Send via provider
+            $result = $data['provider']->send('invoice', $ubl_content, $data['document_data'], $data['sender_info'], $data['receiver_info']);
 
-            // Check if already sent
-            $existing = $this->CI->peppol_model->get_peppol_document('invoice', $invoice_id);
-            if ($existing) {
-                return [
-                    'success' => false,
-                    'message' => _l('peppol_invoice_already_processed')
-                ];
-            }
-
-            // Create PEPPOL invoice record
-            $peppol_data = [
-                'document_type' => 'invoice',
-                'document_id' => $invoice_id,
-                'status' => 'sent',
-                'sent_at' => date('Y-m-d H:i:s'),
-                'created_at' => date('Y-m-d H:i:s')
-            ];
-
-            $peppol_id = $this->CI->peppol_model->create_peppol_document($peppol_data);
-
-            // Log activity
-            $this->CI->peppol_model->log_activity([
-                'type' => 'invoice_sent',
-                'document_type' => 'invoice',
-                'document_id' => $invoice_id,
-                'message' => _l('peppol_invoice_sent_activity'),
-                'staff_id' => get_staff_user_id()
-            ]);
-
-            return [
-                'success' => true,
-                'message' => _l('peppol_invoice_sent_successfully'),
-                'peppol_id' => $peppol_id
-            ];
-
+            return $this->_handle_send_result('invoice', $invoice_id, $result, $data['provider']);
         } catch (Exception $e) {
             return [
                 'success' => false,
@@ -101,79 +48,23 @@ class Peppol_service
     public function send_credit_note($credit_note_id)
     {
         try {
-            // Load credit note
-            $this->CI->load->model('credit_notes_model');
-            $credit_note = $this->CI->credit_notes_model->get($credit_note_id);
-
-            if (!$credit_note) {
-                return [
-                    'success' => false,
-                    'message' => _l('peppol_credit_note_not_found')
-                ];
+            // Prepare and validate data
+            $data = $this->_prepare_document_data('credit_note', $credit_note_id);
+            if (!$data['success']) {
+                return $data;
             }
 
-            // Check if client has PEPPOL identifier
-            $this->CI->load->model('clients_model');
-            $client = $this->CI->clients_model->get($credit_note->clientid);
-            
-            if (!$client) {
-                return [
-                    'success' => false,
-                    'message' => sprintf(_l('peppol_client_no_identifier'), $credit_note->clientid)
-                ];
-            }
+            // Generate UBL content with complete data
+            $ubl_content = $this->generate_credit_note_ubl($data['document'], $data['client'], $data['sender_info'], $data['receiver_info']);
 
-            // Check PEPPOL identifier from custom field
-            $customer_identifier = $this->_get_client_custom_field($client->userid, 'customers_peppol_identifier');
-            if (empty($customer_identifier)) {
-                return [
-                    'success' => false,
-                    'message' => sprintf(_l('peppol_client_no_identifier'), $credit_note->clientid)
-                ];
-            }
+            // Send via provider
+            $result = $data['provider']->send('credit_note', $ubl_content, $data['document_data'], $data['sender_info'], $data['receiver_info']);
 
-            // Check if already sent
-            $existing = $this->CI->peppol_model->get_peppol_document('credit_note', $credit_note_id);
-            if ($existing) {
-                return [
-                    'success' => false,
-                    'message' => _l('peppol_credit_note_already_processed')
-                ];
-            }
-
-            // Create PEPPOL credit note record
-            $peppol_data = [
-                'document_type' => 'credit_note',
-                'document_id' => $credit_note_id,
-                'status' => 'sent',
-                'sent_at' => date('Y-m-d H:i:s'),
-                'created_at' => date('Y-m-d H:i:s')
-            ];
-
-            $peppol_id = $this->CI->peppol_model->create_peppol_document($peppol_data);
-
-            // Update status display field
-            $this->update_credit_note_status_display($credit_note_id, 'Sent');
-
-            // Log activity
-            $this->CI->peppol_model->log_activity([
-                'type' => 'credit_note_sent',
-                'document_type' => 'credit_note',
-                'document_id' => $credit_note_id,
-                'message' => _l('peppol_credit_note_sent_activity'),
-                'staff_id' => get_staff_user_id()
-            ]);
-
-            return [
-                'success' => true,
-                'message' => _l('peppol_credit_note_sent_successfully'),
-                'peppol_id' => $peppol_id
-            ];
-
+            return $this->_handle_send_result('credit_note', $credit_note_id, $result, $data['provider']);
         } catch (Exception $e) {
-            // Update status display field to Failed
+            // Update credit note status display to Failed on exception
             $this->update_credit_note_status_display($credit_note_id, 'Failed');
-            
+
             return [
                 'success' => false,
                 'message' => $e->getMessage()
@@ -184,19 +75,9 @@ class Peppol_service
     /**
      * Generate UBL for invoice
      */
-    public function generate_invoice_ubl($invoice)
+    public function generate_invoice_ubl($invoice, $client, $sender_info, $receiver_info)
     {
         try {
-            // Load required models
-            $this->CI->load->model('invoices_model');
-            $this->CI->load->model('clients_model');
-
-            // Get client data
-            $client = $this->CI->clients_model->get($invoice->clientid);
-            if (!$client) {
-                throw new Exception('Client not found for invoice');
-            }
-
             // Get invoice items
             $invoice_items = get_items_by_type('invoice', $invoice->id);
             if (empty($invoice_items)) {
@@ -208,9 +89,8 @@ class Peppol_service
                 throw new Exception('UBL generation library is not available. Please ensure the Einvoicing library is properly installed.');
             }
 
-            // Generate UBL using library
-            return $this->CI->peppol_ubl_generator->generate_invoice_ubl($invoice, $client, $invoice_items);
-
+            // Generate UBL using library with complete data
+            return $this->CI->peppol_ubl_generator->generate_invoice_ubl($invoice, $client, $invoice_items, $sender_info, $receiver_info);
         } catch (Exception $e) {
             throw new Exception('Error generating invoice UBL: ' . $e->getMessage());
         }
@@ -219,19 +99,9 @@ class Peppol_service
     /**
      * Generate UBL for credit note
      */
-    public function generate_credit_note_ubl($credit_note)
+    public function generate_credit_note_ubl($credit_note, $client, $sender_info, $receiver_info)
     {
         try {
-            // Load required models
-            $this->CI->load->model('credit_notes_model');
-            $this->CI->load->model('clients_model');
-
-            // Get client data
-            $client = $this->CI->clients_model->get($credit_note->clientid);
-            if (!$client) {
-                throw new Exception('Client not found for credit note');
-            }
-
             // Get credit note items
             $credit_note_items = get_items_by_type('credit_note', $credit_note->id);
             if (empty($credit_note_items)) {
@@ -243,9 +113,8 @@ class Peppol_service
                 throw new Exception('UBL generation library is not available. Please ensure the Einvoicing library is properly installed.');
             }
 
-            // Generate UBL using library
-            return $this->CI->peppol_ubl_generator->generate_credit_note_ubl($credit_note, $client, $credit_note_items);
-
+            // Generate UBL using library with complete data
+            return $this->CI->peppol_ubl_generator->generate_credit_note_ubl($credit_note, $client, $credit_note_items, $sender_info, $receiver_info);
         } catch (Exception $e) {
             throw new Exception('Error generating credit note UBL: ' . $e->getMessage());
         }
@@ -254,22 +123,22 @@ class Peppol_service
     /**
      * Get client custom field value
      */
-    private function _get_client_custom_field($client_id, $field_slug)
+    public function get_client_custom_field($client_id, $field_slug)
     {
         // Get custom field ID for the given field slug
         $this->CI->db->where('fieldto', 'customers');
         $this->CI->db->where('slug', $field_slug);
         $custom_field = $this->CI->db->get(db_prefix() . 'customfields')->row();
-        
+
         if (!$custom_field) {
             return '';
         }
-        
+
         // Get custom field value
         $this->CI->db->where('relid', $client_id);
         $this->CI->db->where('fieldid', $custom_field->id);
         $field_value = $this->CI->db->get(db_prefix() . 'customfieldsvalues')->row();
-        
+
         return $field_value ? $field_value->value : '';
     }
 
@@ -282,16 +151,16 @@ class Peppol_service
         $this->CI->db->where('fieldto', 'credit_notes');
         $this->CI->db->where('slug', 'credit_notes_peppol_status');
         $custom_field = $this->CI->db->get(db_prefix() . 'customfields')->row();
-        
+
         if (!$custom_field) {
             return false;
         }
-        
+
         // Check if value already exists
         $this->CI->db->where('relid', $credit_note_id);
         $this->CI->db->where('fieldid', $custom_field->id);
         $existing_value = $this->CI->db->get(db_prefix() . 'customfieldsvalues')->row();
-        
+
         if ($existing_value) {
             // Update existing value
             $this->CI->db->where('id', $existing_value->id);
@@ -304,8 +173,214 @@ class Peppol_service
                 'value' => $status
             ]);
         }
-        
+
         return true;
     }
 
+    /**
+     * Prepare common document data for sending
+     * 
+     * @param string $document_type 'invoice' or 'credit_note'
+     * @param int $document_id Document ID
+     * @return array Array with success status and prepared data
+     */
+    private function _prepare_document_data($document_type, $document_id)
+    {
+        // Get active provider
+        $provider = peppol_get_active_provider();
+        if (!$provider) {
+            return [
+                'success' => false,
+                'message' => _l('peppol_no_active_provider')
+            ];
+        }
+
+        // Load document
+        $document = $this->_load_document($document_type, $document_id);
+        if (!$document['success']) {
+            return $document;
+        }
+
+        // Get and validate client data
+        try {
+            $client = $this->get_client($document['document']->clientid);
+        } catch (\Throwable $th) {
+            return [
+                'success' => false,
+                'message' => $th->getMessage()
+            ];
+        }
+
+        // Check if already sent
+        $existing = $this->CI->peppol_model->get_peppol_document($document_type, $document_id);
+        if ($existing) {
+            $lang_key = $document_type === 'invoice' ? 'peppol_invoice_already_processed' : 'peppol_credit_note_already_processed';
+            return [
+                'success' => false,
+                'message' => _l($lang_key)
+            ];
+        }
+
+        return [
+            'success' => true,
+            'provider' => $provider,
+            'document' => $document['document'],
+            'client' => $client,
+            'document_data' => $this->_prepare_document_metadata($document['document']),
+            'sender_info' => $this->prepare_sender_info(),
+            'receiver_info' => $this->prepare_receiver_info($client)
+        ];
+    }
+
+    /**
+     * Load document by type and ID
+     */
+    private function _load_document($document_type, $document_id)
+    {
+        if ($document_type === 'invoice') {
+            $this->CI->load->model('invoices_model');
+            $document = $this->CI->invoices_model->get($document_id);
+            $not_found_message = _l('peppol_invoice_not_found');
+        } else {
+            $this->CI->load->model('credit_notes_model');
+            $document = $this->CI->credit_notes_model->get($document_id);
+            $not_found_message = _l('peppol_credit_note_not_found');
+        }
+
+        if (!$document) {
+            return [
+                'success' => false,
+                'message' => $not_found_message
+            ];
+        }
+
+        return [
+            'success' => true,
+            'document' => $document
+        ];
+    }
+
+    /**
+     * Prepare document metadata
+     */
+    private function _prepare_document_metadata($document)
+    {
+        return [
+            'id' => $document->id,
+            'number' => $document->number,
+            'date' => $document->date,
+            'total' => $document->total
+        ];
+    }
+
+    /**
+     * Prepare sender info (company) with complete UBL data
+     */
+    public function prepare_sender_info()
+    {
+        return [
+            'identifier' => get_option('peppol_company_identifier'),
+            'scheme' => get_option('peppol_company_scheme') ?: '0208',
+            'name' => get_option('companyname'),
+            'address' => get_option('company_address'),
+            'city' => get_option('company_city'),
+            'postal_code' => get_option('company_zip'),
+            'country_code' => get_option('peppol_company_country_code') ?: get_option('invoice_company_country_code') ?: 'BE',
+            'vat_number' => get_option('company_vat'),
+            'phone' => get_option('company_phonenumber'),
+            'email' => get_option('company_email')
+        ];
+    }
+
+    /**
+     * Prepare receiver info (client) with complete UBL data
+     */
+    public function prepare_receiver_info($client)
+    {
+        // Get PEPPOL identifier and scheme from client custom fields
+        $identifier = $this->get_client_custom_field($client->userid, 'customers_peppol_identifier') ?: 'NO_PEPPOL_ID';
+        $scheme = $this->get_client_custom_field($client->userid, 'customers_peppol_scheme') ?: '0208';
+
+        // Client name (company or individual)
+        $client_name = $client->company ?: ($client->firstname . ' ' . $client->lastname);
+
+        return [
+            'identifier' => $identifier,
+            'scheme' => $scheme,
+            'name' => $client_name,
+            'address' => $client->address,
+            'city' => $client->city,
+            'postal_code' => $client->zip,
+            'country_code' => get_country($client->country)->iso2 ?? 'BE',
+            'vat_number' => $client->vat,
+            'phone' => $client->phonenumber ?: ($client->contacts[0]['phonenumber'] ?? ''),
+            'email' => $client->contacts[0]['email'] ?? '',
+            'contact_name' => trim(($client->contacts[0]['firstname'] ??  '') . ' ' . ($client->contacts[0]['lastname'] ??  ''))
+        ];
+    }
+
+    public function get_client($client_id)
+    {
+
+        $this->CI->load->model('clients_model');
+        $client = $this->CI->clients_model->get($client_id);
+        $client->contacts = $this->CI->clients_model->get_contacts($client_id, ['active' => 1, 'is_primary' => 1]);
+
+        if (!$client) {
+            throw new \Exception(sprintf(_l('peppol_client_not_found'), $client_id), 1);
+        }
+
+        return $client;
+    }
+
+    /**
+     * Handle send result and create records
+     */
+    private function _handle_send_result($document_type, $document_id, $result, $provider)
+    {
+        if ($result['success']) {
+            // Create PEPPOL document record
+            $peppol_data = [
+                'document_type' => $document_type,
+                'document_id' => $document_id,
+                'status' => 'sent',
+                'provider_id' => $provider->get_id(),
+                'provider_document_id' => $result['document_id'] ?? null,
+                'sent_at' => date('Y-m-d H:i:s'),
+                'created_at' => date('Y-m-d H:i:s')
+            ];
+
+            $peppol_id = $this->CI->peppol_model->create_peppol_document($peppol_data);
+
+            // Update credit note status display if needed
+            if ($document_type === 'credit_note') {
+                $this->update_credit_note_status_display($document_id, 'Sent');
+            }
+
+            // Log activity
+            $this->CI->peppol_model->log_activity([
+                'type' => $document_type . '_sent',
+                'document_type' => $document_type,
+                'document_id' => $document_id,
+                'message' => $result['message'],
+                'staff_id' => get_staff_user_id()
+            ]);
+
+            return [
+                'success' => true,
+                'message' => $result['message'],
+                'peppol_id' => $peppol_id
+            ];
+        } else {
+            // Update credit note status display to Failed if needed
+            if ($document_type === 'credit_note') {
+                $this->update_credit_note_status_display($document_id, 'Failed');
+            }
+
+            return [
+                'success' => false,
+                'message' => $result['message']
+            ];
+        }
+    }
 }

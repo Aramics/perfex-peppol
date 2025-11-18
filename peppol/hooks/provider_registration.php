@@ -39,3 +39,21 @@ function peppol_register_default_providers($providers)
 
     return $providers;
 }
+
+/**
+ * Get the currently active PEPPOL provider instance
+ * 
+ * @return Peppol_provider_interface|null Active provider instance or null if none configured
+ */
+function peppol_get_active_provider()
+{
+    $active_provider_id = get_option('peppol_active_provider', '');
+
+    if (empty($active_provider_id)) {
+        return null;
+    }
+
+    $providers = peppol_get_registered_providers();
+
+    return isset($providers[$active_provider_id]) ? $providers[$active_provider_id] : null;
+}

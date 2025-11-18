@@ -15,17 +15,10 @@ use Einvoicing\Writers\UblWriter;
 
 class Peppol_ubl_generator
 {
-    private $CI;
-
-    public function __construct()
-    {
-        $this->CI = &get_instance();
-    }
-
     /**
      * Generate UBL Invoice XML using Josemmo/Einvoicing library
      */
-    public function generate_invoice_ubl($invoice, $client, $invoice_items)
+    public function generate_invoice_ubl($invoice, $client, $invoice_items, $sender_info, $receiver_info)
     {
         try {
             // Check if library is available
@@ -52,12 +45,12 @@ class Peppol_ubl_generator
                 $ublInvoice->addNote($invoice->terms);
             }
 
-            // Create and set supplier (seller) party
-            $seller = $this->_create_supplier_party();
+            // Create and set supplier (seller) party from enriched data
+            $seller = $this->_create_party_from_data($sender_info);
             $ublInvoice->setSeller($seller);
 
-            // Create and set customer (buyer) party
-            $buyer = $this->_create_customer_party($client);
+            // Create and set customer (buyer) party from enriched data
+            $buyer = $this->_create_party_from_data($receiver_info);
             $ublInvoice->setBuyer($buyer);
 
             // Add invoice lines
@@ -82,7 +75,7 @@ class Peppol_ubl_generator
     /**
      * Generate UBL Credit Note XML using Josemmo/Einvoicing library
      */
-    public function generate_credit_note_ubl($credit_note, $client, $credit_note_items)
+    public function generate_credit_note_ubl($credit_note, $client, $credit_note_items, $sender_info, $receiver_info)
     {
         try {
             // Check if library is available
@@ -111,12 +104,12 @@ class Peppol_ubl_generator
                 $ublCreditNote->addNote($credit_note->terms);
             }
 
-            // Create and set supplier (seller) party
-            $seller = $this->_create_supplier_party();
+            // Create and set supplier (seller) party from enriched data
+            $seller = $this->_create_party_from_data($sender_info);
             $ublCreditNote->setSeller($seller);
 
-            // Create and set customer (buyer) party
-            $buyer = $this->_create_customer_party($client);
+            // Create and set customer (buyer) party from enriched data
+            $buyer = $this->_create_party_from_data($receiver_info);
             $ublCreditNote->setBuyer($buyer);
 
             // Add credit note lines
@@ -139,145 +132,68 @@ class Peppol_ubl_generator
     }
 
     /**
-     * Create supplier party from company settings
+     * Create party from enriched data provided by service
+     * 
+     * @param array $party_info Complete party information from service
+     * @return Party Configured party object for UBL generation
      */
-    private function _create_supplier_party()
+    private function _create_party_from_data($party_info)
     {
-        $seller = new Party();
+        $party = new Party();
 
-        // Basic company information
-        $company_name = get_option('company_name');
-        $company_address = get_option('company_address');
-        $company_city = get_option('company_city');
-        $company_zip = get_option('company_zip');
-        $company_country = get_option('company_country');
-        $company_vat = get_option('company_vat');
+        // Set party name
+        if (!empty($party_info['name'])) {
+            $party->setName($party_info['name']);
+        }
 
-        // PEPPOL identifiers
-        $supplier_identifier = get_option('peppol_company_identifier');
-        $supplier_scheme = get_option('peppol_company_scheme') ?: '0208';
+        if (!empty($party_info['contact_name'])) {
+            $party->setContactPhone($party_info['contact_name']);
+        }
 
-        $seller->setName($company_name);
+        if (!empty($party_info['phone'])) {
+            $party->setContactPhone($party_info['phone']);
+        }
+
+        if (!empty($party_info['email'])) {
+            $party->setContactEmail($party_info['email']);
+        }
 
         // Set electronic address (PEPPOL identifier)
-        if ($supplier_identifier) {
-            $electronicAddress = new Identifier($supplier_identifier, $supplier_scheme);
-            $seller->setElectronicAddress($electronicAddress);
+        if (!empty($party_info['identifier']) && !empty($party_info['scheme'])) {
+            $electronicAddress = new Identifier($party_info['identifier'], $party_info['scheme']);
+            $party->setElectronicAddress($electronicAddress);
         }
 
         // Set postal address
-        if ($company_address || $company_city || $company_zip || $company_country) {
+        $hasAddress = !empty($party_info['address']) || !empty($party_info['city']) ||
+            !empty($party_info['postal_code']) || !empty($party_info['country_code']);
+
+        if ($hasAddress) {
             // Set address lines (up to 3 lines)
             $addressLines = [];
-            if ($company_address) {
-                $addressLines[] = $company_address;
+            if (!empty($party_info['address'])) {
+                $addressLines[] = $party_info['address'];
             }
-            $seller->setAddress($addressLines);
+            $party->setAddress($addressLines);
 
             // Set other address components separately
-            if ($company_city) {
-                $seller->setCity($company_city);
+            if (!empty($party_info['city'])) {
+                $party->setCity($party_info['city']);
             }
-            if ($company_zip) {
-                $seller->setPostalCode($company_zip);
+            if (!empty($party_info['postal_code'])) {
+                $party->setPostalCode($party_info['postal_code']);
             }
-            if ($company_country) {
-                $seller->setCountry($this->_get_country_code($company_country));
+            if (!empty($party_info['country_code'])) {
+                $party->setCountry($party_info['country_code']);
             }
         }
 
         // Set VAT identifier
-        if ($company_vat) {
-            $seller->setVatNumber($company_vat);
+        if (!empty($party_info['vat_number'])) {
+            $party->setVatNumber($party_info['vat_number']);
         }
 
-        return $seller;
-    }
-
-    /**
-     * Create customer party from client data
-     */
-    private function _create_customer_party($client)
-    {
-        $buyer = new Party();
-
-        // Get PEPPOL identifiers from custom fields
-        $customer_identifier = $this->_get_client_custom_field($client->userid, 'customers_peppol_identifier');
-        $customer_scheme = $this->_get_client_custom_field($client->userid, 'customers_peppol_scheme') ?: '0208';
-
-        // Client name (company or individual)
-        $client_name = $client->company ?: ($client->firstname . ' ' . $client->lastname);
-        $buyer->setName($client_name);
-
-        // Set electronic address (PEPPOL identifier)
-        if ($customer_identifier) {
-            $electronicAddress = new Identifier($customer_identifier, $customer_scheme);
-            $buyer->setElectronicAddress($electronicAddress);
-        }
-
-        // Set postal address
-        if ($client->address || $client->city || $client->zip || $client->country) {
-            // Set address lines (up to 3 lines)
-            $addressLines = [];
-            if ($client->address) {
-                $addressLines[] = $client->address;
-            }
-            $buyer->setAddress($addressLines);
-
-            // Set other address components separately
-            if ($client->city) {
-                $buyer->setCity($client->city);
-            }
-            if ($client->zip) {
-                $buyer->setPostalCode($client->zip);
-            }
-            if ($client->country) {
-                $buyer->setCountry($this->_get_country_code($client->country));
-            }
-        }
-
-        // Set VAT identifier
-        if ($client->vat) {
-            $buyer->setVatNumber($client->vat);
-        }
-
-        return $buyer;
-    }
-
-    /**
-     * Get ISO2 country code from country ID
-     */
-    private function _get_country_code($country_id)
-    {
-        if (!$country_id) {
-            return 'BE'; // Default to Belgium
-        }
-
-        $country = get_country($country_id);
-
-        return $country ? $country->iso2 : 'BE';
-    }
-
-    /**
-     * Get client custom field value
-     */
-    private function _get_client_custom_field($client_id, $field_slug)
-    {
-        // Get custom field ID for the given field slug
-        $this->CI->db->where('fieldto', 'customers');
-        $this->CI->db->where('slug', $field_slug);
-        $custom_field = $this->CI->db->get(db_prefix() . 'customfields')->row();
-
-        if (!$custom_field) {
-            return '';
-        }
-
-        // Get custom field value for the client
-        $this->CI->db->where('relid', $client_id);
-        $this->CI->db->where('fieldid', $custom_field->id);
-        $value_row = $this->CI->db->get(db_prefix() . 'customfieldsvalues')->row();
-
-        return $value_row ? $value_row->value : '';
+        return $party;
     }
 
     /**

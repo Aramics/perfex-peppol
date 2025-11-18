@@ -201,28 +201,6 @@ function render_peppol_scheme_identifier_input($config = [])
     return $html;
 }
 
-/**
- * Render PEPPOL scheme:identifier input for settings page
- * 
- * @param string $scheme_value Current scheme value
- * @param string $identifier_value Current identifier value
- * @param bool $required Whether fields are required
- * @return string HTML output
- */
-function render_peppol_settings_input($scheme_value = '0208', $identifier_value = '', $required = false)
-{
-    return render_peppol_scheme_identifier_input([
-        'scheme_name' => 'settings[peppol_company_scheme]',
-        'identifier_name' => 'settings[peppol_company_identifier]',
-        'scheme_value' => $scheme_value,
-        'identifier_value' => $identifier_value,
-        'label' => 'Company PEPPOL Identifier',
-        'help_text' => 'Enter your company\'s PEPPOL participant identifier. Start typing in the scheme field to see suggestions. Format: scheme:identifier (e.g., 0208:0123456789)',
-        'required' => $required,
-        'enable_autocomplete' => true,
-        'container_id' => 'peppol_company_identifier'
-    ]);
-}
 
 /**
  * JavaScript function to replace existing custom fields with PEPPOL component

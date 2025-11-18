@@ -65,27 +65,7 @@ $cfg = $config[$document_type];
         <!-- Send Again (for failed documents) -->
         <li>
             <a href="#" onclick="<?php echo $cfg['js_function']; ?>(<?php echo $document->id; ?>); return false;">
-                <i class="fa fa-refresh text-warning"></i>
                 <?php echo _l('peppol_resend'); ?>
-            </a>
-        </li>
-        <?php endif; ?>
-
-        <?php if (staff_can('view', 'peppol')) : ?>
-        <li class="divider"></li>
-        <!-- Generate and View UBL -->
-        <li>
-            <a href="<?php echo admin_url($cfg['generate_view_ubl_url']); ?>" target="_blank">
-                <i class="fa fa-eye text-info"></i>
-                <?php echo _l('peppol_generate_view_ubl'); ?>
-            </a>
-        </li>
-
-        <!-- Generate and Download UBL -->
-        <li>
-            <a href="<?php echo admin_url($cfg['generate_download_ubl_url']); ?>">
-                <i class="fa fa-download text-success"></i>
-                <?php echo _l('peppol_generate_download_ubl'); ?>
             </a>
         </li>
         <?php endif; ?>
@@ -95,35 +75,32 @@ $cfg = $config[$document_type];
         <!-- Send via PEPPOL -->
         <li>
             <a href="#" onclick="<?php echo $cfg['js_function']; ?>(<?php echo $document->id; ?>); return false;">
-                <i class="fa fa-paper-plane text-primary"></i>
                 <?php echo _l($cfg['send_lang']); ?>
             </a>
         </li>
-        <li class="divider"></li>
         <?php endif; ?>
-        
-        <!-- Generate and Download UBL (available for all documents) -->
+        <?php endif; ?>
+
+        <!-- Generate UBL (available for all documents) -->
         <?php if (staff_can('view', 'peppol')) : ?>
+        <li class="divider"></li>
         <li>
             <a href="<?php echo admin_url($cfg['generate_view_ubl_url']); ?>" target="_blank">
-                <i class="fa fa-eye text-info"></i>
                 <?php echo _l('peppol_generate_view_ubl'); ?>
             </a>
         </li>
         <li>
             <a href="<?php echo admin_url($cfg['generate_download_ubl_url']); ?>">
-                <i class="fa fa-download text-success"></i>
                 <?php echo _l('peppol_generate_download_ubl'); ?>
             </a>
         </li>
         <?php else : ?>
+        <li class="divider"></li>
         <li>
             <a href="#" class="text-muted">
-                <i class="fa fa-info-circle"></i>
                 <?php echo _l('peppol_not_available'); ?>
             </a>
         </li>
-        <?php endif; ?>
         <?php endif; ?>
     </ul>
 </div>

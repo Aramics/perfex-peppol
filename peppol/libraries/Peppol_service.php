@@ -150,6 +150,9 @@ class Peppol_service
 
             $peppol_id = $this->CI->peppol_model->create_peppol_credit_note($peppol_data);
 
+            // Update status display field
+            $this->update_credit_note_status_display($credit_note_id, 'Sent');
+
             // Log activity
             $this->CI->peppol_model->log_activity([
                 'type' => 'credit_note_sent',
@@ -166,6 +169,9 @@ class Peppol_service
             ];
 
         } catch (Exception $e) {
+            // Update status display field to Failed
+            $this->update_credit_note_status_display($credit_note_id, 'Failed');
+            
             return [
                 'success' => false,
                 'message' => $e->getMessage()
@@ -263,6 +269,41 @@ class Peppol_service
         $field_value = $this->CI->db->get(db_prefix() . 'customfieldsvalues')->row();
         
         return $field_value ? $field_value->value : '';
+    }
+
+    /**
+     * Update credit note PEPPOL status custom field (for display only)
+     */
+    public function update_credit_note_status_display($credit_note_id, $status)
+    {
+        // Get the custom field ID
+        $this->CI->db->where('fieldto', 'credit_notes');
+        $this->CI->db->where('slug', 'credit_notes_peppol_status');
+        $custom_field = $this->CI->db->get(db_prefix() . 'customfields')->row();
+        
+        if (!$custom_field) {
+            return false;
+        }
+        
+        // Check if value already exists
+        $this->CI->db->where('relid', $credit_note_id);
+        $this->CI->db->where('fieldid', $custom_field->id);
+        $existing_value = $this->CI->db->get(db_prefix() . 'customfieldsvalues')->row();
+        
+        if ($existing_value) {
+            // Update existing value
+            $this->CI->db->where('id', $existing_value->id);
+            $this->CI->db->update(db_prefix() . 'customfieldsvalues', ['value' => $status]);
+        } else {
+            // Insert new value
+            $this->CI->db->insert(db_prefix() . 'customfieldsvalues', [
+                'relid' => $credit_note_id,
+                'fieldid' => $custom_field->id,
+                'value' => $status
+            ]);
+        }
+        
+        return true;
     }
 
 }

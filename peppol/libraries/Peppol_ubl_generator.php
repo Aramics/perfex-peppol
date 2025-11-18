@@ -10,6 +10,7 @@ if (file_exists(FCPATH . 'modules/peppol/vendor/autoload.php')) {
 use Einvoicing\Invoice;
 use Einvoicing\Party;
 use Einvoicing\InvoiceLine;
+use Einvoicing\Identifier;
 use Einvoicing\Writers\UblWriter;
 
 class Peppol_ubl_generator
@@ -160,7 +161,8 @@ class Peppol_ubl_generator
 
         // Set electronic address (PEPPOL identifier)
         if ($supplier_identifier) {
-            $seller->setElectronicAddress($supplier_identifier, $supplier_scheme);
+            $electronicAddress = new Identifier($supplier_identifier, $supplier_scheme);
+            $seller->setElectronicAddress($electronicAddress);
         }
 
         // Set postal address
@@ -209,7 +211,8 @@ class Peppol_ubl_generator
 
         // Set electronic address (PEPPOL identifier)
         if ($customer_identifier) {
-            $buyer->setElectronicAddress($customer_identifier, $customer_scheme);
+            $electronicAddress = new Identifier($customer_identifier, $customer_scheme);
+            $buyer->setElectronicAddress($electronicAddress);
         }
 
         // Set postal address

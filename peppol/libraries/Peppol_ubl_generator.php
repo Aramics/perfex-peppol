@@ -39,7 +39,7 @@ class Peppol_ubl_generator
             $document_id = format_invoice_number($invoice->id) . '-' . date('Ymd');
             $ublInvoice->setNumber($document_id);
             $ublInvoice->setIssueDate(new DateTime(to_sql_date($invoice->date)));
-            $ublInvoice->setDueDate(new DateTime(to_sql_date($invoice->duedate)));
+            $ublInvoice->setDueDate(new DateTime(to_sql_date($invoice->duedate ?? $invoice->date)));
 
             // Set currency
             $currency = $invoice->currency_name ? get_currency($invoice->currency_name) : get_base_currency();
@@ -243,16 +243,16 @@ class Peppol_ubl_generator
         $this->CI->db->where('fieldto', 'customers');
         $this->CI->db->where('slug', $field_slug);
         $custom_field = $this->CI->db->get(db_prefix() . 'customfields')->row();
-        
+
         if (!$custom_field) {
             return '';
         }
-        
+
         // Get custom field value for the client
         $this->CI->db->where('relid', $client_id);
         $this->CI->db->where('fieldid', $custom_field->id);
         $value_row = $this->CI->db->get(db_prefix() . 'customfieldsvalues')->row();
-        
+
         return $value_row ? $value_row->value : '';
     }
 

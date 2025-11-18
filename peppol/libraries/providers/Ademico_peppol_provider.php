@@ -61,7 +61,8 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                 return [
                     'success' => true,
                     'message' => _l('peppol_ademico_document_sent_success'),
-                    'document_id' => $response['data']['id'] ?? $response['data']['document_id'] ?? null
+                    'document_id' => $response['data']['id'] ?? $response['data']['documentId'] ?? null,
+                    'metadata' => $response['data']
                 ];
             } else {
                 return [
@@ -508,9 +509,17 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
 
                 // Check schematron validation report
                 if (isset($validation['schematronValidationReport']) && is_array($validation['schematronValidationReport'])) {
-                    foreach ($validation['schematronValidationReport'] as $schematron_error) {
-                        if (isset($schematron_error['message'])) {
-                            $specific_errors[] = 'Schematron: ' . $schematron_error['message'];
+                    foreach ($validation['schematronValidationReport'] as $schematron_report) {
+                        if (isset($schematron_report['schematronValidationMessages']) && is_array($schematron_report['schematronValidationMessages'])) {
+                            foreach ($schematron_report['schematronValidationMessages'] as $schematron_message) {
+                                if (isset($schematron_message['description'])) {
+                                    $error_detail = $schematron_message['description'];
+                                    if (isset($schematron_message['errorId'])) {
+                                        $error_detail = '[' . $schematron_message['errorId'] . '] ' . $error_detail;
+                                    }
+                                    $specific_errors[] = 'Schematron: ' . $error_detail;
+                                }
+                            }
                         }
                     }
                 }

@@ -89,7 +89,6 @@ $lang['peppol_invoice_send_failed'] = 'Failed to send invoice via PEPPOL';
 $lang['peppol_client_no_identifier'] = 'Client #%s does not have a PEPPOL identifier configured';
 $lang['peppol_add_client_identifier'] = 'Add PEPPOL Identifier';
 $lang['peppol_invoice_ready_to_send'] = 'Invoice is ready to be sent via PEPPOL';
-$lang['peppol_document_id'] = 'PEPPOL Document ID';
 $lang['peppol_sent_at'] = 'Sent at';
 
 // Settings and Configuration

@@ -457,6 +457,31 @@ class Peppol extends AdminController
 
 
     // ================================
+    // DATABASE MANAGEMENT METHODS
+    // ================================
+
+    /**
+     * Upgrade database schema
+     */
+    public function upgrade_database()
+    {
+        if (!is_admin()) {
+            access_denied('admin');
+        }
+
+        try {
+            // Run the installation hook which includes upgrade logic
+            require_once(__DIR__ . '/../install.php');
+            
+            set_alert('success', 'Database schema updated successfully. New provider and provider_metadata columns have been added.');
+        } catch (Exception $e) {
+            set_alert('danger', 'Database upgrade failed: ' . $e->getMessage());
+        }
+
+        redirect(admin_url('settings?group=peppol'));
+    }
+
+    // ================================
     // PROVIDER MANAGEMENT METHODS
     // ================================
 

@@ -40,6 +40,60 @@ class Peppol_model extends App_Model
         return $this->db->update(db_prefix() . 'peppol_documents', $data);
     }
 
+    /**
+     * Get documents by provider
+     */
+    public function get_documents_by_provider($provider_id, $limit = null, $offset = null)
+    {
+        $this->db->where('provider', $provider_id);
+        $this->db->order_by('created_at', 'DESC');
+        
+        if ($limit !== null) {
+            $this->db->limit($limit, $offset);
+        }
+        
+        return $this->db->get(db_prefix() . 'peppol_documents')->result();
+    }
+
+    /**
+     * Get provider metadata for a document
+     */
+    public function get_provider_metadata($document_type, $document_id)
+    {
+        $this->db->select('provider_metadata');
+        $this->db->where('document_type', $document_type);
+        $this->db->where('document_id', $document_id);
+        $result = $this->db->get(db_prefix() . 'peppol_documents')->row();
+        
+        if ($result && !empty($result->provider_metadata)) {
+            return json_decode($result->provider_metadata, true);
+        }
+        
+        return null;
+    }
+
+    /**
+     * Update provider metadata for a document
+     */
+    public function update_provider_metadata($document_type, $document_id, $metadata)
+    {
+        $existing = $this->get_peppol_document($document_type, $document_id);
+        if ($existing) {
+            // Merge with existing metadata
+            $current_metadata = json_decode($existing->provider_metadata ?? '{}', true);
+            $updated_metadata = array_merge($current_metadata, $metadata);
+            
+            $this->db->where('document_type', $document_type);
+            $this->db->where('document_id', $document_id);
+            return $this->db->update(db_prefix() . 'peppol_documents', [
+                'provider_metadata' => json_encode($updated_metadata),
+                'updated_at' => date('Y-m-d H:i:s')
+            ]);
+        }
+        
+        return false;
+    }
+
 
     /**
      * Log PEPPOL activity

@@ -6,14 +6,18 @@ defined('BASEPATH') or exit('No direct script access allowed');
  * PEPPOL Module Installation
  */
 
-if (!$CI->db->table_exists(db_prefix() . 'peppol_documents')) {
+$peppol_docs_table = db_prefix() . 'peppol_documents';
+
+if (!$CI->db->table_exists($peppol_docs_table)) {
     $CI->db->query('
         CREATE TABLE `' . db_prefix() . 'peppol_documents` (
             `id` int(11) NOT NULL AUTO_INCREMENT,
             `document_type` varchar(20) NOT NULL DEFAULT "invoice",
             `document_id` int(11) NOT NULL,
             `status` varchar(50) NOT NULL DEFAULT "pending",
-            `peppol_document_id` varchar(255) DEFAULT NULL,
+            `provider` varchar(100) DEFAULT NULL,
+            `provider_document_id` varchar(150) DEFAULT NULL,
+            `provider_metadata` text DEFAULT NULL,
             `sent_at` datetime DEFAULT NULL,
             `received_at` datetime DEFAULT NULL,
             `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
@@ -21,11 +25,11 @@ if (!$CI->db->table_exists(db_prefix() . 'peppol_documents')) {
             PRIMARY KEY (`id`),
             KEY `document_type` (`document_type`),
             KEY `document_id` (`document_id`),
-            KEY `status` (`status`),
             UNIQUE KEY `unique_document` (`document_type`, `document_id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
     ');
 }
+
 
 if (!$CI->db->table_exists(db_prefix() . 'peppol_logs')) {
     $CI->db->query('

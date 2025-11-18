@@ -339,13 +339,14 @@ class Peppol_service
     private function _handle_send_result($document_type, $document_id, $result, $provider)
     {
         if ($result['success']) {
-            // Create PEPPOL document record
+
             $peppol_data = [
                 'document_type' => $document_type,
                 'document_id' => $document_id,
                 'status' => 'sent',
-                'provider_id' => $provider->get_id(),
+                'provider' => $provider->get_id(),
                 'provider_document_id' => $result['document_id'] ?? null,
+                'provider_metadata' => json_encode($result['metadata'] ?? []),
                 'sent_at' => date('Y-m-d H:i:s'),
                 'created_at' => date('Y-m-d H:i:s')
             ];

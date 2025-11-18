@@ -63,8 +63,8 @@ abstract class Abstract_peppol_provider implements Peppol_provider_interface
         $settings = [];
 
         foreach ($inputs as $key => $input) {
-            // For hidden fields, always use the default value
-            if ($input['type'] === 'hidden') {
+            // For hidden and readonly fields, always use the default value
+            if ($input['type'] === 'hidden' || $input['type'] === 'readonly') {
                 $settings[$key] = $input['default'] ?? '';
             } else {
                 $option_name = "peppol_{$this->get_id()}_{$key}";
@@ -84,8 +84,8 @@ abstract class Abstract_peppol_provider implements Peppol_provider_interface
             $inputs = $this->get_setting_inputs();
 
             foreach ($settings as $key => $value) {
-                // Skip hidden fields - they should not be stored
-                if (isset($inputs[$key]) && $inputs[$key]['type'] === 'hidden') {
+                // Skip hidden and readonly fields - they should not be stored
+                if (isset($inputs[$key]) && ($inputs[$key]['type'] === 'hidden' || $inputs[$key]['type'] === 'readonly')) {
                     continue;
                 }
 
@@ -147,8 +147,13 @@ abstract class Abstract_peppol_provider implements Peppol_provider_interface
                 $output .= '<i class="fa-regular fa-circle-question pull-left tw-mt-0.5 tw-mr-1" data-toggle="tooltip" data-title="' . e($config['help']) . '"></i>';
             }
 
-            // Handle hidden fields as readonly text inputs
+            // Handle hidden fields - don't render them
             if ($config['type'] === 'hidden') {
+                continue;
+            }
+
+            // Handle readonly fields as readonly text inputs
+            if ($config['type'] === 'readonly') {
                 $attributes['readonly'] = true;
                 $output .= render_input($field_name_with_prefix, $label, $value, 'text', $attributes);
             } else {

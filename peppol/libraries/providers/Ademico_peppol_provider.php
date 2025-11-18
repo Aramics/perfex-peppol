@@ -17,8 +17,6 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
             'id' => 'ademico',
             'name' => _l('peppol_ademico_provider_name'),
             'description' => _l('peppol_ademico_provider_description'),
-            'version' => '1.0.0',
-            'icon' => 'fa-cloud',
             'test_connection' => true
         ];
     }
@@ -150,7 +148,6 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                 'type' => 'hidden',
                 'label' => _l('peppol_ademico_api_version'),
                 'default' => 'v1',
-                'help' => _l('peppol_ademico_api_version_help')
             ]
         ];
     }

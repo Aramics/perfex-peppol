@@ -463,7 +463,7 @@ class Peppol extends AdminController
         }
 
         $provider_id = $this->input->post('provider');
-        $provider_settings = $this->input->post('settings');
+        $form_settings = $this->input->post('settings');
 
         if (!$provider_id) {
             echo json_encode([
@@ -474,25 +474,10 @@ class Peppol extends AdminController
         }
 
         try {
-            // Get registered provider classes
-            $provider_classes = hooks()->apply_filters('peppol_get_registered_provider_classes', []);
-            $provider_instance = null;
-
-            // Find the provider class
-            foreach ($provider_classes as $class_name) {
-                if (class_exists($class_name)) {
-                    $instance = new $class_name($provider_settings ?? []);
-                    if ($instance instanceof Abstract_peppol_provider) {
-                        $info = $instance->get_provider_info();
-                        if ($info['id'] === $provider_id) {
-                            $provider_instance = $instance;
-                            break;
-                        }
-                    }
-                }
-            }
+            // Get registered providers
+            $providers = peppol_get_registered_providers();
             
-            if (!$provider_instance) {
+            if (!isset($providers[$provider_id])) {
                 echo json_encode([
                     'success' => false,
                     'message' => _l('peppol_provider_not_found')
@@ -500,8 +485,34 @@ class Peppol extends AdminController
                 return;
             }
 
+            $provider_instance = $providers[$provider_id];
+
+            // Filter and process settings for this provider
+            $provider_settings = [];
+            $provider_prefix = "settings[peppol_{$provider_id}_";
+
+            if (is_array($form_settings)) {
+                foreach ($form_settings as $key => $value) {
+                    // Extract settings that belong to this provider
+                    if (strpos($key, $provider_prefix) === 0) {
+                        // Remove the prefix to get the actual setting name
+                        $setting_name = str_replace($provider_prefix, '', $key);
+                        $setting_name = rtrim($setting_name, ']'); // Remove trailing ]
+                        $provider_settings[$setting_name] = $value;
+                    }
+                }
+            }
+
+            // Temporarily set the provider settings for testing
+            $original_settings = $provider_instance->get_settings();
+            $provider_instance->set_settings($provider_settings);
+
             // Test the connection
             $result = $provider_instance->test_connection();
+
+            // Restore original settings
+            $provider_instance->set_settings($original_settings);
+
             echo json_encode($result);
 
         } catch (Exception $e) {

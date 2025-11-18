@@ -476,7 +476,7 @@ class Peppol extends AdminController
         try {
             // Get registered providers
             $providers = peppol_get_registered_providers();
-            
+
             if (!isset($providers[$provider_id])) {
                 echo json_encode([
                     'success' => false,
@@ -487,34 +487,24 @@ class Peppol extends AdminController
 
             $provider_instance = $providers[$provider_id];
 
-            // Filter and process settings for this provider
+            // Filter and clean settings for this provider
             $provider_settings = [];
-            $provider_prefix = "settings[peppol_{$provider_id}_";
+            $provider_prefix = "peppol_{$provider_id}_";
 
             if (is_array($form_settings)) {
                 foreach ($form_settings as $key => $value) {
-                    // Extract settings that belong to this provider
+                    // Extract settings that belong to this provider and remove prefix
                     if (strpos($key, $provider_prefix) === 0) {
-                        // Remove the prefix to get the actual setting name
-                        $setting_name = str_replace($provider_prefix, '', $key);
-                        $setting_name = rtrim($setting_name, ']'); // Remove trailing ]
-                        $provider_settings[$setting_name] = $value;
+                        $clean_key = str_replace($provider_prefix, '', $key);
+                        $provider_settings[$clean_key] = $value;
                     }
                 }
             }
 
-            // Temporarily set the provider settings for testing
-            $original_settings = $provider_instance->get_settings();
-            $provider_instance->set_settings($provider_settings);
-
-            // Test the connection
-            $result = $provider_instance->test_connection();
-
-            // Restore original settings
-            $provider_instance->set_settings($original_settings);
+            // Test the connection with cleaned settings
+            $result = $provider_instance->test_connection($provider_settings);
 
             echo json_encode($result);
-
         } catch (Exception $e) {
             echo json_encode([
                 'success' => false,

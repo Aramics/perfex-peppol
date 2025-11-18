@@ -11,6 +11,12 @@ require_once __DIR__ . '/Abstract_peppol_provider.php';
  */
 class Ademico_peppol_provider extends Abstract_peppol_provider
 {
+    // Endpoint service constants
+    const ENDPOINT_OAUTH = 'oauth';
+    const ENDPOINT_API_BASE = 'api_base';
+    const ENDPOINT_CONNECTIVITY = 'connectivity';
+    const ENDPOINT_SEND_DOCUMENT = 'send_document';
+
     public function get_provider_info()
     {
         return [
@@ -27,10 +33,17 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
 
         try {
             // Prepare API request
-            $endpoint = $this->get_api_endpoint($settings['environment']);
+            $token = $this->get_access_token($settings);
+            if (!$token) {
+                return [
+                    'success' => false,
+                    'message' => _l('peppol_ademico_token_failed')
+                ];
+            }
+
             $headers = [
                 'Content-Type: application/json',
-                'Authorization: Bearer ' . $this->get_access_token($settings)
+                'Authorization: ' . $token
             ];
 
             $payload = [
@@ -41,7 +54,8 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                 'metadata' => $document_data
             ];
 
-            $response = $this->call_api($endpoint . '/documents/send', $payload, $headers);
+            $send_endpoint = $this->get_endpoint(self::ENDPOINT_SEND_DOCUMENT);
+            $response = $this->call_api($send_endpoint, $payload, $headers);
 
             if ($response['success']) {
                 return [
@@ -63,10 +77,8 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
         }
     }
 
-    public function test_connection()
+    public function test_connection($settings)
     {
-        $settings = $this->get_settings();
-
         if (empty($settings['client_id']) || empty($settings['client_secret'])) {
             return [
                 'success' => false,
@@ -75,13 +87,13 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
         }
 
         try {
-            $endpoint = $this->get_api_endpoint($settings['environment']);
             $token = $this->get_access_token($settings);
 
             if ($token) {
-                // Test API health endpoint
-                $response = $this->call_api($endpoint . '/health', null, [
-                    'Authorization: Bearer ' . $token
+                // Test API connectivity endpoint  
+                $connectivity_endpoint = $this->get_endpoint(self::ENDPOINT_CONNECTIVITY, $settings['environment'] ?? null);
+                $response = $this->call_api($connectivity_endpoint, null, [
+                    'Authorization: ' . $token
                 ]);
 
                 if ($response['success']) {
@@ -158,33 +170,83 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
     }
 
     /**
-     * Get API endpoint based on environment
+     * Get endpoint URLs mapped by environment and service
+     * 
+     * @return array Multi-dimensional array of endpoints
      */
-    private function get_api_endpoint($environment)
+    private function get_endpoints()
     {
-        if ($environment === 'production') {
-            return 'https://api.ademico.com/peppol/v1';
-        } else {
-            return 'https://sandbox-api.ademico.com/peppol/v1';
-        }
+        // Base URLs for different environments
+        $prod_oauth_base = 'https://peppol-oauth2.ademico-software.com';
+        $prod_api_base = 'https://peppol-api.ademico-software.com/api/peppol/v1';
+        $sandbox_oauth_base = 'https://test-peppol-oauth2.ademico-software.com';
+        $sandbox_api_base = 'https://test-peppol-api.ademico-software.com/api/peppol/v1';
+
+        return [
+            'production' => [
+                self::ENDPOINT_OAUTH => $prod_oauth_base . '/oauth2/token',
+                self::ENDPOINT_API_BASE => $prod_api_base,
+                self::ENDPOINT_CONNECTIVITY => $prod_api_base . '/tools/connectivity',
+                self::ENDPOINT_SEND_DOCUMENT => $prod_api_base . '/documents/send'
+            ],
+            'sandbox' => [
+                self::ENDPOINT_OAUTH => $sandbox_oauth_base . '/oauth2/token',
+                self::ENDPOINT_API_BASE => $sandbox_api_base,
+                self::ENDPOINT_CONNECTIVITY => $sandbox_api_base . '/tools/connectivity',
+                self::ENDPOINT_SEND_DOCUMENT => $sandbox_api_base . '/documents/send'
+            ]
+        ];
     }
 
     /**
-     * Get access token using client credentials
+     * Get specific endpoint URL for given service and optional environment
+     * 
+     * @param string $service Endpoint service name (use class constants)
+     * @param string|null $environment Optional environment override ('production' or 'sandbox')
+     * @return string Full endpoint URL
+     */
+    private function get_endpoint($service, $environment = null)
+    {
+        // Auto-fetch environment from settings if not provided
+        if ($environment === null) {
+            $settings = $this->get_settings();
+            $environment = $settings['environment'] ?? 'sandbox';
+        }
+
+        $endpoints = $this->get_endpoints();
+        $env = $environment === 'production' ? 'production' : 'sandbox';
+
+        return $endpoints[$env][$service] ?? $endpoints[$env][self::ENDPOINT_API_BASE];
+    }
+
+    /**
+     * Get OAuth2 access token using client credentials flow
+     * 
+     * Authenticates with Ademico OAuth2 endpoint using Basic authentication
+     * and client credentials grant type to obtain a JWT access token.
+     * 
+     * @param array $settings Provider settings containing client_id and client_secret
+     * @return string|false JWT access token on success, false on failure
      */
     private function get_access_token($settings)
     {
-        $endpoint = $this->get_api_endpoint($settings['environment']);
+        $token_endpoint = $this->get_endpoint(self::ENDPOINT_OAUTH, $settings['environment']);
 
-        $token_data = [
-            'client_id' => $settings['client_id'],
-            'client_secret' => $settings['client_secret'],
-            'grant_type' => 'client_credentials'
+        // Base64 encode client_id:client_secret for Basic auth header
+        $credentials = base64_encode($settings['client_id'] . ':' . $settings['client_secret']);
+
+        $headers = [
+            'Authorization: Basic ' . $credentials,
+            'Content-Type: application/x-www-form-urlencoded'
         ];
 
-        $response = $this->call_api($endpoint . '/oauth/token', $token_data, [
-            'Content-Type: application/json'
-        ]);
+        // OAuth2 form-encoded parameters for client credentials grant
+        $url_params = [
+            'grant_type' => 'client_credentials',
+            'scope' => 'peppol/document'
+        ];
+
+        $response = $this->call_api($token_endpoint, null, $headers, $url_params);
 
         if ($response['success'] && isset($response['data']['access_token'])) {
             return $response['data']['access_token'];
@@ -194,9 +256,18 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
     }
 
     /**
-     * Make API call to Ademico
+     * Make HTTP API call to Ademico endpoints
+     * 
+     * Supports both JSON POST requests and URL-encoded form submissions.
+     * All endpoints return JSON responses which are automatically parsed.
+     * 
+     * @param string $url The full endpoint URL to call
+     * @param array|null $data JSON data payload for POST requests (will be JSON encoded)
+     * @param array $headers HTTP headers to include in the request
+     * @param array $url_params URL-encoded form parameters for POST requests (alternative to JSON)
+     * @return array Response array with 'success' boolean and 'data'/'error' keys
      */
-    private function call_api($url, $data = null, $headers = [])
+    private function call_api($url, $data = null, $headers = [], $url_params = [])
     {
         $settings = $this->get_settings();
 
@@ -210,10 +281,17 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
             CURLOPT_SSL_VERIFYHOST => 2
         ]);
 
-        if ($data) {
+        // Handle URL-encoded parameters (for OAuth2 and form submissions)
+        if (!empty($url_params)) {
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($url_params));
+        }
+        // Handle JSON data payload (for API requests)
+        elseif ($data) {
             curl_setopt($ch, CURLOPT_POST, true);
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
         }
+        // GET request if no data provided
 
         $response = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -224,6 +302,7 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
             return ['success' => false, 'error' => $error];
         }
 
+        // All Ademico endpoints return JSON responses
         $decoded_response = json_decode($response, true);
 
         if ($http_code >= 200 && $http_code < 300) {

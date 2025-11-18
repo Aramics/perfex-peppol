@@ -139,7 +139,14 @@
             var providerSettings = {};
             $('#provider-config-' + provider + ' input, #provider-config-' + provider + ' select').each(
                 function() {
-                    providerSettings[$(this).attr('name')] = $(this).val();
+                    var fieldName = $(this).attr('name');
+                    var fieldValue = $(this).val();
+
+                    // Extract clean field name from settings[peppol_provider_field] format
+                    if (fieldName && fieldName.startsWith('settings[')) {
+                        var cleanName = fieldName.slice(9, -1); // Remove 'settings[' and ']'
+                        providerSettings[cleanName] = fieldValue;
+                    }
                 });
 
             $.post(admin_url + 'peppol/test_provider_connection', {

@@ -32,9 +32,10 @@ interface Peppol_provider_interface
     /**
      * Test connection to the provider's API/service
      * 
+     * @param array $settings Settings to test with
      * @return array Array with 'success' (bool) and 'message' (string) keys
      */
-    public function test_connection();
+    public function test_connection($settings);
 
     /**
      * Get setting input definitions

@@ -7,41 +7,6 @@ defined('BASEPATH') or exit('No direct script access allowed');
  */
 
 /**
- * Add PEPPOL status column to credit notes table
- */
-hooks()->add_filter('credit_notes_table_columns', function ($columns) {
-    if (!staff_can('view', 'peppol')) {
-        return $columns;
-    }
-
-    $columns[] = _l('peppol_status');
-    return $columns;
-});
-
-/**
- * Add PEPPOL status data to credit notes table rows
- */
-hooks()->add_filter('credit_notes_table_row_data', function ($row, $aRow = []) {
-    if (!staff_can('view', 'peppol')) {
-        return $row;
-    }
-
-    $CI = &get_instance();
-    $CI->load->model('peppol/peppol_model');
-
-    $peppol_credit_note = $CI->peppol_model->get_peppol_credit_note_by_credit_note($aRow['id']);
-
-    if ($peppol_credit_note) {
-        $status = $peppol_credit_note->status;
-        $row[] = render_peppol_status_column($aRow['id'], $status);
-    } else {
-        $row[] = render_peppol_status_column($aRow['id']);
-    }
-
-    return $row;
-}, 10, 2);
-
-/**
  * Add PEPPOL bulk actions to credit notes list page
  */
 hooks()->add_action('app_admin_footer', function () {

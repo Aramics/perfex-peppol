@@ -194,3 +194,6 @@ $lang['peppol_client_identifier_help'] = 'Enter the client\'s PEPPOL participant
 $lang['peppol_client_scheme_help'] = 'Select the scheme used for the client\'s PEPPOL identifier';
 $lang['peppol_client_fields_section'] = 'PEPPOL Information';
 $lang['peppol_identifier_preview'] = 'PEPPOL Identifier Preview';
+$lang['cf_translate_customers_peppol_identifier'] = 'PEPPOL Identifier';
+$lang['cf_translate_customers_peppol_scheme'] = 'PEPPOL Scheme';
+$lang['cf_translate_credit_notes_peppol_status'] = 'PEPPOL Status';

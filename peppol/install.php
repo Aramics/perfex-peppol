@@ -66,32 +66,34 @@ add_option('peppol_webhook_url', '');
 function peppol_create_custom_fields()
 {
     $CI = &get_instance();
-    
+
     // Customer PEPPOL fields
     $CI->db->where('fieldto', 'customers');
     $CI->db->where('slug', 'customers_peppol_identifier');
     $existing_identifier = $CI->db->get(db_prefix() . 'customfields')->row();
-    
+
     if (!$existing_identifier) {
         // Add PEPPOL Identifier field
         $CI->db->query("INSERT INTO `" . db_prefix() . "customfields` (`fieldto`,`name`, `type`, `options`, `default_value`, `field_order`, `bs_column`, `slug`) VALUES ('customers', 'PEPPOL Identifier', 'input','','','1','12','customers_peppol_identifier');");
     }
-    
+
     $CI->db->where('fieldto', 'customers');
     $CI->db->where('slug', 'customers_peppol_scheme');
     $existing_scheme = $CI->db->get(db_prefix() . 'customfields')->row();
-    
+
     if (!$existing_scheme) {
         // Add PEPPOL Scheme field
         $CI->db->query("INSERT INTO `" . db_prefix() . "customfields` (`fieldto`,`name`, `type`, `options`, `default_value`, `field_order`, `bs_column`, `slug`) VALUES ('customers', 'PEPPOL Scheme', 'input','','0208','2','12','customers_peppol_scheme');");
     }
-    
+
     // Credit Note PEPPOL Status field (for display only)
     $CI->db->where('fieldto', 'credit_notes');
     $CI->db->where('slug', 'credit_notes_peppol_status');
     $existing_status = $CI->db->get(db_prefix() . 'customfields')->row();
-    
+
     if (!$existing_status) {
-        $CI->db->query("INSERT INTO `" . db_prefix() . "customfields` (`fieldto`,`name`, `type`, `options`, `default_value`, `field_order`, `bs_column`, `slug`, `show_on_table`, `show_on_client_portal`) VALUES ('credit_notes', 'PEPPOL Status', 'input','','Not Sent','1','12','credit_notes_peppol_status','1','0');");
+        $CI->db->query("INSERT INTO `" . db_prefix() . "customfields` 
+        (`fieldto`,`name`, `type`, `options`, `default_value`, `field_order`, `bs_column`, `slug`, `show_on_table`, `show_on_client_portal`) VALUES 
+        ('credit_note', 'PEPPOL Status', 'input','','Not Sent','2','12','credit_notes_peppol_status','1','1');");
     }
 }

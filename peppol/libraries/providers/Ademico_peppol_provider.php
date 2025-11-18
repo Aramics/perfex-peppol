@@ -5,18 +5,18 @@ defined('BASEPATH') or exit('No direct script access allowed');
 require_once __DIR__ . '/Abstract_peppol_provider.php';
 
 /**
- * Admico PEPPOL Provider
+ * Ademico PEPPOL Provider
  * 
- * Provider for sending documents via Admico's PEPPOL access point service
+ * Provider for sending documents via Ademico's PEPPOL access point service
  */
-class Admico_peppol_provider extends Abstract_peppol_provider
+class Ademico_peppol_provider extends Abstract_peppol_provider
 {
     public function get_provider_info()
     {
         return [
             'id' => 'ademico',
-            'name' => 'Admico PEPPOL',
-            'description' => 'Admico PEPPOL access point integration',
+            'name' => 'Ademico PEPPOL',
+            'description' => 'Ademico PEPPOL access point integration',
             'version' => '1.0.0',
             'icon' => 'fa-cloud',
             'test_connection' => true
@@ -48,13 +48,13 @@ class Admico_peppol_provider extends Abstract_peppol_provider
             if ($response['success']) {
                 return [
                     'success' => true,
-                    'message' => 'Document sent successfully via Admico',
+                    'message' => 'Document sent successfully via Ademico',
                     'document_id' => $response['data']['document_id'] ?? null
                 ];
             } else {
                 return [
                     'success' => false,
-                    'message' => 'Admico API error: ' . ($response['error'] ?? 'Unknown error')
+                    'message' => 'Ademico API error: ' . ($response['error'] ?? 'Unknown error')
                 ];
             }
         } catch (Exception $e) {
@@ -89,7 +89,7 @@ class Admico_peppol_provider extends Abstract_peppol_provider
                 if ($response['success']) {
                     return [
                         'success' => true,
-                        'message' => 'Connection successful - Admico API is accessible'
+                        'message' => 'Connection successful - Ademico API is accessible'
                     ];
                 } else {
                     return [
@@ -114,20 +114,6 @@ class Admico_peppol_provider extends Abstract_peppol_provider
     public function get_setting_inputs()
     {
         return [
-            'client_id' => [
-                'type' => 'text',
-                'label' => 'Client ID',
-                'placeholder' => 'Your Admico client ID',
-                'required' => true,
-                'help' => 'Client ID provided by Admico'
-            ],
-            'client_secret' => [
-                'type' => 'password',
-                'label' => 'Client Secret',
-                'placeholder' => 'Your Admico client secret',
-                'required' => true,
-                'help' => 'Client secret provided by Admico'
-            ],
             'environment' => [
                 'type' => 'select',
                 'label' => 'Environment',
@@ -138,6 +124,20 @@ class Admico_peppol_provider extends Abstract_peppol_provider
                 'default' => 'sandbox',
                 'required' => true,
                 'help' => 'Choose environment for API calls'
+            ],
+            'client_id' => [
+                'type' => 'text',
+                'label' => 'Client ID',
+                'placeholder' => 'Your Ademico client ID',
+                'required' => true,
+                'help' => 'Client ID provided by Ademico'
+            ],
+            'client_secret' => [
+                'type' => 'password',
+                'label' => 'Client Secret',
+                'placeholder' => 'Your Ademico client secret',
+                'required' => true,
+                'help' => 'Client secret provided by Ademico'
             ],
             'timeout' => [
                 'type' => 'number',
@@ -150,7 +150,7 @@ class Admico_peppol_provider extends Abstract_peppol_provider
                 'type' => 'hidden',
                 'label' => 'API Version',
                 'default' => 'v1',
-                'help' => 'Admico API version'
+                'help' => 'Ademico API version'
             ]
         ];
     }
@@ -166,9 +166,9 @@ class Admico_peppol_provider extends Abstract_peppol_provider
     private function get_api_endpoint($environment)
     {
         if ($environment === 'production') {
-            return 'https://api.admico.com/peppol/v1';
+            return 'https://api.ademico.com/peppol/v1';
         } else {
-            return 'https://sandbox-api.admico.com/peppol/v1';
+            return 'https://sandbox-api.ademico.com/peppol/v1';
         }
     }
 
@@ -197,7 +197,7 @@ class Admico_peppol_provider extends Abstract_peppol_provider
     }
 
     /**
-     * Make API call to Admico
+     * Make API call to Ademico
      */
     private function call_api($url, $data = null, $headers = [])
     {

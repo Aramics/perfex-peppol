@@ -32,10 +32,10 @@ function peppol_get_registered_providers()
  */
 function peppol_register_default_providers($providers)
 {
-    // Load and register Admico provider
-    require_once FCPATH . 'modules/peppol/libraries/providers/Admico_peppol_provider.php';
-    $admico_provider = new Admico_peppol_provider();
-    $providers[$admico_provider->get_id()] = $admico_provider;
+    // Load and register Ademico provider
+    require_once FCPATH . 'modules/peppol/libraries/providers/Ademico_peppol_provider.php';
+    $ademico_provider = new Ademico_peppol_provider();
+    $providers[$ademico_provider->get_id()] = $ademico_provider;
 
     return $providers;
 }

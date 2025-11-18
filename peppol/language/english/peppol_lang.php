@@ -223,6 +223,19 @@ $lang['peppol_status_retrieved'] = 'Document status retrieved successfully';
 $lang['peppol_status_failed'] = 'Failed to retrieve status (HTTP %d)';
 $lang['peppol_status_exception'] = 'Status retrieval exception';
 
+// Ademico Provider
+$lang['peppol_ademico_client_id'] = 'Client ID';
+$lang['peppol_ademico_client_id_placeholder'] = 'Your Ademico client ID';
+$lang['peppol_ademico_client_id_help'] = 'Client ID provided by Ademico';
+$lang['peppol_ademico_client_secret'] = 'Client Secret';
+$lang['peppol_ademico_client_secret_placeholder'] = 'Your Ademico client secret';
+$lang['peppol_ademico_client_secret_help'] = 'Client secret provided by Ademico';
+$lang['peppol_ademico_environment_help'] = 'Choose environment for API calls';
+$lang['peppol_ademico_timeout'] = 'Timeout (seconds)';
+$lang['peppol_ademico_timeout_help'] = 'API request timeout in seconds';
+$lang['peppol_ademico_api_version'] = 'API Version';
+$lang['peppol_ademico_api_version_help'] = 'Ademico API version';
+
 // Environment and Production
 $lang['peppol_sandbox'] = 'Sandbox';
 $lang['peppol_production'] = 'Production';

@@ -116,41 +116,41 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
         return [
             'environment' => [
                 'type' => 'select',
-                'label' => 'Environment',
+                'label' => _l('peppol_environment'),
                 'options' => [
-                    'sandbox' => 'Sandbox (Testing)',
-                    'production' => 'Production (Live)'
+                    'sandbox' => _l('peppol_environment_sandbox'),
+                    'production' => _l('peppol_environment_production')
                 ],
                 'default' => 'sandbox',
                 'required' => true,
-                'help' => 'Choose environment for API calls'
+                'help' => _l('peppol_ademico_environment_help')
             ],
             'client_id' => [
                 'type' => 'text',
-                'label' => 'Client ID',
-                'placeholder' => 'Your Ademico client ID',
+                'label' => _l('peppol_ademico_client_id'),
+                'placeholder' => _l('peppol_ademico_client_id_placeholder'),
                 'required' => true,
-                'help' => 'Client ID provided by Ademico'
+                'help' => _l('peppol_ademico_client_id_help')
             ],
             'client_secret' => [
                 'type' => 'password',
-                'label' => 'Client Secret',
-                'placeholder' => 'Your Ademico client secret',
+                'label' => _l('peppol_ademico_client_secret'),
+                'placeholder' => _l('peppol_ademico_client_secret_placeholder'),
                 'required' => true,
-                'help' => 'Client secret provided by Ademico'
+                'help' => _l('peppol_ademico_client_secret_help')
             ],
             'timeout' => [
                 'type' => 'number',
-                'label' => 'Timeout (seconds)',
+                'label' => _l('peppol_ademico_timeout'),
                 'default' => 30,
                 'attributes' => ['min' => 5, 'max' => 300],
-                'help' => 'API request timeout in seconds'
+                'help' => _l('peppol_ademico_timeout_help')
             ],
             'api_version' => [
                 'type' => 'hidden',
-                'label' => 'API Version',
+                'label' => _l('peppol_ademico_api_version'),
                 'default' => 'v1',
-                'help' => 'Ademico API version'
+                'help' => _l('peppol_ademico_api_version_help')
             ]
         ];
     }

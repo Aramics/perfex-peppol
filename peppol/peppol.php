@@ -41,7 +41,8 @@ $hook_files = [
     'add_bulk_action_to_invoice_table.php',
     'add_bulk_action_to_credit_notes_table.php',
     'add_settings_tab.php',
-    'client_form_enhancement.php'
+    'client_form_enhancement.php',
+    'provider_registration.php'
 ];
 
 foreach ($hook_files as $hook_file) {

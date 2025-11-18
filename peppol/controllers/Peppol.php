@@ -444,4 +444,71 @@ class Peppol extends AdminController
             return $this->peppol_service->generate_credit_note_ubl($document);
         }
     }
+
+    // ================================
+    // PROVIDER MANAGEMENT METHODS
+    // ================================
+
+    /**
+     * Test provider connection (AJAX)
+     */
+    public function test_provider_connection()
+    {
+        if (!staff_can('create', 'settings') || !$this->input->post()) {
+            echo json_encode([
+                'success' => false,
+                'message' => _l('peppol_access_denied')
+            ]);
+            return;
+        }
+
+        $provider_id = $this->input->post('provider');
+        $provider_settings = $this->input->post('settings');
+
+        if (!$provider_id) {
+            echo json_encode([
+                'success' => false,
+                'message' => _l('peppol_invalid_provider')
+            ]);
+            return;
+        }
+
+        try {
+            // Get registered provider classes
+            $provider_classes = hooks()->apply_filters('peppol_get_registered_provider_classes', []);
+            $provider_instance = null;
+
+            // Find the provider class
+            foreach ($provider_classes as $class_name) {
+                if (class_exists($class_name)) {
+                    $instance = new $class_name($provider_settings ?? []);
+                    if ($instance instanceof Abstract_peppol_provider) {
+                        $info = $instance->get_provider_info();
+                        if ($info['id'] === $provider_id) {
+                            $provider_instance = $instance;
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            if (!$provider_instance) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => _l('peppol_provider_not_found')
+                ]);
+                return;
+            }
+
+            // Test the connection
+            $result = $provider_instance->test_connection();
+            echo json_encode($result);
+
+        } catch (Exception $e) {
+            echo json_encode([
+                'success' => false,
+                'message' => $e->getMessage()
+            ]);
+        }
+    }
 }

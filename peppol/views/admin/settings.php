@@ -11,6 +11,11 @@
                     <?php echo _l('peppol_general_settings'); ?>
                 </a>
             </li>
+            <li role="presentation">
+                <a href="#peppol_providers" aria-controls="peppol_providers" role="tab" data-toggle="tab">
+                    <?php echo _l('peppol_providers'); ?>
+                </a>
+            </li>
         </ul>
     </div>
 </div>
@@ -30,4 +35,155 @@
         );
         ?>
     </div>
+    
+    <!-- Providers Tab -->
+    <div role="tabpanel" class="tab-pane" id="peppol_providers">
+        <?php 
+        // Get registered provider classes through hook
+        $provider_classes = hooks()->apply_filters('peppol_get_registered_provider_classes', []);
+        $active_provider = get_option('peppol_active_provider', '');
+        
+        // Convert class names to provider info for display
+        $providers = [];
+        foreach ($provider_classes as $class_name) {
+            if (class_exists($class_name)) {
+                try {
+                    $instance = new $class_name();
+                    if ($instance instanceof Abstract_peppol_provider) {
+                        $providers[] = $instance->get_provider_info();
+                    }
+                } catch (Exception $e) {
+                    // Skip invalid providers
+                    continue;
+                }
+            }
+        }
+        ?>
+        
+        <?php if (empty($providers)): ?>
+            <div class="alert alert-info">
+                <i class="fa fa-info-circle"></i>
+                <?php echo _l('peppol_no_providers_registered'); ?>
+            </div>
+        <?php else: ?>
+            <form method="post" action="<?php echo admin_url('settings'); ?>">
+                <input type="hidden" name="group" value="peppol" />
+                
+                <!-- Active Provider Selection -->
+                <div class="form-group">
+                    <?php echo render_select('peppol_active_provider', $providers, ['id', 'name'], _l('peppol_active_provider'), $active_provider, ['onchange' => 'peppolProviderChanged()']); ?>
+                    <small class="help-block"><?php echo _l('peppol_active_provider_help'); ?></small>
+                </div>
+                
+                <hr />
+                
+                <!-- Provider Configurations -->
+                <?php foreach ($providers as $provider): ?>
+                    <div class="provider-config" id="provider-config-<?php echo e($provider['id']); ?>" style="display: <?php echo $provider['id'] === $active_provider ? 'block' : 'none'; ?>;">
+                        <h5>
+                            <i class="fa <?php echo e($provider['icon'] ?? 'fa-plug'); ?>"></i>
+                            <?php echo e($provider['name']); ?>
+                            <small class="text-muted">(<?php echo e($provider['version'] ?? '1.0.0'); ?>)</small>
+                        </h5>
+                        
+                        <?php if (!empty($provider['description'])): ?>
+                            <p class="text-muted"><?php echo e($provider['description']); ?></p>
+                        <?php endif; ?>
+                        
+                        <?php 
+                        // Render provider-specific configuration fields from the class
+                        try {
+                            foreach ($provider_classes as $class_name) {
+                                if (class_exists($class_name)) {
+                                    $instance = new $class_name();
+                                    if ($instance instanceof Abstract_peppol_provider) {
+                                        $info = $instance->get_provider_info();
+                                        if ($info['id'] === $provider['id']) {
+                                            // Render settings using the provider's own inputs and values
+                                            echo $instance->render_setting_inputs();
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        } catch (Exception $e) {
+                            echo '<div class="alert alert-danger">Error loading provider settings: ' . e($e->getMessage()) . '</div>';
+                        }
+                        ?>
+                        
+                        <?php if (!empty($provider['test_connection']) && $provider['test_connection']): ?>
+                            <div class="form-group">
+                                <button type="button" class="btn btn-info btn-test-connection" data-provider="<?php echo e($provider['id']); ?>">
+                                    <i class="fa fa-plug"></i>
+                                    <?php echo _l('peppol_test_connection'); ?>
+                                </button>
+                                <div id="test-result-<?php echo e($provider['id']); ?>" class="test-connection-result"></div>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                <?php endforeach; ?>
+                
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fa fa-save"></i>
+                        <?php echo _l('save_settings'); ?>
+                    </button>
+                </div>
+            </form>
+        <?php endif; ?>
+    </div>
+
 </div>
+
+<script>
+function peppolProviderChanged() {
+    var activeProvider = $('select[name="peppol_active_provider"]').val();
+    
+    // Hide all provider configs
+    $('.provider-config').hide();
+    
+    // Show selected provider config
+    if (activeProvider) {
+        $('#provider-config-' + activeProvider).show();
+    }
+}
+
+// Settings are now handled by regular form submission
+
+$(document).on('click', '.btn-test-connection', function() {
+    var provider = $(this).data('provider');
+    var button = $(this);
+    var resultDiv = $('#test-result-' + provider);
+    
+    button.prop('disabled', true);
+    button.html('<i class="fa fa-spinner fa-spin"></i> <?php echo _l('peppol_testing'); ?>...');
+    resultDiv.html('');
+    
+    // Get provider settings
+    var providerSettings = {};
+    $('#provider-config-' + provider + ' input, #provider-config-' + provider + ' select').each(function() {
+        providerSettings[$(this).attr('name')] = $(this).val();
+    });
+    
+    $.post(admin_url + 'peppol/test_provider_connection', {
+        provider: provider,
+        settings: providerSettings
+    }, function(response) {
+        if (response.success) {
+            resultDiv.html('<div class="alert alert-success mtop10"><i class="fa fa-check"></i> ' + response.message + '</div>');
+        } else {
+            resultDiv.html('<div class="alert alert-danger mtop10"><i class="fa fa-times"></i> ' + response.message + '</div>');
+        }
+    }).fail(function() {
+        resultDiv.html('<div class="alert alert-danger mtop10"><i class="fa fa-times"></i> <?php echo _l('something_went_wrong'); ?></div>');
+    }).always(function() {
+        button.prop('disabled', false);
+        button.html('<i class="fa fa-plug"></i> <?php echo _l('peppol_test_connection'); ?>');
+    });
+});
+
+// Initialize on page load
+$(document).ready(function() {
+    peppolProviderChanged();
+});
+</script>

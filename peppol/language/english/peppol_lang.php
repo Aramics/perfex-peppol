@@ -197,3 +197,65 @@ $lang['peppol_identifier_preview'] = 'PEPPOL Identifier Preview';
 $lang['cf_translate_customers_peppol_identifier'] = 'PEPPOL Identifier';
 $lang['cf_translate_customers_peppol_scheme'] = 'PEPPOL Scheme';
 $lang['cf_translate_credit_notes_peppol_status'] = 'PEPPOL Status';
+
+// Provider Management
+$lang['peppol_providers'] = 'Providers';
+$lang['peppol_access_point_providers'] = 'PEPPOL Access Point Providers';
+$lang['peppol_active_provider'] = 'Active Provider';
+$lang['peppol_active_provider_help'] = 'Select which PEPPOL provider to use for sending documents';
+$lang['peppol_no_providers_registered'] = 'No PEPPOL providers are currently registered.';
+$lang['peppol_no_providers_help'] = 'PEPPOL providers can be registered through modules, extensions, or custom implementations.';
+$lang['peppol_invalid_provider'] = 'Invalid provider specified';
+$lang['peppol_provider_not_found'] = 'Provider not found or not properly configured';
+$lang['peppol_provider_no_test_available'] = 'Connection testing is not available for this provider';
+
+// Empty State Information
+$lang['peppol_for_developers'] = 'For Developers';
+$lang['peppol_register_provider_info'] = 'To add PEPPOL providers, create a class that extends Abstract_peppol_provider and register it using the simplified hook system:';
+$lang['peppol_provider_registration_location'] = 'Place your provider class and registration code in your module\'s hook file or a custom plugin file.';
+
+// Provider Operations
+$lang['peppol_ubl_validation_failed'] = 'UBL validation failed';
+$lang['peppol_send_failed'] = 'Document send failed';
+$lang['peppol_document_sent_successfully'] = '%s sent successfully via PEPPOL';
+$lang['peppol_send_exception'] = 'Send exception';
+$lang['peppol_status_retrieved'] = 'Document status retrieved successfully';
+$lang['peppol_status_failed'] = 'Failed to retrieve status (HTTP %d)';
+$lang['peppol_status_exception'] = 'Status retrieval exception';
+
+// Environment and Production
+$lang['peppol_sandbox'] = 'Sandbox';
+$lang['peppol_production'] = 'Production';
+$lang['peppol_environment'] = 'Environment';
+
+// Provider Interface Messages
+$lang['peppol_provider_initialization_failed'] = 'Provider initialization failed';
+$lang['peppol_provider_config_invalid'] = 'Provider configuration is invalid';
+$lang['peppol_provider_unsupported_operation'] = 'Operation not supported by this provider';
+$lang['peppol_provider_rate_limit_exceeded'] = 'Rate limit exceeded for this provider';
+$lang['peppol_provider_maintenance'] = 'Provider is currently under maintenance';
+
+// Extensibility Messages
+$lang['peppol_register_provider_example'] = 'Example: Register a custom provider';
+$lang['peppol_provider_registered_successfully'] = 'Provider registered successfully';
+$lang['peppol_provider_registration_failed'] = 'Failed to register provider';
+$lang['peppol_multiple_providers_available'] = 'Multiple PEPPOL providers are available';
+
+// Validation Messages
+$lang['peppol_ubl_validation_passed'] = 'UBL validation passed';
+$lang['peppol_ubl_has_warnings'] = 'UBL validation passed with warnings';
+$lang['peppol_ubl_validation_errors'] = 'UBL validation errors found';
+$lang['peppol_document_format_invalid'] = 'Document format is invalid';
+$lang['peppol_identifier_format_invalid'] = 'PEPPOL identifier format is invalid';
+$lang['peppol_scheme_not_supported'] = 'PEPPOL scheme not supported by this provider';
+
+// Advanced Provider Features
+$lang['peppol_webhook_support'] = 'Webhook Support';
+$lang['peppol_webhook_not_supported'] = 'Webhooks are not supported by this provider';
+$lang['peppol_webhook_configured'] = 'Webhook configured successfully';
+$lang['peppol_rate_limits'] = 'Rate Limits';
+$lang['peppol_no_rate_limits'] = 'No rate limits configured';
+$lang['peppol_rate_limit_info'] = 'Rate limit information';
+$lang['peppol_transmission_mode'] = 'Transmission Mode';
+$lang['peppol_real_transmission'] = 'Real Transmission';
+$lang['peppol_test_transmission'] = 'Test/Simulation Only';

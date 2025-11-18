@@ -3,39 +3,23 @@
 defined('BASEPATH') or exit('No direct script access allowed');
 
 /**
- * PEPPOL Provider Registration Hook System
+ * PEPPOL Provider Registration System
  * 
- * Simplified class-based registration system where providers are registered as classes
- * that implement or extend Abstract_peppol_provider.
+ * Simple registration system for PEPPOL provider instances.
+ * Providers register themselves through hooks and are returned as a map of ID to instance.
  */
-
-// Hook for getting registered provider classes
-hooks()->add_filter('peppol_get_registered_provider_classes', 'peppol_get_default_provider_classes');
 
 /**
- * Get default registered provider classes
- */
-function peppol_get_default_provider_classes($provider_classes)
-{
-    // No default provider classes - system starts empty
-    // Provider classes are registered by external modules or extensions
-    return $provider_classes;
-}
-
-/**
- * Simple helper function to register a PEPPOL provider class
+ * Get all registered PEPPOL providers
  * 
- * Usage example:
- * peppol_register_provider_class('My_peppol_provider');
- * 
- * The class should implement or extend Abstract_peppol_provider
+ * @return array Map of provider ID to provider instance ['provider_id' => $instance]
  */
-function peppol_register_provider_class($class_name)
+function peppol_get_registered_providers()
 {
-    hooks()->add_filter('peppol_get_registered_provider_classes', function($provider_classes) use ($class_name) {
-        if (!in_array($class_name, $provider_classes)) {
-            $provider_classes[] = $class_name;
-        }
-        return $provider_classes;
-    });
+    $providers = [];
+    
+    // Allow other modules to register providers
+    $providers = hooks()->apply_filters('peppol_register_providers', $providers);
+    
+    return $providers;
 }

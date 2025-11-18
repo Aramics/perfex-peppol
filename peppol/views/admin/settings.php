@@ -39,23 +39,20 @@
     <!-- Providers Tab -->
     <div role="tabpanel" class="tab-pane" id="peppol_providers">
         <?php 
-        // Get registered provider classes through hook
-        $provider_classes = hooks()->apply_filters('peppol_get_registered_provider_classes', []);
+        // Get registered provider instances
+        $provider_instances = peppol_get_registered_providers();
         $active_provider = get_option('peppol_active_provider', '');
         
-        // Convert class names to provider info for display
+        // Convert provider instances to info for display
         $providers = [];
-        foreach ($provider_classes as $class_name) {
-            if (class_exists($class_name)) {
-                try {
-                    $instance = new $class_name();
-                    if ($instance instanceof Abstract_peppol_provider) {
-                        $providers[] = $instance->get_provider_info();
-                    }
-                } catch (Exception $e) {
-                    // Skip invalid providers
-                    continue;
+        foreach ($provider_instances as $provider_id => $instance) {
+            try {
+                if ($instance instanceof Abstract_peppol_provider) {
+                    $providers[] = $instance->get_provider_info();
                 }
+            } catch (Exception $e) {
+                // Skip invalid providers
+                continue;
             }
         }
         ?>
@@ -91,20 +88,12 @@
                         <?php endif; ?>
                         
                         <?php 
-                        // Render provider-specific configuration fields from the class
+                        // Render provider-specific configuration fields from the instance
                         try {
-                            foreach ($provider_classes as $class_name) {
-                                if (class_exists($class_name)) {
-                                    $instance = new $class_name();
-                                    if ($instance instanceof Abstract_peppol_provider) {
-                                        $info = $instance->get_provider_info();
-                                        if ($info['id'] === $provider['id']) {
-                                            // Render settings using the provider's own inputs and values
-                                            echo $instance->render_setting_inputs();
-                                            break;
-                                        }
-                                    }
-                                }
+                            if (isset($provider_instances[$provider['id']])) {
+                                $instance = $provider_instances[$provider['id']];
+                                // Render settings using the provider's own inputs and values
+                                echo $instance->render_setting_inputs();
                             }
                         } catch (Exception $e) {
                             echo '<div class="alert alert-danger">Error loading provider settings: ' . e($e->getMessage()) . '</div>';

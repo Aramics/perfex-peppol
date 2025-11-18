@@ -164,13 +164,24 @@ class Peppol_ubl_generator
         }
 
         // Set postal address
-        if ($company_address || $company_city || $company_zip) {
-            $seller->setAddress(
-                $company_address ?: '',
-                $company_city ?: '',
-                $company_zip ?: '',
-                $this->_get_country_code($company_country)
-            );
+        if ($company_address || $company_city || $company_zip || $company_country) {
+            // Set address lines (up to 3 lines)
+            $addressLines = [];
+            if ($company_address) {
+                $addressLines[] = $company_address;
+            }
+            $seller->setAddress($addressLines);
+
+            // Set other address components separately
+            if ($company_city) {
+                $seller->setCity($company_city);
+            }
+            if ($company_zip) {
+                $seller->setPostalCode($company_zip);
+            }
+            if ($company_country) {
+                $seller->setCountry($this->_get_country_code($company_country));
+            }
         }
 
         // Set VAT identifier
@@ -202,13 +213,24 @@ class Peppol_ubl_generator
         }
 
         // Set postal address
-        if ($client->address || $client->city || $client->zip) {
-            $buyer->setAddress(
-                $client->address ?: '',
-                $client->city ?: '',
-                $client->zip ?: '',
-                $this->_get_country_code($client->country)
-            );
+        if ($client->address || $client->city || $client->zip || $client->country) {
+            // Set address lines (up to 3 lines)
+            $addressLines = [];
+            if ($client->address) {
+                $addressLines[] = $client->address;
+            }
+            $buyer->setAddress($addressLines);
+
+            // Set other address components separately
+            if ($client->city) {
+                $buyer->setCity($client->city);
+            }
+            if ($client->zip) {
+                $buyer->setPostalCode($client->zip);
+            }
+            if ($client->country) {
+                $buyer->setCountry($this->_get_country_code($client->country));
+            }
         }
 
         // Set VAT identifier
@@ -228,8 +250,7 @@ class Peppol_ubl_generator
             return 'BE'; // Default to Belgium
         }
 
-        $this->CI->load->model('countries_model');
-        $country = $this->CI->countries_model->get($country_id);
+        $country = get_country($country_id);
 
         return $country ? $country->iso2 : 'BE';
     }

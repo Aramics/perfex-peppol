@@ -224,6 +224,8 @@ $lang['peppol_status_failed'] = 'Failed to retrieve status (HTTP %d)';
 $lang['peppol_status_exception'] = 'Status retrieval exception';
 
 // Ademico Provider
+$lang['peppol_ademico_provider_name'] = 'Ademico PEPPOL';
+$lang['peppol_ademico_provider_description'] = 'Ademico PEPPOL access point integration';
 $lang['peppol_ademico_client_id'] = 'Client ID';
 $lang['peppol_ademico_client_id_placeholder'] = 'Your Ademico client ID';
 $lang['peppol_ademico_client_id_help'] = 'Client ID provided by Ademico';
@@ -235,6 +237,15 @@ $lang['peppol_ademico_timeout'] = 'Timeout (seconds)';
 $lang['peppol_ademico_timeout_help'] = 'API request timeout in seconds';
 $lang['peppol_ademico_api_version'] = 'API Version';
 $lang['peppol_ademico_api_version_help'] = 'Ademico API version';
+$lang['peppol_ademico_document_sent_success'] = 'Document sent successfully via Ademico';
+$lang['peppol_ademico_api_error'] = 'Ademico API error: %s';
+$lang['peppol_ademico_connection_failed'] = 'Connection failed: %s';
+$lang['peppol_ademico_credentials_required'] = 'Client ID and Client Secret are required';
+$lang['peppol_ademico_connection_success'] = 'Connection successful - Ademico API is accessible';
+$lang['peppol_ademico_health_check_failed'] = 'API health check failed: %s';
+$lang['peppol_ademico_token_failed'] = 'Failed to obtain access token - check credentials';
+$lang['peppol_ademico_test_failed'] = 'Connection test failed: %s';
+$lang['peppol_ademico_unknown_error'] = 'Unknown error';
 
 // Environment and Production
 $lang['peppol_sandbox'] = 'Sandbox';

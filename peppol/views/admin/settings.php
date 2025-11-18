@@ -101,6 +101,7 @@
                         ?>
                         
                         <?php if (!empty($provider['test_connection']) && $provider['test_connection']): ?>
+                            <hr />
                             <div class="form-group">
                                 <button type="button" class="btn btn-info btn-test-connection" data-provider="<?php echo e($provider['id']); ?>">
                                     <i class="fa fa-plug"></i>
@@ -112,12 +113,6 @@
                     </div>
                 <?php endforeach; ?>
                 
-                <div class="form-group">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fa fa-save"></i>
-                        <?php echo _l('save_settings'); ?>
-                    </button>
-                </div>
             </form>
         <?php endif; ?>
     </div>

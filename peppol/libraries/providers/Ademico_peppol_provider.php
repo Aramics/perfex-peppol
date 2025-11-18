@@ -15,8 +15,8 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
     {
         return [
             'id' => 'ademico',
-            'name' => 'Ademico PEPPOL',
-            'description' => 'Ademico PEPPOL access point integration',
+            'name' => _l('peppol_ademico_provider_name'),
+            'description' => _l('peppol_ademico_provider_description'),
             'version' => '1.0.0',
             'icon' => 'fa-cloud',
             'test_connection' => true
@@ -48,19 +48,19 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
             if ($response['success']) {
                 return [
                     'success' => true,
-                    'message' => 'Document sent successfully via Ademico',
+                    'message' => _l('peppol_ademico_document_sent_success'),
                     'document_id' => $response['data']['document_id'] ?? null
                 ];
             } else {
                 return [
                     'success' => false,
-                    'message' => 'Ademico API error: ' . ($response['error'] ?? 'Unknown error')
+                    'message' => _l('peppol_ademico_api_error', ($response['error'] ?? _l('peppol_ademico_unknown_error')))
                 ];
             }
         } catch (Exception $e) {
             return [
                 'success' => false,
-                'message' => 'Connection failed: ' . $e->getMessage()
+                'message' => _l('peppol_ademico_connection_failed', $e->getMessage())
             ];
         }
     }
@@ -72,7 +72,7 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
         if (empty($settings['client_id']) || empty($settings['client_secret'])) {
             return [
                 'success' => false,
-                'message' => 'Client ID and Client Secret are required'
+                'message' => _l('peppol_ademico_credentials_required')
             ];
         }
 
@@ -89,24 +89,24 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                 if ($response['success']) {
                     return [
                         'success' => true,
-                        'message' => 'Connection successful - Ademico API is accessible'
+                        'message' => _l('peppol_ademico_connection_success')
                     ];
                 } else {
                     return [
                         'success' => false,
-                        'message' => 'API health check failed: ' . ($response['error'] ?? 'Unknown error')
+                        'message' => _l('peppol_ademico_health_check_failed', ($response['error'] ?? _l('peppol_ademico_unknown_error')))
                     ];
                 }
             } else {
                 return [
                     'success' => false,
-                    'message' => 'Failed to obtain access token - check credentials'
+                    'message' => _l('peppol_ademico_token_failed')
                 ];
             }
         } catch (Exception $e) {
             return [
                 'success' => false,
-                'message' => 'Connection test failed: ' . $e->getMessage()
+                'message' => _l('peppol_ademico_test_failed', $e->getMessage())
             ];
         }
     }

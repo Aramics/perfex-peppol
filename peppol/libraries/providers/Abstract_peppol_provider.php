@@ -133,13 +133,18 @@ abstract class Abstract_peppol_provider implements Peppol_provider_interface
 
         foreach ($inputs as $field_name => $config) {
             $value = $current_values[$field_name] ?? $config['default'] ?? '';
-            $field_name_with_prefix = "peppol_{$this->get_id()}_{$field_name}";
+            $field_name_with_prefix = "settings[peppol_{$this->get_id()}_{$field_name}]";
             $label = $config['label'] ?? ucfirst($field_name);
             $attributes = $config['attributes'] ?? [];
 
             // Add placeholder if present
             if (!empty($config['placeholder'])) {
                 $attributes['placeholder'] = $config['placeholder'];
+            }
+
+            // Add help tooltip icon before input if present
+            if (!empty($config['help'])) {
+                $output .= '<i class="fa-regular fa-circle-question pull-left tw-mt-0.5 tw-mr-1" data-toggle="tooltip" data-title="' . e($config['help']) . '"></i>';
             }
 
             // Handle hidden fields as readonly text inputs
@@ -163,11 +168,6 @@ abstract class Abstract_peppol_provider implements Peppol_provider_interface
                         $output .= render_input($field_name_with_prefix, $label, $value, $config['type'], $attributes);
                         break;
                 }
-            }
-
-            // Add help text if present
-            if (!empty($config['help'])) {
-                $output .= '<small class="help-block">' . e($config['help']) . '</small>';
             }
         }
 

@@ -45,6 +45,10 @@ class Peppol_ubl_generator
                 $ublInvoice->addNote($invoice->terms);
             }
 
+            // Add buyer reference (required by PEPPOL)
+            $buyer_reference = format_invoice_number($invoice->id);
+            $ublInvoice->setBuyerReference($buyer_reference);
+
             // Create and set supplier (seller) party from enriched data
             $seller = $this->_create_party_from_data($sender_info);
             $ublInvoice->setSeller($seller);
@@ -109,6 +113,10 @@ class Peppol_ubl_generator
             if (!empty($credit_note->terms)) {
                 $ublCreditNote->addNote($credit_note->terms);
             }
+
+            // Add buyer reference (required by PEPPOL)
+            $buyer_reference = format_credit_note_number($credit_note->id);
+            $ublCreditNote->setBuyerReference($buyer_reference);
 
             // Create and set supplier (seller) party from enriched data
             $seller = $this->_create_party_from_data($sender_info);

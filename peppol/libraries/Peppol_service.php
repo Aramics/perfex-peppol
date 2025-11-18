@@ -53,7 +53,7 @@ class Peppol_service
             }
 
             // Check if already sent
-            $existing = $this->CI->peppol_model->get_peppol_invoice_by_invoice($invoice_id);
+            $existing = $this->CI->peppol_model->get_peppol_document('invoice', $invoice_id);
             if ($existing) {
                 return [
                     'success' => false,
@@ -63,13 +63,14 @@ class Peppol_service
 
             // Create PEPPOL invoice record
             $peppol_data = [
-                'invoice_id' => $invoice_id,
+                'document_type' => 'invoice',
+                'document_id' => $invoice_id,
                 'status' => 'sent',
                 'sent_at' => date('Y-m-d H:i:s'),
                 'created_at' => date('Y-m-d H:i:s')
             ];
 
-            $peppol_id = $this->CI->peppol_model->create_peppol_invoice($peppol_data);
+            $peppol_id = $this->CI->peppol_model->create_peppol_document($peppol_data);
 
             // Log activity
             $this->CI->peppol_model->log_activity([
@@ -132,7 +133,7 @@ class Peppol_service
             }
 
             // Check if already sent
-            $existing = $this->CI->peppol_model->get_peppol_credit_note_by_credit_note($credit_note_id);
+            $existing = $this->CI->peppol_model->get_peppol_document('credit_note', $credit_note_id);
             if ($existing) {
                 return [
                     'success' => false,
@@ -142,13 +143,14 @@ class Peppol_service
 
             // Create PEPPOL credit note record
             $peppol_data = [
-                'credit_note_id' => $credit_note_id,
+                'document_type' => 'credit_note',
+                'document_id' => $credit_note_id,
                 'status' => 'sent',
                 'sent_at' => date('Y-m-d H:i:s'),
                 'created_at' => date('Y-m-d H:i:s')
             ];
 
-            $peppol_id = $this->CI->peppol_model->create_peppol_credit_note($peppol_data);
+            $peppol_id = $this->CI->peppol_model->create_peppol_document($peppol_data);
 
             // Update status display field
             $this->update_credit_note_status_display($credit_note_id, 'Sent');

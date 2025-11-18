@@ -20,21 +20,6 @@ class Peppol_model extends App_Model
                        ->row();
     }
 
-    /**
-     * Get PEPPOL invoice by invoice ID (legacy wrapper)
-     */
-    public function get_peppol_invoice_by_invoice($invoice_id)
-    {
-        return $this->get_peppol_document('invoice', $invoice_id);
-    }
-
-    /**
-     * Get PEPPOL credit note by credit note ID (legacy wrapper)
-     */
-    public function get_peppol_credit_note_by_credit_note($credit_note_id)
-    {
-        return $this->get_peppol_document('credit_note', $credit_note_id);
-    }
 
     /**
      * Create PEPPOL document record
@@ -45,27 +30,6 @@ class Peppol_model extends App_Model
         return $this->db->insert_id();
     }
 
-    /**
-     * Create PEPPOL invoice record (legacy wrapper)
-     */
-    public function create_peppol_invoice($data)
-    {
-        $data['document_type'] = 'invoice';
-        $data['document_id'] = $data['invoice_id'];
-        unset($data['invoice_id']);
-        return $this->create_peppol_document($data);
-    }
-
-    /**
-     * Create PEPPOL credit note record (legacy wrapper)
-     */
-    public function create_peppol_credit_note($data)
-    {
-        $data['document_type'] = 'credit_note';
-        $data['document_id'] = $data['credit_note_id'];
-        unset($data['credit_note_id']);
-        return $this->create_peppol_document($data);
-    }
 
     /**
      * Update PEPPOL document
@@ -76,21 +40,6 @@ class Peppol_model extends App_Model
         return $this->db->update(db_prefix() . 'peppol_documents', $data);
     }
 
-    /**
-     * Update PEPPOL invoice (legacy wrapper)
-     */
-    public function update_peppol_invoice($id, $data)
-    {
-        return $this->update_peppol_document($id, $data);
-    }
-
-    /**
-     * Update PEPPOL credit note (legacy wrapper)
-     */
-    public function update_peppol_credit_note($id, $data)
-    {
-        return $this->update_peppol_document($id, $data);
-    }
 
     /**
      * Log PEPPOL activity
@@ -98,19 +47,6 @@ class Peppol_model extends App_Model
     public function log_activity($data)
     {
         $data['created_at'] = date('Y-m-d H:i:s');
-        
-        // Handle legacy invoice_id/credit_note_id fields
-        if (isset($data['invoice_id']) && !isset($data['document_type'])) {
-            $data['document_type'] = 'invoice';
-            $data['document_id'] = $data['invoice_id'];
-            unset($data['invoice_id']);
-        }
-        
-        if (isset($data['credit_note_id']) && !isset($data['document_type'])) {
-            $data['document_type'] = 'credit_note';
-            $data['document_id'] = $data['credit_note_id'];
-            unset($data['credit_note_id']);
-        }
         
         $this->db->insert(db_prefix() . 'peppol_logs', $data);
         return $this->db->insert_id();

@@ -46,7 +46,7 @@ hooks()->add_action('before_credit_note_preview_more_menu_button', function ($cr
     $CI->load->model('peppol/peppol_model');
 
     $client = $CI->clients_model->get($credit_note->clientid);
-    $peppol_credit_note = $CI->peppol_model->get_peppol_credit_note_by_credit_note($credit_note->id);
+    $peppol_credit_note = $CI->peppol_model->get_peppol_document('credit_note', $credit_note->id);
 
     // Only show if client has PEPPOL identifier
     if (!$client || empty($client->peppol_identifier)) {
@@ -57,10 +57,7 @@ hooks()->add_action('before_credit_note_preview_more_menu_button', function ($cr
         'document_type' => 'credit_note',
         'document' => $credit_note,
         'client' => $client,
-        'peppol_document' => $peppol_credit_note,
-        // Legacy variables for backward compatibility
-        'credit_note' => $credit_note,
-        'peppol_credit_note' => $peppol_credit_note
+        'peppol_document' => $peppol_credit_note
     ];
 
     $CI->load->view(PEPPOL_MODULE_NAME . '/document_dropdown_actions', $data);

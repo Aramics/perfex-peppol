@@ -87,7 +87,11 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
         }
 
         try {
-            $token = $this->get_access_token($settings);
+            // Clear any existing cached token before testing
+            $this->clear_token_cache($settings);
+            
+            // For test connection, don't use cache to ensure fresh validation
+            $token = $this->get_access_token($settings, false);
 
             if ($token) {
                 // Test API connectivity endpoint  
@@ -226,10 +230,21 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
      * and client credentials grant type to obtain a JWT access token.
      * 
      * @param array $settings Provider settings containing client_id and client_secret
+     * @param bool $use_cache Whether to use cached token if available (default: true)
      * @return string|false JWT access token on success, false on failure
      */
-    private function get_access_token($settings)
+    private function get_access_token($settings, $use_cache = true)
     {
+        $cache_key = $this->get_token_cache_key($settings);
+        
+        // Check cache first if enabled
+        if ($use_cache) {
+            $cached_token = $this->get_cached_token($cache_key);
+            if ($cached_token) {
+                return $cached_token;
+            }
+        }
+        
         $token_endpoint = $this->get_endpoint(self::ENDPOINT_OAUTH, $settings['environment']);
 
         // Base64 encode client_id:client_secret for Basic auth header
@@ -249,10 +264,83 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
         $response = $this->call_api($token_endpoint, null, $headers, $url_params);
 
         if ($response['success'] && isset($response['data']['access_token'])) {
-            return $response['data']['access_token'];
+            $token = $response['data']['access_token'];
+            
+            // Cache the token for future use
+            if ($use_cache) {
+                $this->cache_token($cache_key, $token);
+            }
+            
+            return $token;
         }
 
         return false;
+    }
+
+    /**
+     * Generate cache key for token based on settings
+     * 
+     * @param array $settings Provider settings
+     * @return string Cache key
+     */
+    private function get_token_cache_key($settings)
+    {
+        return 'peppol_ademico_token_' . md5($settings['client_id'] . '_' . $settings['environment']);
+    }
+
+    /**
+     * Get cached token if valid and not expired
+     * 
+     * @param string $cache_key Cache key
+     * @return string|false Cached token or false if expired/missing
+     */
+    private function get_cached_token($cache_key)
+    {
+        $cached_data = $this->CI->session->userdata($cache_key);
+        
+        if ($cached_data) {
+            $data = json_decode($cached_data, true);
+            
+            // Check if token is still valid (expires_at is in the future)
+            if (isset($data['token']) && isset($data['expires_at']) && $data['expires_at'] > time()) {
+                return $data['token'];
+            }
+        }
+        
+        return false;
+    }
+
+    /**
+     * Cache token with expiration
+     * 
+     * @param string $cache_key Cache key
+     * @param string $token JWT token
+     */
+    private function cache_token($cache_key, $token)
+    {
+        // Cache for 50 minutes (JWT tokens expire after 1 hour, leave 10 min buffer)
+        $expires_at = time() + (50 * 60);
+        
+        $cache_data = json_encode([
+            'token' => $token,
+            'expires_at' => $expires_at,
+            'created_at' => time()
+        ]);
+        
+        $this->CI->session->set_userdata($cache_key, $cache_data);
+    }
+
+    /**
+     * Clear cached token for given settings
+     * 
+     * @param array $settings Provider settings
+     * @return bool True if cache was cleared
+     */
+    public function clear_token_cache($settings)
+    {
+        $cache_key = $this->get_token_cache_key($settings);
+        $this->CI->session->unset_userdata($cache_key);
+        return true;
     }
 
     /**

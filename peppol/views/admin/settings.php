@@ -122,46 +122,53 @@
         }
     }
 
-    // Settings are now handled by regular form submission
-
-    $(document).on('click', '.btn-test-connection', function() {
-        var provider = $(this).data('provider');
-        var button = $(this);
-        var resultDiv = $('#test-result-' + provider);
-
-        button.prop('disabled', true);
-        button.html('<i class="fa fa-spinner fa-spin"></i> <?php echo _l('peppol_testing'); ?>...');
-        resultDiv.html('');
-
-        // Get provider settings
-        var providerSettings = {};
-        $('#provider-config-' + provider + ' input, #provider-config-' + provider + ' select').each(function() {
-            providerSettings[$(this).attr('name')] = $(this).val();
-        });
-
-        $.post(admin_url + 'peppol/test_provider_connection', {
-            provider: provider,
-            settings: providerSettings
-        }, function(response) {
-            if (response.success) {
-                resultDiv.html('<div class="alert alert-success mtop10"><i class="fa fa-check"></i> ' +
-                    response.message + '</div>');
-            } else {
-                resultDiv.html('<div class="alert alert-danger mtop10"><i class="fa fa-times"></i> ' +
-                    response.message + '</div>');
-            }
-        }).fail(function() {
-            resultDiv.html(
-                '<div class="alert alert-danger mtop10"><i class="fa fa-times"></i> <?php echo _l('something_went_wrong'); ?></div>'
-            );
-        }).always(function() {
-            button.prop('disabled', false);
-            button.html('<i class="fa fa-plug"></i> <?php echo _l('peppol_test_connection'); ?>');
-        });
-    });
-
     // Initialize on page load
     document.addEventListener("DOMContentLoaded", function() {
         peppolProviderChanged();
+
+        $(document).on('click', '.btn-test-connection', function() {
+            var provider = $(this).data('provider');
+            var button = $(this);
+            var resultDiv = $('#test-result-' + provider);
+
+            button.prop('disabled', true);
+            button.html('<i class="fa fa-spinner fa-spin"></i> <?php echo _l('peppol_testing'); ?>...');
+            resultDiv.html('');
+
+            // Get provider settings
+            var providerSettings = {};
+            $('#provider-config-' + provider + ' input, #provider-config-' + provider + ' select').each(
+                function() {
+                    providerSettings[$(this).attr('name')] = $(this).val();
+                });
+
+            $.post(admin_url + 'peppol/test_provider_connection', {
+                provider: provider,
+                settings: providerSettings
+            }, function(response) {
+
+                if (typeof response === 'string') {
+                    response = JSON.parse(response);
+                }
+
+                if (response.success) {
+                    resultDiv.html(
+                        '<div class="alert alert-success mtop10"><i class="fa fa-check"></i> ' +
+                        response.message + '</div>');
+                } else {
+                    resultDiv.html(
+                        '<div class="alert alert-danger mtop10"><i class="fa fa-times"></i> ' +
+                        response.message + '</div>');
+                }
+            }).fail(function() {
+                resultDiv.html(
+                    '<div class="alert alert-danger mtop10"><i class="fa fa-times"></i> <?php echo _l('something_went_wrong'); ?></div>'
+                );
+            }).always(function() {
+                button.prop('disabled', false);
+                button.html(
+                    '<i class="fa fa-plug"></i> <?php echo _l('peppol_test_connection'); ?>');
+            });
+        });
     });
 </script>

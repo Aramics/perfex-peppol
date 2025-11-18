@@ -55,11 +55,17 @@ class Peppol_ubl_generator
 
             // Add invoice lines
             foreach ($invoice_items as $item) {
+                $itemTax =  get_invoice_item_taxes($item['id']);
+
                 $line = new InvoiceLine();
-                $line->setName($item['description']);
-                $line->setDescription($item['description']);
-                $line->setPrice($item['rate']);
-                $line->setQuantity($item['qty']);
+                $line->setName($item['description'] ?: '-');
+                $description = clear_textarea_breaks($item['long_description']);
+                if (!empty($description)) {
+                    $line->setDescription($description);
+                }
+                $line->setPrice((float)$item['rate']);
+                $line->setQuantity((float)$item['qty']);
+                $line->setVatRate($itemTax[0]['taxrate'] ?: 0);
 
                 $ublInvoice->addLine($line);
             }

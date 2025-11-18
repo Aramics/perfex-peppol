@@ -26,9 +26,6 @@ function can_send_peppol_document($document, $document_type)
 $config = [
     'invoice' => [
         'send_url' => 'peppol/send_ajax/' . $document->id,
-        'resend_url' => 'peppol/resend/' . ($peppol_document ? $peppol_document->id : ''),
-        'view_ubl_url' => 'peppol/view_ubl/' . ($peppol_document ? $peppol_document->id : ''),
-        'download_ubl_url' => 'peppol/download_ubl/' . ($peppol_document ? $peppol_document->id : ''),
         'generate_view_ubl_url' => 'peppol/generate_view_ubl/invoice/' . $document->id,
         'generate_download_ubl_url' => 'peppol/generate_download_ubl/invoice/' . $document->id,
         'send_lang' => 'peppol_send_invoice',
@@ -37,9 +34,6 @@ $config = [
     ],
     'credit_note' => [
         'send_url' => 'peppol/send_credit_note_ajax/' . $document->id,
-        'resend_url' => 'peppol/resend_credit_note/' . ($peppol_document ? $peppol_document->id : ''),
-        'view_ubl_url' => 'peppol/view_credit_note_ubl/' . ($peppol_document ? $peppol_document->id : ''),
-        'download_ubl_url' => 'peppol/download_credit_note_ubl/' . ($peppol_document ? $peppol_document->id : ''),
         'generate_view_ubl_url' => 'peppol/generate_view_ubl/credit_note/' . $document->id,
         'generate_download_ubl_url' => 'peppol/generate_download_ubl/credit_note/' . $document->id,
         'send_lang' => 'peppol_send_credit_note',
@@ -68,29 +62,30 @@ $cfg = $config[$document_type];
         </li>
 
         <?php if ($peppol_document->status == 'failed' && staff_can('create', 'peppol')) : ?>
-        <!-- Resend Failed Document -->
+        <!-- Send Again (for failed documents) -->
         <li>
-            <a href="<?php echo admin_url($cfg['resend_url']); ?>"
-                onclick="return confirm('<?php echo _l('peppol_confirm_resend'); ?>')">
+            <a href="#" onclick="<?php echo $cfg['js_function']; ?>(<?php echo $document->id; ?>); return false;">
                 <i class="fa fa-refresh text-warning"></i>
                 <?php echo _l('peppol_resend'); ?>
             </a>
         </li>
         <?php endif; ?>
 
-        <?php if (!empty($peppol_document->ubl_content) && staff_can('view', 'peppol')) : ?>
+        <?php if (staff_can('view', 'peppol')) : ?>
         <li class="divider"></li>
-        <!-- View UBL -->
+        <!-- Generate and View UBL -->
         <li>
-            <a href="<?php echo admin_url($cfg['view_ubl_url']); ?>" target="_blank">
-                <?php echo _l('peppol_view_ubl'); ?>
+            <a href="<?php echo admin_url($cfg['generate_view_ubl_url']); ?>" target="_blank">
+                <i class="fa fa-eye text-info"></i>
+                <?php echo _l('peppol_generate_view_ubl'); ?>
             </a>
         </li>
 
-        <!-- Download UBL -->
+        <!-- Generate and Download UBL -->
         <li>
-            <a href="<?php echo admin_url($cfg['download_ubl_url']); ?>">
-                <?php echo _l('peppol_download_ubl'); ?>
+            <a href="<?php echo admin_url($cfg['generate_download_ubl_url']); ?>">
+                <i class="fa fa-download text-success"></i>
+                <?php echo _l('peppol_generate_download_ubl'); ?>
             </a>
         </li>
         <?php endif; ?>

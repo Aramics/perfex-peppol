@@ -14,7 +14,6 @@ if (!$CI->db->table_exists(db_prefix() . 'peppol_documents')) {
             `document_id` int(11) NOT NULL,
             `status` varchar(50) NOT NULL DEFAULT "pending",
             `peppol_document_id` varchar(255) DEFAULT NULL,
-            `ubl_content` longtext DEFAULT NULL,
             `sent_at` datetime DEFAULT NULL,
             `received_at` datetime DEFAULT NULL,
             `created_at` datetime DEFAULT CURRENT_TIMESTAMP,

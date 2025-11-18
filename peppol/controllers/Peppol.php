@@ -472,19 +472,11 @@ class Peppol extends AdminController
             throw new Exception(ucfirst($document_type) . ' not found');
         }
 
-        // Check if UBL already exists in PEPPOL documents
-        $peppol_document = $this->peppol_model->get_peppol_document($document_type, $document_id);
-
-        if ($peppol_document && !empty($peppol_document->ubl_content)) {
-            // Return existing UBL content
-            return $peppol_document->ubl_content;
+        // Always generate fresh UBL content (don't store in DB)
+        if ($document_type === 'invoice') {
+            return $this->peppol_service->generate_invoice_ubl($document);
         } else {
-            // Generate new UBL content
-            if ($document_type === 'invoice') {
-                return $this->peppol_service->generate_invoice_ubl($document);
-            } else {
-                return $this->peppol_service->generate_credit_note_ubl($document);
-            }
+            return $this->peppol_service->generate_credit_note_ubl($document);
         }
     }
 }

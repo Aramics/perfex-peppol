@@ -309,58 +309,6 @@ class Peppol_ubl_generator
     }
 
     /**
-     * Map payment method to PEPPOL payment means code
-     * 
-     * Note: This function is now only used as fallback. The main logic handles:
-     * - paymentmode '1' = Bank Transfer (code 30)  
-     * - All other paymentmodes = Online Payment Service (code 68)
-     * 
-     * @param string $payment_method Payment method from Perfex
-     * @return string PEPPOL payment means code
-     * @deprecated This method is kept for backward compatibility but is no longer the primary mapping logic
-     */
-    private function _get_payment_means_code($payment_method)
-    {
-        if (empty($payment_method)) {
-            return '68'; // Default to online payment service
-        }
-
-        $method = strtolower(trim($payment_method));
-
-        // Map specific payment methods to PEPPOL codes (rarely used now)
-        $payment_code_map = [
-            'cash' => '10',                    // Cash
-            'check' => '20',                   // Cheque
-            'bank transfer' => '30',           // Credit transfer
-            'transfer' => '30',                // Credit transfer
-            'wire transfer' => '30',           // Credit transfer
-            'bank' => '30',                    // Credit transfer
-            'credit card' => '48',             // Bank card
-            'debit card' => '49',              // Direct debit
-            'paypal' => '68',                  // Online payment service
-            'stripe' => '68',                  // Online payment service
-            'online' => '68',                  // Online payment service
-            'standing instruction' => '49',    // Direct debit
-            'direct debit' => '49',           // Direct debit
-        ];
-
-        // Check for exact matches first
-        if (isset($payment_code_map[$method])) {
-            return $payment_code_map[$method];
-        }
-
-        // Check for partial matches
-        foreach ($payment_code_map as $key => $code) {
-            if (strpos($method, $key) !== false) {
-                return $code;
-            }
-        }
-
-        // Default to online payment service for all unrecognized methods
-        return '68';
-    }
-
-    /**
      * Validate that the Einvoicing library is available
      */
     public function is_library_available()

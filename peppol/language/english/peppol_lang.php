@@ -302,3 +302,20 @@ $lang['peppol_payment_balance_due'] = 'Balance due';
 $lang['peppol_payment_method'] = 'Payment method';
 $lang['peppol_payment_date'] = 'Payment date';
 $lang['peppol_payment_transaction_id'] = 'Transaction ID';
+
+// Bank Information Settings
+$lang['peppol_bank_information'] = 'Bank Information';
+$lang['peppol_bank_information_help'] = 'Configure bank account details for PEPPOL credit transfer payments. This information is required to comply with PEPPOL business rules BR-61 and BR-50 when using bank transfer payment methods.';
+$lang['peppol_bank_account'] = 'Bank Account / IBAN';
+$lang['peppol_bank_account_placeholder'] = 'e.g., BE12 3456 7890 1234 or 123-456-789';
+$lang['peppol_bank_account_help'] = 'Enter your bank account number or IBAN. This will be used as Payment Account Identifier (BT-84) in PEPPOL documents for credit transfer payments.';
+$lang['peppol_bank_bic'] = 'BIC/SWIFT Code';
+$lang['peppol_bank_bic_placeholder'] = 'e.g., GEBABEBB';
+$lang['peppol_bank_bic_help'] = 'Bank Identifier Code (BIC) or SWIFT code of your bank. Optional but recommended for international transfers.';
+$lang['peppol_bank_name'] = 'Bank Account Name';
+$lang['peppol_bank_name_placeholder'] = 'e.g., Example Bank';
+$lang['peppol_bank_name_help'] = 'Name for the bank account. This will be used as the account name in PEPPOL documents.';
+
+// Payment Terms Templates
+$lang['peppol_payment_terms_partial'] = 'Payment of %s received on %s. Balance due: %s';
+$lang['peppol_payment_terms_paid'] = 'Invoice fully paid. Total payment: %s received on %s';

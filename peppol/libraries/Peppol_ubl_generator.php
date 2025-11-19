@@ -263,43 +263,66 @@ class Peppol_ubl_generator
                 $payment->setId($payment_record['transactionid']);
             }
 
+            // Track totals for payment terms
+            $total_paid += (float) $payment_record['amount'];
+            $payment_dates[] = $payment_record['date'];
+
             // Only add bank transfer details for offline payments (paymentmode = 1)
             if ($payment_record['paymentmode'] === '1' || $payment_record['paymentmode'] === 1) {
+                // Check if bank account is configured - Required by PEPPOL BR-61 and BR-50
+                $bank_details = isset($invoice->bank_details) ? $invoice->bank_details : null;
+                $account_number = $bank_details['account_number'] ?? '';
+
+                // If no bank account is configured, skip adding payment info to avoid PEPPOL validation errors
+                if (empty($account_number)) {
+                    continue; // Skip this payment record
+                }
+
                 $transfer = new Transfer();
 
-                // You could enhance this to pull actual bank account details from settings
+                // Set Payment Account Identifier (BT-84)
+                $transfer->setAccountId($account_number);
+
+                // Set bank account name
+                $account_name = $bank_details['account_name'] ?? '';
                 $company_name = get_option('companyname');
-                if ($company_name) {
-                    $transfer->setAccountName($company_name);
+                $final_account_name = $account_name ?: $company_name;
+                if ($final_account_name) {
+                    $transfer->setAccountName($final_account_name);
+                }
+
+                // Set BIC/SWIFT code if available
+                $bank_bic = $bank_details['bank_bic'] ?? '';
+                if (!empty($bank_bic)) {
+                    $transfer->setProvider($bank_bic);
                 }
 
                 $payment->addTransfer($transfer);
             }
 
             $ublInvoice->addPayment($payment);
-
-            // Track totals for payment terms
-            $total_paid += (float) $payment_record['amount'];
-            $payment_dates[] = $payment_record['date'];
         }
 
         // Calculate balance due
         $balance_due = (float) $invoice->total - $total_paid;
         $is_paid = $total_paid >= (float) $invoice->total;
 
+        // Get the latest payment date (most recent chronologically)
+        $latest_payment_date = !empty($payment_dates) ? max($payment_dates) : date('Y-m-d');
+
         // Set payment terms based on payment status
         if ($balance_due > 0) {
             $payment_terms = sprintf(
-                'Payment of %s received on %s. Balance due: %s',
+                _l('peppol_payment_terms_partial'),
                 number_format($total_paid, 2),
-                $payment_dates[0] ?? date('Y-m-d'),
+                $latest_payment_date,
                 number_format($balance_due, 2)
             );
         } elseif ($is_paid) {
             $payment_terms = sprintf(
-                'Invoice fully paid. Total payment: %s received on %s',
+                _l('peppol_payment_terms_paid'),
                 number_format($total_paid, 2),
-                $payment_dates[0] ?? date('Y-m-d')
+                $latest_payment_date
             );
         }
 

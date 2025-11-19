@@ -89,6 +89,9 @@ class Peppol_service
                 throw new Exception('UBL generation library is not available. Please ensure the Einvoicing library is properly installed.');
             }
 
+            // Add bank details to invoice object for UBL generator
+            $invoice->bank_details = $this->_get_bank_details();
+
             // Generate UBL using library with complete data (payments read from invoice object)
             return $this->CI->peppol_ubl_generator->generate_invoice_ubl($invoice, $invoice_items, $sender_info, $receiver_info);
         } catch (Exception $e) {
@@ -112,6 +115,9 @@ class Peppol_service
             if (!isset($this->CI->peppol_ubl_generator) || !$this->CI->peppol_ubl_generator->is_library_available()) {
                 throw new Exception('UBL generation library is not available. Please ensure the Einvoicing library is properly installed.');
             }
+
+            // Add bank details to credit note object for UBL generator
+            $credit_note->bank_details = $this->_get_bank_details();
 
             // Generate UBL using library with complete data
             return $this->CI->peppol_ubl_generator->generate_credit_note_ubl($credit_note, $credit_note_items, $sender_info, $receiver_info);
@@ -454,5 +460,17 @@ class Peppol_service
                 'message' => $result['message']
             ];
         }
+    }
+
+    /**
+     * Get bank details for UBL generation
+     */
+    private function _get_bank_details()
+    {
+        return [
+            'account_number' => get_option('peppol_bank_account', ''),
+            'bank_bic' => get_option('peppol_bank_bic', ''),
+            'account_name' => get_option('peppol_bank_name', '')
+        ];
     }
 }

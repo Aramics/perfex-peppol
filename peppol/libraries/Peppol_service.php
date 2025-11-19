@@ -221,14 +221,42 @@ class Peppol_service
             ];
         }
 
+        // Prepare sender and receiver info
+        $sender_info = $this->prepare_sender_info();
+        $receiver_info = $this->prepare_receiver_info($client);
+
+        // Validate PEPPOL identifiers
+        $errors = [];
+
+        // Validate sender PEPPOL identifier
+        $sender_validation = $this->_validate_entity_peppol_identifier($sender_info, 'sender');
+        if (!$sender_validation['valid']) {
+            $errors = array_merge($errors, $sender_validation['errors']);
+        }
+
+        // Validate receiver PEPPOL identifier
+        $receiver_validation = $this->_validate_entity_peppol_identifier($receiver_info, 'receiver');
+        if (!$receiver_validation['valid']) {
+            $errors = array_merge($errors, $receiver_validation['errors']);
+        }
+
+        // Return validation result if there are errors
+        if (!empty($errors)) {
+            return [
+                'success' => false,
+                'message' => _l('peppol_validation_failed') . ': ' . implode(' ', $errors),
+                'validation_errors' => $errors
+            ];
+        }
+
         return [
             'success' => true,
             'provider' => $provider,
             'document' => $document['document'],
             'client' => $client,
             'document_data' => $this->_prepare_document_metadata($document['document']),
-            'sender_info' => $this->prepare_sender_info(),
-            'receiver_info' => $this->prepare_receiver_info($client)
+            'sender_info' => $sender_info,
+            'receiver_info' => $receiver_info
         ];
     }
 
@@ -336,6 +364,43 @@ class Peppol_service
         }
 
         return $client;
+    }
+
+    /**
+     * Validate PEPPOL identifier and scheme for a single entity
+     * 
+     * @param array $entity_info Entity information
+     * @param string $entity_type 'sender' or 'receiver'
+     * @return array Validation result with errors
+     */
+    private function _validate_entity_peppol_identifier($entity_info, $entity_type)
+    {
+        $errors = [];
+
+        // Validate identifier
+        if (empty($entity_info['identifier'])) {
+            $errors[] = _l('peppol_' . $entity_type . '_identifier_required');
+        } else {
+            // Basic format validation
+            if (strlen(trim($entity_info['identifier'])) < 3) {
+                $errors[] = _l('peppol_identifier_too_short');
+            }
+        }
+
+        // Validate scheme
+        if (empty($entity_info['scheme'])) {
+            $errors[] = _l('peppol_' . $entity_type . '_scheme_required');
+        } else {
+            // Validate scheme format (typically 4 digits)
+            if (!preg_match('/^[0-9]{4}$/', $entity_info['scheme'])) {
+                $errors[] = _l('peppol_scheme_invalid_format');
+            }
+        }
+
+        return [
+            'valid' => empty($errors),
+            'errors' => $errors
+        ];
     }
 
     /**

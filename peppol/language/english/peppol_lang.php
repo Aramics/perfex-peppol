@@ -282,3 +282,12 @@ $lang['peppol_rate_limit_info'] = 'Rate limit information';
 $lang['peppol_transmission_mode'] = 'Transmission Mode';
 $lang['peppol_real_transmission'] = 'Real Transmission';
 $lang['peppol_test_transmission'] = 'Test/Simulation Only';
+
+// PEPPOL Identifier Validation
+$lang['peppol_validation_failed'] = 'PEPPOL validation failed';
+$lang['peppol_sender_identifier_required'] = 'Company PEPPOL identifier is required. Please configure it in PEPPOL settings.';
+$lang['peppol_sender_scheme_required'] = 'Company PEPPOL scheme is required. Please configure it in PEPPOL settings.';
+$lang['peppol_receiver_identifier_required'] = 'Client PEPPOL identifier is required. Please set the "PEPPOL Identifier" custom field for this client.';
+$lang['peppol_receiver_scheme_required'] = 'Client PEPPOL scheme is required. Please set the "PEPPOL Scheme" custom field for this client.';
+$lang['peppol_identifier_too_short'] = 'PEPPOL identifier must be at least 3 characters long.';
+$lang['peppol_scheme_invalid_format'] = 'PEPPOL scheme must be a 4-digit code (e.g., "0208").';

@@ -17,6 +17,7 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
     const ENDPOINT_CONNECTIVITY = 'connectivity';
     const ENDPOINT_SEND_INVOICE = 'send_invoice';
     const ENDPOINT_SEND_CREDIT_NOTE = 'send_credit_note';
+    const ENDPOINT_LEGAL_ENTITIES = 'legal_entities';
 
     public function get_provider_info()
     {
@@ -42,6 +43,25 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                 ];
             }
 
+            // Step 1: Ensure sender (company) is registered as legal entity
+            $sender_registration = $this->ensure_legal_entity_registered($sender_info);
+            if (!$sender_registration['success']) {
+                return [
+                    'success' => false,
+                    'message' => 'Sender registration failed: ' . $sender_registration['message']
+                ];
+            }
+
+            // Step 2: Ensure receiver (client) is registered as legal entity
+            $receiver_registration = $this->ensure_legal_entity_registered($receiver_info);
+
+            if (!$receiver_registration['success']) {
+                return [
+                    'success' => false,
+                    'message' => 'Receiver registration failed: ' . $receiver_registration['message']
+                ];
+            }
+
             // Get appropriate endpoint for document type
             if ($document_type === 'invoice') {
                 $send_endpoint = $this->get_endpoint(self::ENDPOINT_SEND_INVOICE);
@@ -54,15 +74,24 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                 ];
             }
 
-            // Send UBL file via multipart/form-data as required by API
+            // Step 3: Send UBL file via multipart/form-data as required by API
             $response = $this->send_ubl_file($send_endpoint, $ubl_content, $token, $document_type);
 
             if ($response['success']) {
+                // Include entity registration information in metadata
+                $metadata = array_merge($response['data'] ?? [], [
+                    'sender_entity_id' => $sender_registration['entity_id'],
+                    'receiver_entity_id' => $receiver_registration['entity_id'],
+                    'sender_was_existing' => $sender_registration['was_existing'] ?? false,
+                    'receiver_was_existing' => $receiver_registration['was_existing'] ?? false,
+                    'registration_timestamp' => date('Y-m-d H:i:s')
+                ]);
+
                 return [
                     'success' => true,
                     'message' => _l('peppol_ademico_document_sent_success'),
                     'document_id' => $response['data']['id'] ?? $response['data']['documentId'] ?? null,
-                    'metadata' => $response['data']
+                    'metadata' => $metadata
                 ];
             } else {
                 return [
@@ -193,14 +222,16 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                 self::ENDPOINT_API_BASE => $prod_api_base,
                 self::ENDPOINT_CONNECTIVITY => $prod_api_base . '/tools/connectivity',
                 self::ENDPOINT_SEND_INVOICE => $prod_api_base . '/invoices/ubl-submissions',
-                self::ENDPOINT_SEND_CREDIT_NOTE => $prod_api_base . '/credit-notes/ubl-submissions'
+                self::ENDPOINT_SEND_CREDIT_NOTE => $prod_api_base . '/credit-notes/ubl-submissions',
+                self::ENDPOINT_LEGAL_ENTITIES => $prod_api_base . '/legal-entities'
             ],
             'sandbox' => [
                 self::ENDPOINT_OAUTH => $sandbox_oauth_base . '/oauth2/token',
                 self::ENDPOINT_API_BASE => $sandbox_api_base,
                 self::ENDPOINT_CONNECTIVITY => $sandbox_api_base . '/tools/connectivity',
                 self::ENDPOINT_SEND_INVOICE => $sandbox_api_base . '/invoices/ubl-submissions',
-                self::ENDPOINT_SEND_CREDIT_NOTE => $sandbox_api_base . '/credit-notes/ubl-submissions'
+                self::ENDPOINT_SEND_CREDIT_NOTE => $sandbox_api_base . '/credit-notes/ubl-submissions',
+                self::ENDPOINT_LEGAL_ENTITIES => $sandbox_api_base . '/legal-entities'
             ]
         ];
     }
@@ -344,6 +375,217 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
         $cache_key = $this->get_token_cache_key($settings);
         $this->CI->session->unset_userdata($cache_key);
         return true;
+    }
+
+    /**
+     * Register a legal entity with Ademico PEPPOL network
+     * 
+     * @param array $entity_info Entity information including PEPPOL identifiers
+     * @return array Registration result with success status and entity ID
+     */
+    private function register_legal_entity($entity_info)
+    {
+        $settings = $this->get_settings();
+
+        try {
+            $token = $this->get_access_token($settings);
+            if (!$token) {
+                return [
+                    'success' => false,
+                    'message' => 'Failed to obtain access token for legal entity registration'
+                ];
+            }
+
+            $endpoint = $this->get_endpoint(self::ENDPOINT_LEGAL_ENTITIES);
+
+            // Build address string for geographicalInformation field
+            $address_parts = array_filter([
+                $entity_info['address'] ?? '',
+                $entity_info['city'] ?? '',
+                $entity_info['postal_code'] ?? '',
+                $entity_info['country_code'] ?? ''
+            ]);
+            $geographical_info = implode(', ', $address_parts);
+
+            // Prepare contacts array
+            $contacts = [];
+            if (!empty($entity_info['email']) || !empty($entity_info['phone'])) {
+                $contact = [];
+                if (!empty($entity_info['email'])) {
+                    $contact['email'] = $entity_info['email'];
+                }
+                if (!empty($entity_info['phone'])) {
+                    $contact['phone'] = $entity_info['phone'];
+                }
+                if (!empty($entity_info['contact_name'])) {
+                    $contact['name'] = $entity_info['contact_name'];
+                }
+
+                $contact_type = empty($entity_info['contact_type']) ? 'primary' : $entity_info['contact_type'];
+
+                $contact['contactType'] = $contact_type;
+                $contacts[] = $contact;
+            }
+
+            // Prepare legal entity data according to Ademico API specification
+            $legal_entity_data = [
+                'legalEntityDetails' => [
+                    'name' => $entity_info['name'],
+                    'countryCode' => $entity_info['country_code'] ?? 'BE',
+                    'geographicalInformation' => $geographical_info ?: 'Address not provided',
+                    'publishInPeppolDirectory' => true,
+                    'contacts' => $contacts,
+                    'additionalInformation' => 'Registered via Perfex CRM PEPPOL module',
+                    'peppolAdditionalIdentifiers' => []
+                ],
+                'peppolRegistrations' => [
+                    [
+                        'peppolIdentifier' => [
+                            'scheme' => $entity_info['scheme'],
+                            'identifier' => $entity_info['identifier']
+                        ],
+                        'peppolRegistration' => true,
+                        'supportedDocuments' => [
+                            'PEPPOL_BIS_BILLING_UBL_INVOICE_V3',
+                            'PEPPOL_BIS_BILLING_UBL_CREDIT_NOTE_V3'
+                        ]
+                    ]
+                ]
+            ];
+
+            // Add website URL if available
+            if (!empty($entity_info['website'])) {
+                $legal_entity_data['legalEntityDetails']['websiteURL'] = $entity_info['website'];
+            }
+
+            $headers = [
+                'Authorization: ' . $token,
+                'Content-Type: application/json'
+            ];
+
+            $response = $this->call_api($endpoint, $legal_entity_data, $headers, [], 'POST');
+
+            if ($response['success']) {
+                return [
+                    'success' => true,
+                    'message' => 'Legal entity registered successfully',
+                    'entity_id' => $response['data']['legalEntityId'] ?? $response['data']['id'] ?? null,
+                    'entity_data' => $response['data']
+                ];
+            } else {
+                return [
+                    'success' => false,
+                    'message' => 'Failed to register legal entity: ' . $response['error']
+                ];
+            }
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Legal entity registration failed: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Check if a legal entity is already registered
+     * 
+     * @param array $entity_info Entity information
+     * @return array Check result with registration status
+     */
+    private function check_legal_entity_registration($entity_info)
+    {
+        $settings = $this->get_settings();
+
+        try {
+            $token = $this->get_access_token($settings);
+            if (!$token) {
+                return ['registered' => false, 'message' => 'No access token'];
+            }
+
+            $endpoint = $this->get_endpoint(self::ENDPOINT_LEGAL_ENTITIES);
+
+            $headers = [
+                'Authorization: ' . $token,
+                'Content-Type: application/json'
+            ];
+
+            // Search by PEPPOL registration scheme and identifier according to API docs
+            $search_params = [
+                'peppolRegistrationScheme' => $entity_info['scheme'],
+                'peppolRegistrationIdentifier' => $entity_info['identifier'],
+                'pageSize' => 10
+            ];
+
+            $response = $this->call_api($endpoint, null, $headers, $search_params);
+
+            if ($response['success']) {
+                $response_data = $response['data'];
+                $entities = $response_data['legalEntities'] ?? $response_data['content'] ?? [];
+
+                if (!empty($entities)) {
+                    // Find exact match by PEPPOL identifier
+                    foreach ($entities as $entity) {
+                        $peppol_registrations = $entity['peppolRegistrations'] ?? [];
+                        foreach ($peppol_registrations as $registration) {
+                            $peppol = $registration['peppolRegistrationDetails']['peppolIdentifier'] ?? [];
+                            if (
+                                isset($peppol['scheme']) && isset($peppol['identifier']) &
+                                $peppol['scheme'] == $entity_info['scheme'] &&
+                                $peppol['identifier'] == $entity_info['identifier']
+                            ) {
+                                return [
+                                    'registered' => true,
+                                    'entity_id' => $entity['id'] ?? null,
+                                    'entity_data' => $entity
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
+
+            return ['registered' => false];
+        } catch (Exception $e) {
+            return ['registered' => false, 'message' => $e->getMessage()];
+        }
+    }
+
+
+    /**
+     * Ensure legal entity is registered (check first, register if not)
+     * 
+     * @param array $entity_info Entity information
+     * @return array Registration result with entity_id
+     */
+    private function ensure_legal_entity_registered($entity_info)
+    {
+        // First check if already registered
+        $check_result = $this->check_legal_entity_registration($entity_info);
+
+        if ($check_result['registered']) {
+            return [
+                'success' => true,
+                'message' => 'Legal entity already registered in PEPPOL network',
+                'entity_id' => $check_result['entity_id'],
+                'entity_data' => $check_result['entity_data'],
+                'was_existing' => true
+            ];
+        }
+
+        // Not registered, so register now (includes PEPPOL participant registration)
+        $registration_result = $this->register_legal_entity($entity_info);
+
+        if ($registration_result['success']) {
+            return [
+                'success' => true,
+                'message' => 'Legal entity created and registered in PEPPOL network successfully',
+                'entity_id' => $registration_result['entity_id'],
+                'entity_data' => $registration_result['entity_data'],
+                'was_existing' => false
+            ];
+        }
+
+        return $registration_result;
     }
 
     /**
@@ -564,18 +806,33 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
     /**
      * Make HTTP API call to Ademico endpoints
      * 
-     * Supports both JSON POST requests and URL-encoded form submissions.
+     * Supports GET requests with query parameters, JSON POST requests, and URL-encoded form submissions.
      * All endpoints return JSON responses which are automatically parsed.
      * 
      * @param string $url The full endpoint URL to call
      * @param array|null $data JSON data payload for POST requests (will be JSON encoded)
      * @param array $headers HTTP headers to include in the request
-     * @param array $url_params URL-encoded form parameters for POST requests (alternative to JSON)
+     * @param array $url_params For GET: query parameters, For POST: form parameters
+     * @param string $method HTTP method (GET or POST, auto-detected if not specified)
      * @return array Response array with 'success' boolean and 'data'/'error' keys
      */
-    private function call_api($url, $data = null, $headers = [], $url_params = [])
+    private function call_api($url, $data = null, $headers = [], $url_params = [], $method = null)
     {
         $settings = $this->get_settings();
+
+        // Auto-detect method if not specified
+        if ($method === null) {
+            if ($data !== null || (!empty($url_params) && strpos($url, 'oauth2/token') !== false)) {
+                $method = 'POST';
+            } else {
+                $method = 'GET';
+            }
+        }
+
+        // For GET requests, append query parameters to URL
+        if ($method === 'GET' && !empty($url_params)) {
+            $url .= (strpos($url, '?') !== false ? '&' : '?') . http_build_query($url_params);
+        }
 
         $ch = curl_init();
         curl_setopt_array($ch, [
@@ -587,17 +844,19 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
             CURLOPT_SSL_VERIFYHOST => 2
         ]);
 
-        // Handle URL-encoded parameters (for OAuth2 and form submissions)
-        if (!empty($url_params)) {
+        if ($method === 'POST') {
             curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($url_params));
+
+            // Handle URL-encoded parameters (for OAuth2 and form submissions)
+            if (!empty($url_params)) {
+                curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($url_params));
+            }
+            // Handle JSON data payload (for API requests)
+            elseif ($data) {
+                curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+            }
         }
-        // Handle JSON data payload (for API requests)
-        elseif ($data) {
-            curl_setopt($ch, CURLOPT_POST, true);
-            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        }
-        // GET request if no data provided
+        // GET request - no additional setup needed
 
         $response = curl_exec($ch);
         $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);

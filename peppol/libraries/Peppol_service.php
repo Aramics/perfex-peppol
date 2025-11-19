@@ -282,13 +282,16 @@ class Peppol_service
             'identifier' => get_option('peppol_company_identifier'),
             'scheme' => get_option('peppol_company_scheme') ?: '0208',
             'name' => get_option('companyname'),
+            'contact_name' => get_option('companyname'),
             'address' => get_option('company_address'),
             'city' => get_option('company_city'),
             'postal_code' => get_option('company_zip'),
             'country_code' => get_option('peppol_company_country_code') ?: get_option('invoice_company_country_code') ?: 'BE',
             'vat_number' => get_option('company_vat'),
             'phone' => get_option('company_phonenumber'),
-            'email' => get_option('company_email')
+            'email' => get_option('company_email'),
+            'website' => base_url(),
+            'contact_type' => 'public'
         ];
     }
 
@@ -298,8 +301,8 @@ class Peppol_service
     public function prepare_receiver_info($client)
     {
         // Get PEPPOL identifier and scheme from client custom fields
-        $identifier = $this->get_client_custom_field($client->userid, 'customers_peppol_identifier') ?: 'NO_PEPPOL_ID';
-        $scheme = $this->get_client_custom_field($client->userid, 'customers_peppol_scheme') ?: '0208';
+        $identifier = $this->get_client_custom_field($client->userid, 'customers_peppol_identifier');
+        $scheme = $this->get_client_custom_field($client->userid, 'customers_peppol_scheme');
 
         // Client name (company or individual)
         $client_name = $client->company ?: ($client->firstname . ' ' . $client->lastname);
@@ -315,7 +318,9 @@ class Peppol_service
             'vat_number' => $client->vat,
             'phone' => $client->phonenumber ?: ($client->contacts[0]['phonenumber'] ?? ''),
             'email' => $client->contacts[0]['email'] ?? '',
-            'contact_name' => trim(($client->contacts[0]['firstname'] ??  '') . ' ' . ($client->contacts[0]['lastname'] ??  ''))
+            'contact_name' => trim(($client->contacts[0]['firstname'] ??  '') . ' ' . ($client->contacts[0]['lastname'] ??  '')),
+            'website' => $client->website ?? '',
+            'contact_type' => 'primary',
         ];
     }
 

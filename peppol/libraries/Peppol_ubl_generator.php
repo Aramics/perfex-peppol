@@ -69,7 +69,8 @@ class Peppol_ubl_generator
                 }
                 $line->setPrice((float)$item['rate']);
                 $line->setQuantity((float)$item['qty']);
-                $line->setVatRate($itemTax[0]['taxrate'] ?: 0);
+                if (isset($itemTax[0]['taxrate']))
+                    $line->setVatRate($itemTax[0]['taxrate'] ?: 0);
 
                 $ublInvoice->addLine($line);
             }

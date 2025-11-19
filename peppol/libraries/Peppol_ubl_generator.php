@@ -284,11 +284,8 @@ class Peppol_ubl_generator
                 $transfer->setAccountId($account_number);
 
                 // Set bank account name
-                $account_name = $bank_details['account_name'] ?? '';
-                $company_name = get_option('companyname');
-                $final_account_name = $account_name ?: $company_name;
-                if ($final_account_name) {
-                    $transfer->setAccountName($final_account_name);
+                if (!empty($bank_details['account_name'])) {
+                    $transfer->setAccountName($bank_details['account_name']);
                 }
 
                 // Set BIC/SWIFT code if available
@@ -310,24 +307,24 @@ class Peppol_ubl_generator
         // Get the latest payment date (most recent chronologically)
         $latest_payment_date = !empty($payment_dates) ? max($payment_dates) : date('Y-m-d');
 
-        // Set payment terms based on payment status
-        if ($balance_due > 0) {
-            $payment_terms = sprintf(
-                _l('peppol_payment_terms_partial'),
-                number_format($total_paid, 2),
-                $latest_payment_date,
-                number_format($balance_due, 2)
-            );
-        } elseif ($is_paid) {
-            $payment_terms = sprintf(
-                _l('peppol_payment_terms_paid'),
-                number_format($total_paid, 2),
-                $latest_payment_date
-            );
-        }
-
-        if (isset($payment_terms)) {
-            $ublInvoice->setPaymentTerms($payment_terms);
+        // Set payment terms based on payment status (only if templates are provided)
+        if (isset($invoice->payment_terms_templates)) {
+            if ($balance_due > 0 && isset($invoice->payment_terms_templates['partial'])) {
+                $payment_terms = sprintf(
+                    $invoice->payment_terms_templates['partial'],
+                    number_format($total_paid, 2),
+                    $latest_payment_date,
+                    number_format($balance_due, 2)
+                );
+                $ublInvoice->setPaymentTerms($payment_terms);
+            } elseif ($is_paid && isset($invoice->payment_terms_templates['paid'])) {
+                $payment_terms = sprintf(
+                    $invoice->payment_terms_templates['paid'],
+                    number_format($total_paid, 2),
+                    $latest_payment_date
+                );
+                $ublInvoice->setPaymentTerms($payment_terms);
+            }
         }
     }
 

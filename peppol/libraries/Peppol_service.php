@@ -91,6 +91,9 @@ class Peppol_service
 
             // Add bank details to invoice object for UBL generator
             $invoice->bank_details = $this->_get_bank_details();
+            
+            // Add payment terms templates for UBL generator
+            $invoice->payment_terms_templates = $this->_get_payment_terms_templates();
 
             // Generate UBL using library with complete data (payments read from invoice object)
             return $this->CI->peppol_ubl_generator->generate_invoice_ubl($invoice, $invoice_items, $sender_info, $receiver_info);
@@ -118,6 +121,9 @@ class Peppol_service
 
             // Add bank details to credit note object for UBL generator
             $credit_note->bank_details = $this->_get_bank_details();
+            
+            // Add payment terms templates for UBL generator
+            $credit_note->payment_terms_templates = $this->_get_payment_terms_templates();
 
             // Generate UBL using library with complete data
             return $this->CI->peppol_ubl_generator->generate_credit_note_ubl($credit_note, $credit_note_items, $sender_info, $receiver_info);
@@ -470,7 +476,18 @@ class Peppol_service
         return [
             'account_number' => get_option('peppol_bank_account', ''),
             'bank_bic' => get_option('peppol_bank_bic', ''),
-            'account_name' => get_option('peppol_bank_name', '')
+            'account_name' => get_option('peppol_bank_name', '') ?: get_option('companyname', '')
+        ];
+    }
+
+    /**
+     * Get payment terms templates for UBL generation
+     */
+    private function _get_payment_terms_templates()
+    {
+        return [
+            'partial' => _l('peppol_payment_terms_partial'),
+            'paid' => _l('peppol_payment_terms_paid')
         ];
     }
 }

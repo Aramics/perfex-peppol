@@ -142,11 +142,11 @@ class Peppol_ubl_generator
             $ublCreditNote->setBuyer($buyer);
 
             // Add billing references (BT-25) - Preceding Invoice Reference
-            if (isset($credit_note->billing_references) && !empty($credit_note->billing_references)) {
-                foreach ($credit_note->billing_references as $reference) {
-                    $invoice_ref = new InvoiceReference($reference['id']);
-                    if (!empty($reference['issue_date'])) {
-                        $invoice_ref->setIssueDate(new DateTime(to_sql_date($reference['issue_date'])));
+            if (!empty($credit_note->applied_credits)) {
+                foreach ($credit_note->applied_credits as $key => $credit) {
+                    $invoice_ref = new InvoiceReference(format_invoice_number($credit['invoice_id']));
+                    if (!empty($credit['date_applied'])) {
+                        $invoice_ref->setIssueDate(new DateTime(to_sql_date($credit['date_applied'])));
                     }
                     $ublCreditNote->addPrecedingInvoiceReference($invoice_ref);
                 }
@@ -271,8 +271,12 @@ class Peppol_ubl_generator
             $payment_method = '';
             $means_code = '';
 
+            $payment_mode = $payment_record['paymentmode'] ?? $payment_record['payment_mode'] ?? '';
+            $payment_method_name = $payment_record['name'] ?? $payment_record['paymentmethod'] ?? $payment_record['payment_mode_name'] ?? '';
+            $payment_date = $payment_record['date'] ?? $payment_record['refunded_on'];
+
             // Check if paymentmode is '1' (offline payment/bank transfer)
-            if ($payment_record['paymentmode'] === '1' || $payment_record['paymentmode'] === 1) {
+            if ($payment_mode === '1' || $payment_mode === 1) {
                 if ($document_type === 'credit_note') {
                     $payment_method = 'Credit Transfer Refund';
                 } else {
@@ -282,9 +286,9 @@ class Peppol_ubl_generator
             } else {
                 // Any other paymentmode indicates online payment service
                 if ($document_type === 'credit_note') {
-                    $payment_method = 'Refund - ' . ($payment_record['name'] ?: $payment_record['paymentmethod'] ?: 'Other Method');
+                    $payment_method = $payment_method_name ?: 'Other Method';
                 } else {
-                    $payment_method = $payment_record['name'] ?: $payment_record['paymentmethod'] ?: 'Online Payment';
+                    $payment_method = $payment_method_name ?: 'Online Payment';
                 }
                 $means_code = '68'; // Online payment service
             }
@@ -302,12 +306,12 @@ class Peppol_ubl_generator
 
             // Track totals for payment terms
             $total_paid += (float) $payment_record['amount'];
-            $payment_dates[] = $payment_record['date'];
+            $payment_dates[] = $payment_date;
 
             // Only add bank transfer details for offline payments (paymentmode = 1)
-            if ($payment_record['paymentmode'] === '1' || $payment_record['paymentmode'] === 1) {
+            if ($payment_mode === '1' || $payment_mode === 1) {
                 // Check if bank account is configured - Required by PEPPOL BR-61 and BR-50
-                $bank_details = isset($document->bank_details) ? $document->bank_details : null;
+                $bank_details = isset($document->bank_details) ? $document->bank_details : [];
                 $account_number = $bank_details['account_number'] ?? '';
 
                 // If no bank account is configured, skip adding payment info to avoid PEPPOL validation errors

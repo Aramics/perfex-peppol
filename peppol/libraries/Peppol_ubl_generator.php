@@ -14,6 +14,7 @@ use Einvoicing\Identifier;
 use Einvoicing\Writers\UblWriter;
 use Einvoicing\Payments\Payment;
 use Einvoicing\Payments\Transfer;
+use Einvoicing\InvoiceReference;
 
 class Peppol_ubl_generator
 {
@@ -122,9 +123,21 @@ class Peppol_ubl_generator
             $currency_code = $currency ? $currency->name : 'EUR';
             $ublCreditNote->setCurrency($currency_code);
 
-            // Add notes if available
-            if (!empty($credit_note->terms)) {
-                $ublCreditNote->addNote($credit_note->terms);
+            // Add credit note reason code (BT-21) if available
+            if (isset($credit_note->credit_note_reason) && !empty($credit_note->credit_note_reason['code'])) {
+                $ublCreditNote->setCreditNoteTypeCode($credit_note->credit_note_reason['code']);
+            }
+
+            // Add notes - use reason text if available, otherwise use terms
+            $note_text = '';
+            if (isset($credit_note->credit_note_reason) && !empty($credit_note->credit_note_reason['text'])) {
+                $note_text = $credit_note->credit_note_reason['text'];
+            } elseif (!empty($credit_note->terms)) {
+                $note_text = $credit_note->terms;
+            }
+            
+            if ($note_text) {
+                $ublCreditNote->addNote($note_text);
             }
 
             // Add buyer reference (required by PEPPOL)
@@ -138,6 +151,17 @@ class Peppol_ubl_generator
             // Create and set customer (buyer) party from enriched data
             $buyer = $this->_create_party_from_data($receiver_info);
             $ublCreditNote->setBuyer($buyer);
+
+            // Add billing references (BT-25) - Preceding Invoice Reference
+            if (isset($credit_note->billing_references) && !empty($credit_note->billing_references)) {
+                foreach ($credit_note->billing_references as $reference) {
+                    $invoice_ref = new InvoiceReference($reference['id']);
+                    if (!empty($reference['issue_date'])) {
+                        $invoice_ref->setIssueDate(new DateTime(to_sql_date($reference['issue_date'])));
+                    }
+                    $ublCreditNote->addPrecedingInvoiceReference($invoice_ref);
+                }
+            }
 
             // Add credit note lines
             foreach ($credit_note_items as $item) {
@@ -157,6 +181,11 @@ class Peppol_ubl_generator
                 }
 
                 $ublCreditNote->addLine($line);
+            }
+
+            // Add payment information if credit note has refunds
+            if (isset($credit_note->refunds) && !empty($credit_note->refunds)) {
+                $this->_add_credit_note_payment_information($ublCreditNote, $credit_note);
             }
 
             // Generate UBL XML
@@ -334,6 +363,95 @@ class Peppol_ubl_generator
                 );
                 $ublInvoice->setPaymentTerms($payment_terms);
             }
+        }
+    }
+
+    /**
+     * Add payment information to UBL credit note (for refunds)
+     * 
+     * @param Invoice $ublCreditNote UBL Credit Note object
+     * @param object $credit_note Perfex credit note object with refunds property
+     */
+    private function _add_credit_note_payment_information($ublCreditNote, $credit_note)
+    {
+        $total_refunded = 0;
+        $payment_dates = [];
+
+        // Process each refund record from credit note->refunds
+        foreach ($credit_note->refunds as $payment_record) {
+            $payment = new Payment();
+
+            // Determine refund payment method and PEPPOL code
+            $payment_method = '';
+            $means_code = '';
+
+            // For credit notes, typically credit transfer back to customer
+            if ($payment_record['paymentmode'] === '1' || $payment_record['paymentmode'] === 1) {
+                $payment_method = 'Credit Transfer Refund';
+                $means_code = '30'; // Credit transfer
+            } else {
+                // Other refund methods (credit card refund, etc.)
+                $payment_method = 'Refund - ' . ($payment_record['name'] ?: $payment_record['paymentmethod'] ?: 'Other Method');
+                $means_code = '68'; // Online payment service refund
+            }
+
+            $payment->setMeansCode($means_code);
+
+            if ($payment_method) {
+                $payment->setMeansText($payment_method);
+            }
+
+            // Add payment ID if transaction ID exists
+            if (!empty($payment_record['transactionid'])) {
+                $payment->setId($payment_record['transactionid']);
+            }
+
+            // Track totals for payment terms
+            $total_refunded += (float) $payment_record['amount'];
+            $payment_dates[] = $payment_record['date'];
+
+            // Add bank transfer details for credit transfer refunds (paymentmode = 1)
+            if ($payment_record['paymentmode'] === '1' || $payment_record['paymentmode'] === 1) {
+                // Check if bank account is configured
+                $bank_details = isset($credit_note->bank_details) ? $credit_note->bank_details : null;
+                $account_number = $bank_details['account_number'] ?? '';
+                
+                // Only add transfer details if bank account is configured
+                if (!empty($account_number)) {
+                    $transfer = new Transfer();
+
+                    // Set Payment Account Identifier for refund
+                    $transfer->setAccountId($account_number);
+
+                    // Set bank account name
+                    if (!empty($bank_details['account_name'])) {
+                        $transfer->setAccountName($bank_details['account_name']);
+                    }
+
+                    // Set BIC/SWIFT code if available
+                    $bank_bic = $bank_details['bank_bic'] ?? '';
+                    if (!empty($bank_bic)) {
+                        $transfer->setProvider($bank_bic);
+                    }
+
+                    $payment->addTransfer($transfer);
+                }
+            }
+
+            $ublCreditNote->addPayment($payment);
+        }
+
+        // Get the latest refund date (most recent chronologically)
+        $latest_refund_date = !empty($payment_dates) ? max($payment_dates) : date('Y-m-d');
+
+        // Set payment terms for credit note refunds (only if templates are provided)
+        if (isset($credit_note->payment_terms_templates) && isset($credit_note->payment_terms_templates['refund'])) {
+            $payment_terms = sprintf(
+                $credit_note->payment_terms_templates['refund'],
+                number_format($total_refunded, 2),
+                $latest_refund_date
+            );
+            $ublCreditNote->setPaymentTerms($payment_terms);
         }
     }
 

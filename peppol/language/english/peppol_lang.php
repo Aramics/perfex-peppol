@@ -319,3 +319,8 @@ $lang['peppol_bank_name_help'] = 'Name for the bank account. This will be used a
 // Payment Terms Templates
 $lang['peppol_payment_terms_partial'] = 'Payment of %s received on %s. Balance due: %s';
 $lang['peppol_payment_terms_paid'] = 'Invoice fully paid. Total payment: %s received on %s';
+$lang['peppol_payment_terms_refund'] = 'Refund of %s processed on %s';
+
+// Credit Note Reason Templates
+$lang['peppol_credit_note_correction_reason'] = 'Correction of referenced invoice';
+$lang['peppol_credit_note_discount_reason'] = 'Credit note for discount or refund';

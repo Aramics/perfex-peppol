@@ -71,8 +71,13 @@ class Peppol_ubl_generator
                 }
                 $line->setPrice((float)$item['rate']);
                 $line->setQuantity((float)$item['qty']);
-                if (isset($itemTax[0]['taxrate']))
-                    $line->setVatRate($itemTax[0]['taxrate'] ?: 0);
+
+                $taxRate = (float)($itemTax[0]['taxrate'] ?? 0);
+                $line->setVatRate($taxRate);
+
+                if ($taxRate == 0) { // If no tax, set as zero tax category
+                    $line->setVatCategory('Z');
+                }
 
                 $ublInvoice->addLine($line);
             }

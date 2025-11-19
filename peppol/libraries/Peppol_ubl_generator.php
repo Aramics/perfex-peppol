@@ -12,13 +12,15 @@ use Einvoicing\Party;
 use Einvoicing\InvoiceLine;
 use Einvoicing\Identifier;
 use Einvoicing\Writers\UblWriter;
+use Einvoicing\Payments\Payment;
+use Einvoicing\Payments\Transfer;
 
 class Peppol_ubl_generator
 {
     /**
      * Generate UBL Invoice XML using Josemmo/Einvoicing library
      */
-    public function generate_invoice_ubl($invoice, $client, $invoice_items, $sender_info, $receiver_info)
+    public function generate_invoice_ubl($invoice, $invoice_items, $sender_info, $receiver_info)
     {
         try {
             // Check if library is available
@@ -75,6 +77,11 @@ class Peppol_ubl_generator
                 $ublInvoice->addLine($line);
             }
 
+            // Add payment information if invoice has payments
+            if (isset($invoice->payments) && !empty($invoice->payments)) {
+                $this->_add_payment_information($ublInvoice, $invoice);
+            }
+
             // Generate UBL XML
             $writer = new UblWriter();
             return $writer->export($ublInvoice);
@@ -86,7 +93,7 @@ class Peppol_ubl_generator
     /**
      * Generate UBL Credit Note XML using Josemmo/Einvoicing library
      */
-    public function generate_credit_note_ubl($credit_note, $client, $credit_note_items, $sender_info, $receiver_info)
+    public function generate_credit_note_ubl($credit_note, $credit_note_items, $sender_info, $receiver_info)
     {
         try {
             // Check if library is available
@@ -209,6 +216,143 @@ class Peppol_ubl_generator
         }
 
         return $party;
+    }
+
+    /**
+     * Add payment information to UBL invoice
+     * 
+     * @param Invoice $ublInvoice UBL Invoice object
+     * @param object $invoice Perfex invoice object with payments property
+     */
+    private function _add_payment_information($ublInvoice, $invoice)
+    {
+        $total_paid = 0;
+        $payment_dates = [];
+
+        // Process each payment record from invoice->payments
+        foreach ($invoice->payments as $payment_record) {
+            $payment = new Payment();
+
+            // Determine payment method and PEPPOL code
+            $payment_method = '';
+            $means_code = '';
+
+            // Check if paymentmode is '1' (offline payment/bank transfer)
+            if ($payment_record['paymentmode'] === '1' || $payment_record['paymentmode'] === 1) {
+                $payment_method = 'Bank Transfer';
+                $means_code = '30'; // Credit transfer
+            } else {
+                // Any other paymentmode indicates online payment service
+                $payment_method = $payment_record['name'] ?: $payment_record['paymentmethod'] ?: 'Online Payment';
+                $means_code = '68'; // Online payment service
+            }
+
+            $payment->setMeansCode($means_code);
+
+            if ($payment_method) {
+                $payment->setMeansText($payment_method);
+            }
+
+            // Add payment ID if transaction ID exists
+            if (!empty($payment_record['transactionid'])) {
+                $payment->setId($payment_record['transactionid']);
+            }
+
+            // Only add bank transfer details for offline payments (paymentmode = 1)
+            if ($payment_record['paymentmode'] === '1' || $payment_record['paymentmode'] === 1) {
+                $transfer = new Transfer();
+
+                // You could enhance this to pull actual bank account details from settings
+                $company_name = get_option('companyname');
+                if ($company_name) {
+                    $transfer->setAccountName($company_name);
+                }
+
+                $payment->addTransfer($transfer);
+            }
+
+            $ublInvoice->addPayment($payment);
+
+            // Track totals for payment terms
+            $total_paid += (float) $payment_record['amount'];
+            $payment_dates[] = $payment_record['date'];
+        }
+
+        // Calculate balance due
+        $balance_due = (float) $invoice->total - $total_paid;
+        $is_paid = $total_paid >= (float) $invoice->total;
+
+        // Set payment terms based on payment status
+        if ($balance_due > 0) {
+            $payment_terms = sprintf(
+                'Payment of %s received on %s. Balance due: %s',
+                number_format($total_paid, 2),
+                $payment_dates[0] ?? date('Y-m-d'),
+                number_format($balance_due, 2)
+            );
+        } elseif ($is_paid) {
+            $payment_terms = sprintf(
+                'Invoice fully paid. Total payment: %s received on %s',
+                number_format($total_paid, 2),
+                $payment_dates[0] ?? date('Y-m-d')
+            );
+        }
+
+        if (isset($payment_terms)) {
+            $ublInvoice->setPaymentTerms($payment_terms);
+        }
+    }
+
+    /**
+     * Map payment method to PEPPOL payment means code
+     * 
+     * Note: This function is now only used as fallback. The main logic handles:
+     * - paymentmode '1' = Bank Transfer (code 30)  
+     * - All other paymentmodes = Online Payment Service (code 68)
+     * 
+     * @param string $payment_method Payment method from Perfex
+     * @return string PEPPOL payment means code
+     * @deprecated This method is kept for backward compatibility but is no longer the primary mapping logic
+     */
+    private function _get_payment_means_code($payment_method)
+    {
+        if (empty($payment_method)) {
+            return '68'; // Default to online payment service
+        }
+
+        $method = strtolower(trim($payment_method));
+
+        // Map specific payment methods to PEPPOL codes (rarely used now)
+        $payment_code_map = [
+            'cash' => '10',                    // Cash
+            'check' => '20',                   // Cheque
+            'bank transfer' => '30',           // Credit transfer
+            'transfer' => '30',                // Credit transfer
+            'wire transfer' => '30',           // Credit transfer
+            'bank' => '30',                    // Credit transfer
+            'credit card' => '48',             // Bank card
+            'debit card' => '49',              // Direct debit
+            'paypal' => '68',                  // Online payment service
+            'stripe' => '68',                  // Online payment service
+            'online' => '68',                  // Online payment service
+            'standing instruction' => '49',    // Direct debit
+            'direct debit' => '49',           // Direct debit
+        ];
+
+        // Check for exact matches first
+        if (isset($payment_code_map[$method])) {
+            return $payment_code_map[$method];
+        }
+
+        // Check for partial matches
+        foreach ($payment_code_map as $key => $code) {
+            if (strpos($method, $key) !== false) {
+                return $code;
+            }
+        }
+
+        // Default to online payment service for all unrecognized methods
+        return '68';
     }
 
     /**

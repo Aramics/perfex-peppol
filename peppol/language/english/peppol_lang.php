@@ -291,3 +291,14 @@ $lang['peppol_receiver_identifier_required'] = 'Client PEPPOL identifier is requ
 $lang['peppol_receiver_scheme_required'] = 'Client PEPPOL scheme is required. Please set the "PEPPOL Scheme" custom field for this client.';
 $lang['peppol_identifier_too_short'] = 'PEPPOL identifier must be at least 3 characters long.';
 $lang['peppol_scheme_invalid_format'] = 'PEPPOL scheme must be a 4-digit code (e.g., "0208").';
+
+// Payment Information
+$lang['peppol_payment_information'] = 'Payment Information';
+$lang['peppol_payment_included'] = 'Payment information included in UBL';
+$lang['peppol_payment_status_paid'] = 'Invoice fully paid';
+$lang['peppol_payment_status_partial'] = 'Invoice partially paid';
+$lang['peppol_payment_total_received'] = 'Total payment received';
+$lang['peppol_payment_balance_due'] = 'Balance due';
+$lang['peppol_payment_method'] = 'Payment method';
+$lang['peppol_payment_date'] = 'Payment date';
+$lang['peppol_payment_transaction_id'] = 'Transaction ID';

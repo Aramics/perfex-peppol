@@ -448,9 +448,9 @@ class Peppol extends AdminController
 
         // Generate UBL content with complete data
         if ($document_type === 'invoice') {
-            return $this->peppol_service->generate_invoice_ubl($document, $client, $sender_info, $receiver_info);
+            return $this->peppol_service->generate_invoice_ubl($document, $sender_info, $receiver_info);
         } else {
-            return $this->peppol_service->generate_credit_note_ubl($document, $client, $sender_info, $receiver_info);
+            return $this->peppol_service->generate_credit_note_ubl($document, $sender_info, $receiver_info);
         }
     }
 
@@ -472,7 +472,7 @@ class Peppol extends AdminController
         try {
             // Run the installation hook which includes upgrade logic
             require_once(__DIR__ . '/../install.php');
-            
+
             set_alert('success', 'Database schema updated successfully. New provider and provider_metadata columns have been added.');
         } catch (Exception $e) {
             set_alert('danger', 'Database upgrade failed: ' . $e->getMessage());

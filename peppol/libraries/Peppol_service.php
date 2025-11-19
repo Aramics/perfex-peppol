@@ -27,8 +27,8 @@ class Peppol_service
                 return $data;
             }
 
-            // Generate UBL content with complete data
-            $ubl_content = $this->generate_invoice_ubl($data['document'], $data['client'], $data['sender_info'], $data['receiver_info']);
+            // Generate UBL content with complete data (payments read from invoice object)
+            $ubl_content = $this->generate_invoice_ubl($data['document'], $data['sender_info'], $data['receiver_info']);
 
             // Send via provider
             $result = $data['provider']->send('invoice', $ubl_content, $data['document_data'], $data['sender_info'], $data['receiver_info']);
@@ -55,7 +55,7 @@ class Peppol_service
             }
 
             // Generate UBL content with complete data
-            $ubl_content = $this->generate_credit_note_ubl($data['document'], $data['client'], $data['sender_info'], $data['receiver_info']);
+            $ubl_content = $this->generate_credit_note_ubl($data['document'], $data['sender_info'], $data['receiver_info']);
 
             // Send via provider
             $result = $data['provider']->send('credit_note', $ubl_content, $data['document_data'], $data['sender_info'], $data['receiver_info']);
@@ -75,7 +75,7 @@ class Peppol_service
     /**
      * Generate UBL for invoice
      */
-    public function generate_invoice_ubl($invoice, $client, $sender_info, $receiver_info)
+    public function generate_invoice_ubl($invoice, $sender_info, $receiver_info)
     {
         try {
             // Get invoice items
@@ -89,8 +89,8 @@ class Peppol_service
                 throw new Exception('UBL generation library is not available. Please ensure the Einvoicing library is properly installed.');
             }
 
-            // Generate UBL using library with complete data
-            return $this->CI->peppol_ubl_generator->generate_invoice_ubl($invoice, $client, $invoice_items, $sender_info, $receiver_info);
+            // Generate UBL using library with complete data (payments read from invoice object)
+            return $this->CI->peppol_ubl_generator->generate_invoice_ubl($invoice, $invoice_items, $sender_info, $receiver_info);
         } catch (Exception $e) {
             throw new Exception('Error generating invoice UBL: ' . $e->getMessage());
         }
@@ -99,7 +99,7 @@ class Peppol_service
     /**
      * Generate UBL for credit note
      */
-    public function generate_credit_note_ubl($credit_note, $client, $sender_info, $receiver_info)
+    public function generate_credit_note_ubl($credit_note, $sender_info, $receiver_info)
     {
         try {
             // Get credit note items
@@ -114,7 +114,7 @@ class Peppol_service
             }
 
             // Generate UBL using library with complete data
-            return $this->CI->peppol_ubl_generator->generate_credit_note_ubl($credit_note, $client, $credit_note_items, $sender_info, $receiver_info);
+            return $this->CI->peppol_ubl_generator->generate_credit_note_ubl($credit_note, $credit_note_items, $sender_info, $receiver_info);
         } catch (Exception $e) {
             throw new Exception('Error generating credit note UBL: ' . $e->getMessage());
         }
@@ -365,6 +365,7 @@ class Peppol_service
 
         return $client;
     }
+
 
     /**
      * Validate PEPPOL identifier and scheme for a single entity

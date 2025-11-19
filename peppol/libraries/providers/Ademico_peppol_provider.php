@@ -222,7 +222,7 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                 self::ENDPOINT_API_BASE => $prod_api_base,
                 self::ENDPOINT_CONNECTIVITY => $prod_api_base . '/tools/connectivity',
                 self::ENDPOINT_SEND_INVOICE => $prod_api_base . '/invoices/ubl-submissions',
-                self::ENDPOINT_SEND_CREDIT_NOTE => $prod_api_base . '/credit-notes/ubl-submissions',
+                self::ENDPOINT_SEND_CREDIT_NOTE => $prod_api_base . '/invoices/ubl-submissions',
                 self::ENDPOINT_LEGAL_ENTITIES => $prod_api_base . '/legal-entities'
             ],
             'sandbox' => [
@@ -230,7 +230,7 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                 self::ENDPOINT_API_BASE => $sandbox_api_base,
                 self::ENDPOINT_CONNECTIVITY => $sandbox_api_base . '/tools/connectivity',
                 self::ENDPOINT_SEND_INVOICE => $sandbox_api_base . '/invoices/ubl-submissions',
-                self::ENDPOINT_SEND_CREDIT_NOTE => $sandbox_api_base . '/credit-notes/ubl-submissions',
+                self::ENDPOINT_SEND_CREDIT_NOTE => $sandbox_api_base . '/invoices/ubl-submissions',
                 self::ENDPOINT_LEGAL_ENTITIES => $sandbox_api_base . '/legal-entities'
             ]
         ];
@@ -661,7 +661,7 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                 return ['success' => true, 'data' => $decoded_response ?: []];
             } else {
                 $error_message = 'HTTP ' . $http_code;
-                log_message("error", json_encode($decoded_response));
+                log_message("error", 'Ademico:' . $endpoint . ':' . json_encode($decoded_response));
                 if ($decoded_response) {
                     // Parse Ademico-specific error response structure
                     $parsed_error = $this->parse_ademico_error($decoded_response);

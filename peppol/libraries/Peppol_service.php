@@ -91,7 +91,7 @@ class Peppol_service
 
             // Add bank details to invoice object for UBL generator
             $invoice->bank_details = $this->_get_bank_details();
-            
+
             // Add payment terms templates for UBL generator
             $invoice->payment_terms_templates = $this->_get_payment_terms_templates();
 
@@ -121,15 +121,13 @@ class Peppol_service
 
             // Add bank details to credit note object for UBL generator
             $credit_note->bank_details = $this->_get_bank_details();
-            
+
             // Add payment terms templates for UBL generator
             $credit_note->payment_terms_templates = $this->_get_payment_terms_templates();
-            
+
             // Add billing references (BT-25) for credit note
             $credit_note->billing_references = $this->_get_billing_references($credit_note);
-            
-            // Add credit note reason information
-            $credit_note->credit_note_reason = $this->_get_credit_note_reason($credit_note);
+
 
             // Generate UBL using library with complete data
             return $this->CI->peppol_ubl_generator->generate_credit_note_ubl($credit_note, $credit_note_items, $sender_info, $receiver_info);
@@ -504,56 +502,21 @@ class Peppol_service
     private function _get_billing_references($credit_note)
     {
         $references = [];
-        
+
+
         // Check if credit note references an invoice
-        if (!empty($credit_note->invoice_id)) {
-            $this->CI->db->where('id', $credit_note->invoice_id);
-            $referenced_invoice = $this->CI->db->get(db_prefix() . 'invoices')->row();
-            
-            if ($referenced_invoice) {
+        if (!empty($credit_note->applied_credits)) {
+            foreach ($credit_note->applied_credits as $key => $credit) {
+                # code...
+
                 $references[] = [
-                    'id' => format_invoice_number($referenced_invoice->id),
-                    'issue_date' => $referenced_invoice->date,
-                    'type' => 'invoice' // Could be 'invoice' or other document types
+                    'id' => format_invoice_number($credit['invoice_id']),
+                    'issue_date' => $credit['date_applied'],
+                    'amount' => $credit['amount']
                 ];
             }
         }
-        
-        return $references;
-    }
 
-    /**
-     * Get credit note reason information for UBL
-     */
-    private function _get_credit_note_reason($credit_note)
-    {
-        // Default reason code and text
-        $reason_code = ''; // Will be determined based on context
-        $reason_text = '';
-        
-        // Check if credit note has specific reason in terms or custom fields
-        if (!empty($credit_note->terms)) {
-            $reason_text = $credit_note->terms;
-        }
-        
-        // Determine reason code based on whether it references an invoice
-        if (!empty($credit_note->invoice_id)) {
-            // Credit note references an invoice = correction/cancellation
-            $reason_code = 'CG'; // Correction according to UN/CEFACT code list 5189
-            if (empty($reason_text)) {
-                $reason_text = _l('peppol_credit_note_correction_reason');
-            }
-        } else {
-            // Standalone credit note = credit/discount
-            $reason_code = 'DI'; // Discount according to UN/CEFACT code list 5189  
-            if (empty($reason_text)) {
-                $reason_text = _l('peppol_credit_note_discount_reason');
-            }
-        }
-        
-        return [
-            'code' => $reason_code,
-            'text' => $reason_text
-        ];
+        return $references;
     }
 }

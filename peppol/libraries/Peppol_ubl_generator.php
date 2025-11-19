@@ -141,11 +141,20 @@ class Peppol_ubl_generator
 
             // Add credit note lines
             foreach ($credit_note_items as $item) {
+                $itemTax =  get_credit_note_item_taxes($item['id']);
+
                 $line = new InvoiceLine();
                 $line->setName($item['description']);
                 $line->setDescription($item['description']);
                 $line->setPrice($item['rate']);
                 $line->setQuantity($item['qty']);
+
+                $taxRate = (float)($itemTax[0]['taxrate'] ?? 0);
+                $line->setVatRate($taxRate);
+
+                if ($taxRate == 0) { // If no tax, set as zero tax category
+                    $line->setVatCategory('Z');
+                }
 
                 $ublCreditNote->addLine($line);
             }

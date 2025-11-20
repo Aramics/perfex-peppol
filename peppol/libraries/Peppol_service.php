@@ -494,7 +494,7 @@ class Peppol_service
     }
 
     /**
-     * Create Perfex document from UBL XML using dedicated parser
+     * Create Perfex document from UBL XML using dedicated parser and service coordination
      * 
      * @param string $ubl_xml The UBL XML content
      * @param string $document_id External document ID
@@ -503,10 +503,302 @@ class Peppol_service
      */
     public function create_document_from_ubl($ubl_xml, $document_id, $metadata = [])
     {
-        // Load the dedicated UBL document parser
-        $this->CI->load->library('peppol/peppol_ubl_document_parser');
-        
-        // Use the parser to create the document
-        return $this->CI->peppol_ubl_document_parser->parse_and_create($ubl_xml, $document_id, $metadata);
+        try {
+            // Load the dedicated UBL document parser
+            $this->CI->load->library('peppol/peppol_ubl_document_parser');
+
+            // Parse the UBL (parser only parses, no database operations)
+            $parse_result = $this->CI->peppol_ubl_document_parser->parse($ubl_xml, $document_id);
+            dd($parse_result);
+            if (!$parse_result['success']) {
+                return $parse_result;
+            }
+
+            $parsed_data = $parse_result['data'];
+
+            // Service handles all database operations
+            // Get or create client
+            $client_result = $this->_get_or_create_client_from_parsed_data($parsed_data);
+            if (!$client_result['success']) {
+                return $client_result;
+            }
+
+            // Create the document
+            $document_result = $this->_create_document_from_parsed_data($parsed_data, $client_result['client_id']);
+            if (!$document_result['success']) {
+                return $document_result;
+            }
+
+            // Store PEPPOL metadata for tracking
+            if (!empty($metadata)) {
+                $this->_store_document_metadata($document_result['document_id'], $parsed_data['document_type'], $document_id, $metadata);
+            }
+
+            return [
+                'success' => true,
+                'document_type' => $parsed_data['document_type'],
+                'document_id' => $document_result['document_id'],
+                'client_id' => $client_result['client_id'],
+                'message' => ucfirst($parsed_data['document_type']) . ' created successfully from UBL'
+            ];
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Error creating document from UBL: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Get or create client from parsed UBL data
+     * 
+     * @param array $parsed_data Parsed UBL data
+     * @return array Result with client_id
+     */
+    private function _get_or_create_client_from_parsed_data($parsed_data)
+    {
+        $this->CI->load->model('clients_model');
+        $buyer = $parsed_data['buyer'];
+
+        // Try to find existing client by VAT number
+        if (!empty($buyer['vat_number'])) {
+            $existing_client = $this->CI->clients_model->get('', ['vat' => $buyer['vat_number']]);
+            if ($existing_client && count($existing_client) > 0) {
+                return [
+                    'success' => true,
+                    'client_id' => $existing_client[0]['userid'],
+                    'was_existing' => true
+                ];
+            }
+        }
+
+        // Try to find by PEPPOL identifier if available
+        if (!empty($buyer['identifier'])) {
+            $client_id = $this->_find_client_by_peppol_identifier($buyer['identifier']);
+            if ($client_id) {
+                return [
+                    'success' => true,
+                    'client_id' => $client_id,
+                    'was_existing' => true
+                ];
+            }
+        }
+
+        // Create new client
+        return $this->_create_new_client_from_buyer_data($buyer);
+    }
+
+    /**
+     * Find client by PEPPOL identifier
+     */
+    private function _find_client_by_peppol_identifier($identifier)
+    {
+        $this->CI->db->select('c.userid')
+            ->from(db_prefix() . 'clients c')
+            ->join(db_prefix() . 'customfieldsvalues cfv', 'c.userid = cfv.relid')
+            ->join(db_prefix() . 'customfields cf', 'cfv.fieldid = cf.id')
+            ->where('cf.slug', 'customers_peppol_identifier')
+            ->where('cfv.value', $identifier);
+
+        $result = $this->CI->db->get()->row();
+        return $result ? $result->userid : null;
+    }
+
+    /**
+     * Create new client from buyer data
+     */
+    private function _create_new_client_from_buyer_data($buyer)
+    {
+        $client_data = [
+            'company' => $buyer['name'] ?: 'Unknown Client',
+            'vat' => $buyer['vat_number'] ?: '',
+            'address' => $buyer['address'] ?: '',
+            'city' => $buyer['city'] ?: '',
+            'zip' => $buyer['postal_code'] ?: '',
+            'country' => $this->_get_country_id_from_code($buyer['country_code']),
+            'phonenumber' => $buyer['telephone'] ?: '',
+            'website' => $buyer['website'] ?: '',
+            'default_currency' => get_base_currency()->id,
+            'show_primary_contact' => 1
+        ];
+
+        // Determine if we should create a contact (only if email is provided)
+        $with_contact = !empty($buyer['email']);
+
+        if ($with_contact) {
+            // Add contact data to client data following Perfex pattern
+            $client_data['firstname'] = $buyer['name'] ?: 'Contact';
+            $client_data['lastname'] = '';
+            $client_data['email'] = $buyer['email'];
+            $client_data['password'] = time(); // Generate password using timestamp
+            $client_data['is_primary'] = 1;
+        }
+
+        $client_id = $this->CI->clients_model->add($client_data, $with_contact);
+
+        if ($client_id) {
+            // Store PEPPOL identifier as custom field if available
+            if (!empty($buyer['identifier'])) {
+                $this->_store_client_peppol_identifier($client_id, $buyer['identifier'], $buyer['scheme']);
+            }
+
+            return [
+                'success' => true,
+                'client_id' => $client_id,
+                'was_existing' => false
+            ];
+        }
+
+        return [
+            'success' => false,
+            'message' => 'Failed to create client'
+        ];
+    }
+
+    /**
+     * Create document from parsed UBL data
+     */
+    private function _create_document_from_parsed_data($parsed_data, $client_id)
+    {
+        $document_type = $parsed_data['document_type'];
+
+        // Load appropriate model
+        if ($document_type === 'credit_note') {
+            $this->CI->load->model('credit_notes_model');
+            $model = $this->CI->credit_notes_model;
+        } else {
+            $this->CI->load->model('invoices_model');
+            $model = $this->CI->invoices_model;
+        }
+
+        $base_data = [
+            'clientid' => $client_id,
+            'date' => $parsed_data['issue_date'] ?: date('Y-m-d'),
+            'currency' => $this->_get_currency_id($parsed_data['currency_code']),
+            'newitems' => $parsed_data['items'],
+            'subtotal' => $parsed_data['totals']['subtotal'],
+            'total' => $parsed_data['totals']['total'],
+            'adminnote' => 'Created from PEPPOL UBL document: ' . $parsed_data['external_id']
+        ];
+
+        // Set external reference if available
+        if (!empty($parsed_data['document_number'])) {
+            $base_data['reference_no'] = $parsed_data['document_number'];
+        }
+
+        if ($document_type === 'credit_note') {
+            $document_data = array_merge($base_data, [
+                'status' => 1, // Open status
+            ]);
+
+            // Add billing reference and notes
+            if (!empty($parsed_data['billing_reference'])) {
+                $document_data['clientnote'] = 'Reference to invoice: ' . $parsed_data['billing_reference'];
+            } elseif (!empty($parsed_data['notes'])) {
+                $document_data['clientnote'] = $parsed_data['notes'];
+            }
+        } else {
+            $document_data = array_merge($base_data, [
+                'duedate' => $parsed_data['due_date'] ?: date('Y-m-d', strtotime('+30 days')),
+                'status' => Invoices_model::STATUS_UNPAID,
+                'clientnote' => $parsed_data['notes'] ?: '',
+                'terms' => $parsed_data['payment_terms'] ?: ''
+            ]);
+        }
+
+        $document_id = $model->add($document_data);
+
+        if ($document_id) {
+            return [
+                'success' => true,
+                'document_id' => $document_id
+            ];
+        }
+
+        return [
+            'success' => false,
+            'message' => 'Failed to create ' . $document_type
+        ];
+    }
+
+    /**
+     * Store PEPPOL document metadata
+     */
+    private function _store_document_metadata($document_id, $document_type, $external_id, $metadata)
+    {
+        $peppol_data = [
+            'document_type' => $document_type,
+            'document_id' => $document_id,
+            'status' => 'received',
+            'provider' => $metadata['provider'] ?? 'unknown',
+            'provider_document_id' => $external_id,
+            'provider_metadata' => json_encode($metadata),
+            'received_at' => date('Y-m-d H:i:s'),
+            'created_at' => date('Y-m-d H:i:s')
+        ];
+
+        return $this->CI->peppol_model->create_peppol_document($peppol_data);
+    }
+
+    /**
+     * Store client PEPPOL identifier
+     */
+    private function _store_client_peppol_identifier($client_id, $identifier, $scheme = null)
+    {
+        // Store PEPPOL identifier
+        $this->_store_custom_field_value($client_id, 'customers_peppol_identifier', $identifier);
+
+        // Store PEPPOL scheme if provided
+        if ($scheme) {
+            $this->_store_custom_field_value($client_id, 'customers_peppol_scheme', $scheme);
+        }
+    }
+
+    /**
+     * Store custom field value
+     */
+    private function _store_custom_field_value($client_id, $field_slug, $value)
+    {
+        $this->CI->db->where('fieldto', 'customers');
+        $this->CI->db->where('slug', $field_slug);
+        $custom_field = $this->CI->db->get(db_prefix() . 'customfields')->row();
+
+        if ($custom_field) {
+            $this->CI->db->insert(db_prefix() . 'customfieldsvalues', [
+                'relid' => $client_id,
+                'fieldid' => $custom_field->id,
+                'value' => $value
+            ]);
+        }
+    }
+
+    /**
+     * Get currency ID from currency code
+     */
+    private function _get_currency_id($currency_code)
+    {
+        if (!$currency_code) {
+            return get_base_currency()->id;
+        }
+
+        $this->CI->db->where('name', $currency_code);
+        $currency = $this->CI->db->get(db_prefix() . 'currencies')->row();
+
+        return $currency ? $currency->id : get_base_currency()->id;
+    }
+
+    /**
+     * Get country ID from ISO country code
+     */
+    private function _get_country_id_from_code($country_code)
+    {
+        if (!$country_code) {
+            return 0;
+        }
+
+        $this->CI->db->where('iso2', strtoupper($country_code));
+        $country = $this->CI->db->get(db_prefix() . 'countries')->row();
+
+        return $country ? $country->country_id : 0;
     }
 }

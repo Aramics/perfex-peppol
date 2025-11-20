@@ -1,12 +1,28 @@
 <?php
 
+use Einvoicing\Readers\UblReader;
+
 defined('BASEPATH') or exit('No direct script access allowed');
 
 /**
  * PEPPOL UBL Document Parser
  * 
- * Handles parsing UBL XML documents and converting them to Perfex CRM documents
- * Supports both invoices and credit notes with proper client and item management
+ * Dedicated UBL XML parser that converts UBL documents into structured data.
+ * This class follows the Single Responsibility Principle (SRP) by focusing
+ * solely on parsing UBL XML without performing any database operations.
+ * 
+ * The parser uses the josemmo/einvoicing library for UBL processing and 
+ * returns structured data that can be consumed by the service layer for
+ * document creation in Perfex CRM.
+ * 
+ * Supported document types:
+ * - UBL Invoice (converted to Perfex invoice)
+ * - UBL CreditNote (converted to Perfex credit note)
+ * 
+ * @package PEPPOL
+ * @since 1.0.0
+ * @see Peppol_service For database operations and document creation
+ * @see Einvoicing\Readers\UblReader For UBL XML processing
  */
 class Peppol_ubl_document_parser
 {
@@ -15,29 +31,63 @@ class Peppol_ubl_document_parser
     public function __construct()
     {
         $this->CI = &get_instance();
-        $this->CI->load->model('clients_model');
-        $this->CI->load->model('invoices_model');
-        $this->CI->load->model('credit_notes_model');
     }
 
     /**
-     * Parse UBL XML and create Perfex document
+     * Parse UBL XML document and extract structured data for document creation
      * 
-     * @param string $ubl_xml The UBL XML content
-     * @param string $external_document_id External document ID for reference
-     * @param array $metadata Additional metadata
-     * @return array Result with success status and created document info
+     * This is the main entry point for UBL document parsing. It accepts UBL XML
+     * content and returns a structured array containing all necessary information
+     * for creating documents in Perfex CRM.
+     * 
+     * The method automatically detects document type (invoice vs credit note) and
+     * extracts all relevant data including:
+     * - Document metadata (dates, currency, totals)
+     * - Party information (buyer/seller details)
+     * - Line items with quantities and prices
+     * - Payment terms and references
+     * 
+     * @param string $ubl_xml The complete UBL XML content to parse
+     * @param string|null $external_document_id Optional external document ID for tracking
+     * 
+     * @return array {
+     *     Parsing result with success status and data or error message
+     * 
+     *     @type bool   $success Whether parsing was successful
+     *     @type array  $data    Structured document data (only if success=true) {
+     *         @type string $external_id         External document identifier
+     *         @type string $document_type       'invoice' or 'credit_note'
+     *         @type string $document_number     Document number from UBL
+     *         @type string $issue_date          Issue date in Y-m-d format
+     *         @type string $due_date           Due date in Y-m-d format
+     *         @type string $currency_code      ISO currency code
+     *         @type string $notes              Combined notes from UBL
+     *         @type string $payment_terms      Payment terms text
+     *         @type string $billing_reference  Reference to related documents
+     *         @type array  $buyer              Buyer party information
+     *         @type array  $seller             Seller party information
+     *         @type array  $items              Array of line items
+     *         @type array  $totals             Document totals (subtotal, tax, total)
+     *     }
+     *     @type string $message Error message (only if success=false)
+     * }
+     * 
+     * @throws Exception When UBL parsing fails due to invalid XML or library issues
+     * 
+     * @since 1.0.0
+     * @example
+     *   $result = $parser->parse($ubl_xml, 'EXT-001');
+     *   if ($result['success']) {
+     *       $document_data = $result['data'];
+     *       // Process with service layer
+     *   }
      */
-    public function parse_and_create($ubl_xml, $external_document_id, $metadata = [])
+    public function parse($ubl_xml, $external_document_id = null)
     {
         try {
-            // Validate UBL reader availability
-            if (!class_exists('Einvoicing\UblReader')) {
-                throw new Exception('UBL reader library not available');
-            }
 
             // Parse UBL XML
-            $reader = new \Einvoicing\UblReader($ubl_xml);
+            $reader = new UblReader($ubl_xml);
 
             // Detect document type
             $is_credit_note = $this->_detect_credit_note($ubl_xml);
@@ -45,30 +95,10 @@ class Peppol_ubl_document_parser
 
             // Parse document data from UBL
             $parsed_data = $this->_parse_ubl_data($reader, $document_type, $external_document_id);
-            
-            // Get or create client
-            $client_result = $this->_get_or_create_client($parsed_data);
-            if (!$client_result['success']) {
-                return $client_result;
-            }
-
-            // Create the document
-            $document_result = $this->_create_document($parsed_data, $client_result['client_id'], $document_type);
-            if (!$document_result['success']) {
-                return $document_result;
-            }
-
-            // Store metadata if provided
-            if (!empty($metadata)) {
-                $this->_store_document_metadata($document_result['document_id'], $document_type, $external_document_id, $metadata);
-            }
 
             return [
                 'success' => true,
-                'document_type' => $document_type,
-                'document_id' => $document_result['document_id'],
-                'client_id' => $client_result['client_id'],
-                'message' => ucfirst($document_type) . ' created successfully from UBL'
+                'data' => $parsed_data
             ];
         } catch (Exception $e) {
             return [
@@ -79,7 +109,16 @@ class Peppol_ubl_document_parser
     }
 
     /**
-     * Detect if UBL is a credit note
+     * Detect document type by examining UBL XML root element
+     * 
+     * Performs a simple string search to identify whether the UBL document
+     * is a credit note or invoice based on the root XML element name.
+     * 
+     * @param string $ubl_xml The complete UBL XML content
+     * 
+     * @return bool True if document is a credit note, false for invoice
+     * 
+     * @since 1.0.0
      */
     private function _detect_credit_note($ubl_xml)
     {
@@ -87,7 +126,37 @@ class Peppol_ubl_document_parser
     }
 
     /**
-     * Parse UBL data into structured format
+     * Extract and structure all data from UBL reader into standardized format
+     * 
+     * This method coordinates the extraction of all document components:
+     * - Basic document information (dates, currency, references)
+     * - Party information (buyer and seller)
+     * - Line items with all details
+     * - Document totals and tax information
+     * 
+     * @param UblReader $reader The initialized UBL reader instance
+     * @param string $document_type Either 'invoice' or 'credit_note'
+     * @param string|null $external_document_id Optional external reference ID
+     * 
+     * @return array {
+     *     Complete structured document data ready for Perfex CRM processing
+     * 
+     *     @type string $external_id         External document identifier
+     *     @type string $document_type       Document type classification
+     *     @type string $document_number     UBL document ID/number
+     *     @type string $issue_date          Document issue date (Y-m-d)
+     *     @type string $due_date           Payment due date (Y-m-d)
+     *     @type string $currency_code      ISO 4217 currency code
+     *     @type string $notes              Concatenated document notes
+     *     @type string $payment_terms      Payment terms description
+     *     @type string $billing_reference  Reference to related billing documents
+     *     @type array  $buyer              Complete buyer party information
+     *     @type array  $seller             Complete seller party information
+     *     @type array  $items              Array of parsed line items
+     *     @type array  $totals             Financial totals breakdown
+     * }
+     * 
+     * @since 1.0.0
      */
     private function _parse_ubl_data($reader, $document_type, $external_document_id)
     {
@@ -97,7 +166,7 @@ class Peppol_ubl_document_parser
             'document_number' => $this->_safe_get_value($reader, 'id'),
             'issue_date' => $this->_safe_get_date($reader, 'issueDate'),
             'due_date' => $this->_safe_get_date($reader, 'dueDate'),
-            'currency' => $this->_get_currency_id($this->_safe_get_value($reader, 'documentCurrencyCode')),
+            'currency_code' => $this->_safe_get_value($reader, 'documentCurrencyCode'),
             'notes' => $this->_extract_notes($reader),
             'payment_terms' => $this->_safe_get_value($reader, 'paymentTerms'),
             'billing_reference' => $this->_safe_get_value($reader, 'billingReference')
@@ -117,7 +186,32 @@ class Peppol_ubl_document_parser
     }
 
     /**
-     * Parse party (buyer/seller) information from UBL
+     * Extract party information (buyer or seller) from UBL reader
+     * 
+     * Extracts comprehensive party data including identification, contact
+     * information, and address details. Uses the UBL reader's getValue method
+     * with appropriate field prefixes to distinguish between buyer and seller.
+     * 
+     * @param UblReader $reader The UBL reader instance
+     * @param string $party_type Either 'buyer' or 'seller' to determine field prefix
+     * 
+     * @return array {
+     *     Complete party information structure
+     * 
+     *     @type string $name           Party/company name
+     *     @type string $identifier     PEPPOL or other business identifier
+     *     @type string $scheme         Identifier scheme code (e.g., '0208' for BE VAT)
+     *     @type string $vat_number     VAT registration number
+     *     @type string $email          Contact email address
+     *     @type string $address        Street address
+     *     @type string $city           City name
+     *     @type string $postal_code    ZIP/postal code
+     *     @type string $country_code   ISO 3166-1 alpha-2 country code
+     *     @type string $telephone      Phone number
+     *     @type string $website        Website URL
+     * }
+     * 
+     * @since 1.0.0
      */
     private function _parse_party_info($reader, $party_type)
     {
@@ -139,7 +233,32 @@ class Peppol_ubl_document_parser
     }
 
     /**
-     * Parse line items from UBL
+     * Extract and process line items from UBL document
+     * 
+     * Processes invoice lines or credit note lines depending on document type.
+     * Each line item is converted to Perfex CRM item format with proper
+     * quantity handling for credit notes (credited quantities) vs invoices
+     * (invoiced quantities).
+     * 
+     * Falls back to creating a single placeholder item if line parsing fails,
+     * ensuring the document can still be processed.
+     * 
+     * @param UblReader $reader The UBL reader instance
+     * @param string $document_type Either 'invoice' or 'credit_note'
+     * 
+     * @return array {
+     *     Array of line items in Perfex CRM format
+     * 
+     *     Each item contains:
+     *     @type string $description      Short item description
+     *     @type string $long_description Detailed item description
+     *     @type float  $qty             Item quantity (positive for both types)
+     *     @type float  $rate            Unit price/rate
+     *     @type int    $order           Line item order/sequence
+     *     @type array  $taxname         Tax information (empty array for now)
+     * }
+     * 
+     * @since 1.0.0
      */
     private function _parse_line_items($reader, $document_type)
     {
@@ -180,7 +299,23 @@ class Peppol_ubl_document_parser
     }
 
     /**
-     * Parse monetary totals from UBL
+     * Extract financial totals from UBL document
+     * 
+     * Retrieves the key monetary amounts from the UBL document including
+     * subtotal (before tax), tax amount, and final payable amount.
+     * All amounts default to 0 if not found in the UBL.
+     * 
+     * @param UblReader $reader The UBL reader instance
+     * 
+     * @return array {
+     *     Financial totals structure
+     * 
+     *     @type float $subtotal   Line extension amount (before tax)
+     *     @type float $tax_amount Tax exclusive amount or tax total
+     *     @type float $total      Final payable amount including all charges
+     * }
+     * 
+     * @since 1.0.0
      */
     private function _parse_totals($reader)
     {
@@ -191,250 +326,19 @@ class Peppol_ubl_document_parser
         ];
     }
 
-    /**
-     * Get or create client from parsed buyer information
-     */
-    private function _get_or_create_client($parsed_data)
-    {
-        $buyer = $parsed_data['buyer'];
-
-        // Try to find existing client by VAT number
-        if (!empty($buyer['vat_number'])) {
-            $existing_client = $this->CI->clients_model->get('', ['vat' => $buyer['vat_number']]);
-            if ($existing_client && count($existing_client) > 0) {
-                return [
-                    'success' => true,
-                    'client_id' => $existing_client[0]['userid'],
-                    'was_existing' => true
-                ];
-            }
-        }
-
-        // Try to find by PEPPOL identifier if available
-        if (!empty($buyer['identifier'])) {
-            $client_id = $this->_find_client_by_peppol_identifier($buyer['identifier']);
-            if ($client_id) {
-                return [
-                    'success' => true,
-                    'client_id' => $client_id,
-                    'was_existing' => true
-                ];
-            }
-        }
-
-        // Create new client
-        return $this->_create_new_client($buyer);
-    }
 
     /**
-     * Find client by PEPPOL identifier custom field
-     */
-    private function _find_client_by_peppol_identifier($identifier)
-    {
-        $this->CI->db->select('c.userid')
-            ->from(db_prefix() . 'clients c')
-            ->join(db_prefix() . 'customfieldsvalues cfv', 'c.userid = cfv.relid')
-            ->join(db_prefix() . 'customfields cf', 'cfv.fieldid = cf.id')
-            ->where('cf.slug', 'customers_peppol_identifier')
-            ->where('cfv.value', $identifier);
-
-        $result = $this->CI->db->get()->row();
-        return $result ? $result->userid : null;
-    }
-
-    /**
-     * Create new client from buyer information
-     */
-    private function _create_new_client($buyer)
-    {
-        $client_data = [
-            'company' => $buyer['name'] ?: 'Unknown Client',
-            'vat' => $buyer['vat_number'] ?: '',
-            'address' => $buyer['address'] ?: '',
-            'city' => $buyer['city'] ?: '',
-            'zip' => $buyer['postal_code'] ?: '',
-            'country' => $this->_get_country_id_from_code($buyer['country_code']),
-            'phonenumber' => $buyer['telephone'] ?: '',
-            'website' => $buyer['website'] ?: '',
-            'default_currency' => get_base_currency()->id,
-            'show_primary_contact' => 1
-        ];
-
-        // Determine if we should create a contact (only if email is provided)
-        $with_contact = !empty($buyer['email']);
-
-        if ($with_contact) {
-            // Add contact data to client data following Perfex pattern
-            $client_data['firstname'] = $buyer['name'] ?: 'Contact';
-            $client_data['lastname'] = '';
-            $client_data['email'] = $buyer['email'];
-            $client_data['password'] = random_string();
-            $client_data['is_primary'] = 1;
-        }
-
-        $client_id = $this->CI->clients_model->add($client_data, $with_contact);
-
-        if ($client_id) {
-            // Store PEPPOL identifier as custom field if available
-            if (!empty($buyer['identifier'])) {
-                $this->_store_client_peppol_identifier($client_id, $buyer['identifier'], $buyer['scheme']);
-            }
-
-            return [
-                'success' => true,
-                'client_id' => $client_id,
-                'was_existing' => false
-            ];
-        }
-
-        return [
-            'success' => false,
-            'message' => 'Failed to create client'
-        ];
-    }
-
-    /**
-     * Create document (invoice or credit note) in Perfex
-     */
-    private function _create_document($parsed_data, $client_id, $document_type)
-    {
-        $base_data = [
-            'clientid' => $client_id,
-            'date' => $parsed_data['issue_date'] ?: date('Y-m-d'),
-            'currency' => $parsed_data['currency'],
-            'newitems' => $parsed_data['items'],
-            'subtotal' => $parsed_data['totals']['subtotal'],
-            'total' => $parsed_data['totals']['total'],
-            'adminnote' => 'Created from PEPPOL UBL document: ' . $parsed_data['external_id']
-        ];
-
-        // Set external reference if available
-        if (!empty($parsed_data['document_number'])) {
-            $base_data['reference_no'] = $parsed_data['document_number'];
-        }
-
-        if ($document_type === 'credit_note') {
-            $document_data = array_merge($base_data, [
-                'status' => 1, // Open status
-            ]);
-
-            // Add billing reference and notes
-            if (!empty($parsed_data['billing_reference'])) {
-                $document_data['clientnote'] = 'Reference to invoice: ' . $parsed_data['billing_reference'];
-            } elseif (!empty($parsed_data['notes'])) {
-                $document_data['clientnote'] = $parsed_data['notes'];
-            }
-
-            $document_id = $this->CI->credit_notes_model->add($document_data);
-        } else {
-            $document_data = array_merge($base_data, [
-                'duedate' => $parsed_data['due_date'] ?: date('Y-m-d', strtotime('+30 days')),
-                'status' => Invoices_model::STATUS_UNPAID,
-                'clientnote' => $parsed_data['notes'] ?: '',
-                'terms' => $parsed_data['payment_terms'] ?: ''
-            ]);
-
-            $document_id = $this->CI->invoices_model->add($document_data);
-        }
-
-        if ($document_id) {
-            return [
-                'success' => true,
-                'document_id' => $document_id
-            ];
-        }
-
-        return [
-            'success' => false,
-            'message' => 'Failed to create ' . $document_type
-        ];
-    }
-
-    /**
-     * Store document metadata for tracking
-     */
-    private function _store_document_metadata($document_id, $document_type, $external_id, $metadata)
-    {
-        $this->CI->load->model('peppol/peppol_model');
-
-        $peppol_data = [
-            'document_type' => $document_type,
-            'document_id' => $document_id,
-            'status' => 'received',
-            'provider' => $metadata['provider'] ?? 'unknown',
-            'provider_document_id' => $external_id,
-            'provider_metadata' => json_encode($metadata),
-            'received_at' => date('Y-m-d H:i:s'),
-            'created_at' => date('Y-m-d H:i:s')
-        ];
-
-        return $this->CI->peppol_model->create_peppol_document($peppol_data);
-    }
-
-    /**
-     * Store client PEPPOL identifier as custom field
-     */
-    private function _store_client_peppol_identifier($client_id, $identifier, $scheme = null)
-    {
-        // Store PEPPOL identifier
-        $this->_store_custom_field_value($client_id, 'customers_peppol_identifier', $identifier);
-
-        // Store PEPPOL scheme if provided
-        if ($scheme) {
-            $this->_store_custom_field_value($client_id, 'customers_peppol_scheme', $scheme);
-        }
-    }
-
-    /**
-     * Store custom field value for client
-     */
-    private function _store_custom_field_value($client_id, $field_slug, $value)
-    {
-        $this->CI->db->where('fieldto', 'customers');
-        $this->CI->db->where('slug', $field_slug);
-        $custom_field = $this->CI->db->get(db_prefix() . 'customfields')->row();
-
-        if ($custom_field) {
-            $this->CI->db->insert(db_prefix() . 'customfieldsvalues', [
-                'relid' => $client_id,
-                'fieldid' => $custom_field->id,
-                'value' => $value
-            ]);
-        }
-    }
-
-    /**
-     * Get currency ID from currency code
-     */
-    private function _get_currency_id($currency_code)
-    {
-        if (!$currency_code) {
-            return get_base_currency()->id;
-        }
-
-        $this->CI->db->where('name', $currency_code);
-        $currency = $this->CI->db->get(db_prefix() . 'currencies')->row();
-
-        return $currency ? $currency->id : get_base_currency()->id;
-    }
-
-    /**
-     * Get country ID from ISO country code
-     */
-    private function _get_country_id_from_code($country_code)
-    {
-        if (!$country_code) {
-            return 0;
-        }
-
-        $this->CI->db->where('iso2', strtoupper($country_code));
-        $country = $this->CI->db->get(db_prefix() . 'countries')->row();
-
-        return $country ? $country->country_id : 0;
-    }
-
-    /**
-     * Extract notes from UBL reader
+     * Extract and concatenate all document notes from UBL
+     * 
+     * Retrieves all note elements from the UBL document and combines them
+     * into a single string with newline separators. Handles cases where
+     * the getNotes method is not available or fails.
+     * 
+     * @param UblReader $reader The UBL reader instance
+     * 
+     * @return string Concatenated notes separated by newlines, empty string if no notes
+     * 
+     * @since 1.0.0
      */
     private function _extract_notes($reader)
     {
@@ -453,7 +357,21 @@ class Peppol_ubl_document_parser
 
 
     /**
-     * Safely get value from UBL reader
+     * Safely extract values from UBL reader with error handling
+     * 
+     * Attempts to retrieve values from the UBL reader using either the
+     * getValue method or direct method calls. Provides graceful error
+     * handling for missing methods or extraction failures.
+     * 
+     * This method abstracts the complexity of the UBL reader API and
+     * ensures consistent behavior across different UBL document structures.
+     * 
+     * @param UblReader $reader The UBL reader instance
+     * @param string $method The field name or method name to retrieve
+     * 
+     * @return mixed|null The extracted value or null if not found/accessible
+     * 
+     * @since 1.0.0
      */
     private function _safe_get_value($reader, $method)
     {
@@ -470,7 +388,18 @@ class Peppol_ubl_document_parser
     }
 
     /**
-     * Safely get date value from UBL reader
+     * Safely extract and normalize date values from UBL reader
+     * 
+     * Retrieves date values from UBL and converts them to standardized
+     * Y-m-d format for Perfex CRM compatibility. Handles both DateTime
+     * objects and string dates with proper error handling.
+     * 
+     * @param UblReader $reader The UBL reader instance
+     * @param string $method The date field name to retrieve
+     * 
+     * @return string|null Date in Y-m-d format or null if parsing fails
+     * 
+     * @since 1.0.0
      */
     private function _safe_get_date($reader, $method)
     {
@@ -488,7 +417,18 @@ class Peppol_ubl_document_parser
     }
 
     /**
-     * Safely get value from UBL line item
+     * Safely extract values from UBL line item objects with error handling
+     * 
+     * Similar to _safe_get_value but specifically designed for UBL line item
+     * objects which may have different method availability. Provides consistent
+     * error handling for line item data extraction.
+     * 
+     * @param object $line The UBL line item object
+     * @param string $method The method name to call on the line item
+     * 
+     * @return mixed|null The extracted value or null if method fails/unavailable
+     * 
+     * @since 1.0.0
      */
     private function _safe_get_line_value($line, $method)
     {

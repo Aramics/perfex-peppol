@@ -165,7 +165,8 @@ class Peppol_ubl_document_parser
      *     @type string $currency_code      ISO 4217 currency code
      *     @type string $notes              Concatenated document notes
      *     @type string $payment_terms      Payment terms description
-     *     @type string $billing_reference  Reference to related billing documents
+     *     @type array  $billing_references Array of references to related billing documents
+     *     @type array  $payments           Array of payment information (means, accounts, etc.)
      *     @type array  $buyer              Complete buyer party information
      *     @type array  $seller             Complete seller party information
      *     @type array  $items              Array of parsed line items
@@ -189,7 +190,8 @@ class Peppol_ubl_document_parser
             'currency_code' => $invoice->getCurrency(),
             'notes' => implode("\n", $invoice->getNotes()),
             'payment_terms' => $invoice->getPaymentTerms() ?: '',
-            'billing_reference' => $this->_get_billing_reference($invoice)
+            'billing_references' => $this->_get_billing_references($invoice),
+            'payments' => $this->_parse_invoice_payments($invoice)
         ];
 
         // Parse buyer/seller information
@@ -316,20 +318,70 @@ class Peppol_ubl_document_parser
 
 
     /**
-     * Extract billing reference from Invoice object
+     * Extract billing references from Invoice object
      * 
      * @param Invoice $invoice The Invoice object
      * 
-     * @return string Billing reference or empty string
+     * @return array Array of billing reference strings
      * 
      * @since 1.0.0
      */
-    private function _get_billing_reference($invoice)
+    private function _get_billing_references($invoice)
     {
-        $references = $invoice->getPrecedingInvoiceReferences();
-        if ($references && is_array($references) && !empty($references)) {
-            return $references[0]->getValue() ?? '';
+        $references = [];
+        $precedingRefs = $invoice->getPrecedingInvoiceReferences();
+
+        if ($precedingRefs && is_array($precedingRefs)) {
+            foreach ($precedingRefs as $ref) {
+                if ($ref && $ref->getValue()) {
+                    $references[] = $ref->getValue();
+                }
+            }
         }
-        return '';
+
+        return $references;
+    }
+
+    /**
+     * Extract payment information from Invoice object
+     * 
+     * @param Invoice $invoice The Invoice object
+     * 
+     * @return array Array of payment information
+     * 
+     * @since 1.0.0
+     */
+    private function _parse_invoice_payments($invoice)
+    {
+        $payments = [];
+        $payments = $invoice->getPayments();
+
+        if (!empty($payments)) {
+            foreach ($payments as $payment) {
+                $paymentData = [
+                    'payment_means_code' => $payment->getMeansCode(),
+                    'payment_id' => $payment->getId() ?: '1',
+                    'instruction_note' => $payment->getMeansText() ?? ''
+                ];
+
+                // Extract bank account details if available
+                $_transfers = $payment->getTransfers();
+                $transfers = [];
+                if (!empty($_transfers)) {
+                    foreach ($_transfers as $transfer) {
+                        $transfers[] = [
+                            'account_id' => $transfer->getAccountId(),
+                            'account_name' => $transfer->getAccountName(),
+                            'bank_bic' => $transfer->getProvider(),
+                        ];
+                    }
+                    $paymentData['transfers'] = $paymentData;
+                }
+
+                $payments[] = $paymentData;
+            }
+        }
+
+        return $payments;
     }
 }

@@ -325,24 +325,10 @@ $lang['peppol_payment_terms_refund'] = 'Refund of %s processed on %s';
 $lang['peppol_credit_note_correction_reason'] = 'Correction of referenced invoice';
 $lang['peppol_credit_note_discount_reason'] = 'Credit note for discount or refund';
 
-// Notifications and Document Management
-$lang['peppol_notifications'] = 'PEPPOL Notifications';
-$lang['peppol_incoming_documents'] = 'Incoming Documents';
-$lang['peppol_document_status_updates'] = 'Document Status Updates';
-$lang['peppol_check_notifications'] = 'Check Notifications';
-$lang['peppol_process_incoming'] = 'Process Incoming Documents';
-$lang['peppol_transmission_id'] = 'Transmission ID';
-$lang['peppol_notification_date'] = 'Notification Date';
-$lang['peppol_event_type'] = 'Event Type';
-$lang['peppol_document_type'] = 'Document Type';
-$lang['peppol_document_status'] = 'Document Status';
-$lang['peppol_sender'] = 'Sender';
-$lang['peppol_receiver'] = 'Receiver';
-$lang['peppol_no_notifications_found'] = 'No notifications found';
-$lang['peppol_notifications_retrieved'] = 'Notifications retrieved successfully';
+// Webhook and Document Processing
+$lang['peppol_webhook_processed'] = 'Webhook notifications processed';
 $lang['peppol_incoming_document_processed'] = 'Incoming document processed';
-$lang['peppol_failed_to_retrieve_notifications'] = 'Failed to retrieve notifications';
-$lang['peppol_failed_to_process_document'] = 'Failed to process incoming document';
+$lang['peppol_document_status_updated'] = 'Document status updated';
 $lang['peppol_get_ubl_xml'] = 'Get UBL XML';
 $lang['peppol_download_ubl_xml'] = 'Download UBL XML';
 $lang['peppol_ubl_retrieved'] = 'UBL XML retrieved successfully';

@@ -51,3 +51,5 @@ foreach ($hook_files as $hook_file) {
         require_once $hook_path;
     }
 }
+
+dd(peppol_get_active_provider()->webhook([]));

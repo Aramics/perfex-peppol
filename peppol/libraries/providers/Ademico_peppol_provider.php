@@ -19,7 +19,6 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
     const ENDPOINT_SEND_CREDIT_NOTE = 'send_credit_note';
     const ENDPOINT_LEGAL_ENTITIES = 'legal_entities';
     const ENDPOINT_NOTIFICATIONS = 'notifications';
-    const ENDPOINT_GET_DOCUMENT = 'get_document';
     const ENDPOINT_GET_UBL = 'get_ubl';
 
     public function get_provider_info()
@@ -228,7 +227,6 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                 self::ENDPOINT_SEND_CREDIT_NOTE => $prod_api_base . '/invoices/ubl-submissions',
                 self::ENDPOINT_LEGAL_ENTITIES => $prod_api_base . '/legal-entities',
                 self::ENDPOINT_NOTIFICATIONS => $prod_api_base . '/notifications',
-                self::ENDPOINT_GET_DOCUMENT => $prod_api_base . '/invoices',
                 self::ENDPOINT_GET_UBL => $prod_api_base . '/invoices'
             ],
             'sandbox' => [
@@ -239,7 +237,6 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                 self::ENDPOINT_SEND_CREDIT_NOTE => $sandbox_api_base . '/invoices/ubl-submissions',
                 self::ENDPOINT_LEGAL_ENTITIES => $sandbox_api_base . '/legal-entities',
                 self::ENDPOINT_NOTIFICATIONS => $sandbox_api_base . '/notifications',
-                self::ENDPOINT_GET_DOCUMENT => $sandbox_api_base . '/invoices',
                 self::ENDPOINT_GET_UBL => $sandbox_api_base . '/invoices'
             ]
         ];
@@ -893,12 +890,102 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
     }
 
     /**
-     * Get notifications from Ademico API
+     * Process PEPPOL webhook notifications
+     * Fetches notifications, processes incoming documents, and updates sent document statuses
      * 
-     * @param array $filters Optional filters for notifications
-     * @return array Response with notifications data
+     * @param array $payload Webhook payload data
+     * @return array Processing results
      */
-    public function get_notifications($filters = [])
+    public function webhook($payload = [])
+    {
+        $CI = &get_instance();
+        $CI->load->library('peppol/peppol_service');
+        $CI->load->model('peppol/peppol_model');
+
+        $results = [
+            'success' => true,
+            'processed_incoming' => 0,
+            'updated_statuses' => 0,
+            'errors' => [],
+            'incoming_documents' => [],
+            'status_updates' => []
+        ];
+
+        try {
+            // Get recent notifications (last hour if no specific filters)
+            $filters = [
+                'startDateTime' => date('c', strtotime('-1 hour')),
+                'pageSize' => 100
+            ];
+
+            $notifications_response = $this->_get_notifications($filters);
+
+            if (!$notifications_response['success']) {
+                $results['success'] = false;
+                $results['errors'][] = 'Failed to retrieve notifications: ' . $notifications_response['message'];
+                return $results;
+            }
+
+            foreach ($notifications_response['notifications'] as $notification) {
+                try {
+                    $event_type = $notification['eventType'] ?? '';
+                    $transmission_id = $notification['transmissionId'] ?? '';
+
+                    // Process incoming documents
+                    if ($event_type === 'DOCUMENT_RECEIVED' && !empty($transmission_id)) {
+                        $incoming_result = $this->_process_incoming_document($notification);
+
+                        if ($incoming_result['success']) {
+                            $results['processed_incoming']++;
+                            $results['incoming_documents'][] = $incoming_result['data'];
+                        } else {
+                            $results['errors'][] = 'Failed to process incoming document ' . $transmission_id . ': ' . $incoming_result['message'];
+                        }
+                    }
+
+                    // Process status updates for sent documents
+                    elseif (in_array($event_type, ['DOCUMENT_SENT', 'DOCUMENT_SEND_FAILED', 'MLR_RECEIVED', 'INVOICE_RESPONSE_RECEIVED'])) {
+                        $status_result = $this->_update_document_status($notification);
+                        if ($status_result['success']) {
+                            $results['updated_statuses']++;
+                            $results['status_updates'][] = $status_result['data'];
+                        } else {
+                            $results['errors'][] = 'Failed to update status for document ' . ($notification['documentId'] ?? $transmission_id) . ': ' . $status_result['message'];
+                        }
+                    }
+                } catch (Exception $e) {
+                    $results['errors'][] = 'Error processing notification: ' . $e->getMessage();
+                }
+            }
+
+            // Log webhook processing activity
+            if ($results['processed_incoming'] > 0 || $results['updated_statuses'] > 0) {
+                $CI->peppol_model->log_activity([
+                    'type' => 'webhook_processed',
+                    'message' => sprintf(
+                        'Webhook processed: %d incoming documents, %d status updates',
+                        $results['processed_incoming'],
+                        $results['updated_statuses']
+                    ),
+                    'metadata' => json_encode([
+                        'processed_incoming' => $results['processed_incoming'],
+                        'updated_statuses' => $results['updated_statuses'],
+                        'errors_count' => count($results['errors'])
+                    ])
+                ]);
+            }
+        } catch (Exception $e) {
+            $results['success'] = false;
+            $results['errors'][] = 'Webhook processing failed: ' . $e->getMessage();
+        }
+
+        return $results;
+    }
+
+    /**
+     * Get notifications from Ademico API (private method for webhook)
+     */
+    private function _get_notifications($filters = [])
     {
         $settings = $this->get_settings();
 
@@ -912,214 +999,567 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
             }
 
             $endpoint = $this->get_endpoint(self::ENDPOINT_NOTIFICATIONS);
-            
+
             $headers = [
                 'Authorization: ' . $token,
                 'Content-Type: application/json'
             ];
 
             // Build query parameters from filters
-            $query_params = [];
-            
-            // Optional filters
-            if (!empty($filters['transmissionId'])) {
-                $query_params['transmissionId'] = $filters['transmissionId'];
-            }
-            if (!empty($filters['documentId'])) {
-                $query_params['documentId'] = $filters['documentId'];
-            }
-            if (!empty($filters['eventType'])) {
-                $query_params['eventType'] = $filters['eventType'];
-            }
-            if (!empty($filters['peppolDocumentType'])) {
-                $query_params['peppolDocumentType'] = $filters['peppolDocumentType'];
-            }
-            if (!empty($filters['sender'])) {
-                $query_params['sender'] = $filters['sender'];
-            }
-            if (!empty($filters['receiver'])) {
-                $query_params['receiver'] = $filters['receiver'];
-            }
-            if (!empty($filters['startDateTime'])) {
-                $query_params['startDateTime'] = $filters['startDateTime'];
-            }
-            if (!empty($filters['endDateTime'])) {
-                $query_params['endDateTime'] = $filters['endDateTime'];
-            }
-            
-            // Pagination
-            $query_params['page'] = $filters['page'] ?? 0;
-            $query_params['pageSize'] = $filters['pageSize'] ?? 50;
+            $query_params = array_merge([
+                'page' => 0,
+                'pageSize' => 50
+            ], $filters);
 
             $response = $this->call_api($endpoint, null, $headers, $query_params, 'GET');
 
             if ($response['success']) {
                 return [
                     'success' => true,
-                    'data' => $response['data'],
                     'notifications' => $response['data']['notifications'] ?? [],
                     'pagination' => $response['data']['pagination'] ?? []
                 ];
             } else {
                 return [
                     'success' => false,
-                    'message' => 'Failed to retrieve notifications: ' . ($response['error'] ?? 'Unknown error')
+                    'message' => 'API error: ' . ($response['error'] ?? 'Unknown error')
                 ];
             }
         } catch (Exception $e) {
             return [
                 'success' => false,
-                'message' => 'Failed to retrieve notifications: ' . $e->getMessage()
+                'message' => 'Exception: ' . $e->getMessage()
             ];
         }
     }
 
     /**
-     * Get incoming document by transmission ID
-     * 
-     * @param string $transmission_id The transmission ID from notification
-     * @return array Response with document data
+     * Process a single incoming document notification
      */
-    public function get_incoming_document($transmission_id)
+    private function _process_incoming_document($notification)
     {
-        $settings = $this->get_settings();
+        try {
+            $transmission_id = $notification['transmissionId'];
+
+            // Get UBL XML content directly (Ademico only provides UBL endpoint)
+            $ubl_response = $this->get_document_ubl($transmission_id);
+            if (!$ubl_response['success']) {
+                return $ubl_response;
+            }
+
+            $document_data = [
+                'notification' => $notification,
+                'ubl_xml' => $ubl_response['ubl_xml'],
+                'transmission_id' => $transmission_id,
+                'document_type' => $notification['peppolDocumentType'] ?? null,
+                'sender' => $notification['sender'] ?? null,
+                'receiver' => $notification['receiver'] ?? null,
+                'notification_date' => $notification['notificationDate'] ?? null,
+                'processed_at' => date('Y-m-d H:i:s')
+            ];
+
+            // Parse UBL XML and create Perfex CRM document
+            $perfex_result = $this->_create_document_from_ubl($ubl_response['ubl_xml'], $notification);
+            if ($perfex_result['success']) {
+                $document_data['perfex_document'] = $perfex_result['data'];
+                $document_data['perfex_document_type'] = $perfex_result['document_type'];
+                $document_data['perfex_document_id'] = $perfex_result['document_id'];
+            } else {
+                $document_data['perfex_error'] = $perfex_result['message'];
+            }
+
+            return [
+                'success' => true,
+                'data' => $document_data,
+                'message' => 'Incoming document processed successfully'
+            ];
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Failed to process incoming document: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Update status of a sent document based on notification
+     */
+    private function _update_document_status($notification)
+    {
+        $CI = &get_instance();
+        $CI->load->model('peppol/peppol_model');
 
         try {
-            $token = $this->get_access_token($settings);
-            if (!$token) {
+            $document_id = $notification['documentId'] ?? null;
+            $transmission_id = $notification['transmissionId'] ?? null;
+            $status = $notification['documentStatus'] ?? $notification['eventType'];
+            $event_type = $notification['eventType'];
+
+            if (!$document_id && !$transmission_id) {
                 return [
                     'success' => false,
-                    'message' => 'Failed to obtain access token for document retrieval'
+                    'message' => 'No document ID or transmission ID provided'
                 ];
             }
 
-            // Get document endpoint with transmission ID
-            $endpoint = $this->get_endpoint(self::ENDPOINT_GET_DOCUMENT) . '/' . $transmission_id;
-            
-            $headers = [
-                'Authorization: ' . $token,
-                'Content-Type: application/json'
+            // Find the PEPPOL document record
+            $peppol_document = null;
+            if ($document_id) {
+                $peppol_document = $CI->peppol_model->get_peppol_document_by_provider_id($document_id);
+            }
+            if (!$peppol_document && $transmission_id) {
+                $peppol_document = $CI->peppol_model->get_peppol_document_by_transmission_id($transmission_id);
+            }
+
+            if (!$peppol_document) {
+                return [
+                    'success' => false,
+                    'message' => 'PEPPOL document not found for update'
+                ];
+            }
+
+            // Map Ademico status to internal status
+            $internal_status = $this->_map_status_to_internal($status, $event_type);
+
+            // Update the document status
+            $update_data = [
+                'status' => $internal_status,
+                'provider_metadata' => json_encode(array_merge(
+                    json_decode($peppol_document->provider_metadata ?? '{}', true),
+                    [
+                        'last_status_update' => date('Y-m-d H:i:s'),
+                        'ademico_status' => $status,
+                        'event_type' => $event_type,
+                        'notification_date' => $notification['notificationDate'] ?? null
+                    ]
+                ))
             ];
 
-            $response = $this->call_api($endpoint, null, $headers, [], 'GET');
+            $updated = $CI->peppol_model->update_peppol_document($peppol_document->id, $update_data);
 
-            if ($response['success']) {
+            if ($updated) {
+                $status_data = [
+                    'peppol_document_id' => $peppol_document->id,
+                    'document_type' => $peppol_document->document_type,
+                    'document_id' => $peppol_document->document_id,
+                    'old_status' => $peppol_document->status,
+                    'new_status' => $internal_status,
+                    'provider_status' => $status,
+                    'event_type' => $event_type,
+                    'updated_at' => date('Y-m-d H:i:s')
+                ];
+
                 return [
                     'success' => true,
-                    'data' => $response['data'],
-                    'transmission_id' => $transmission_id
+                    'data' => $status_data,
+                    'message' => 'Document status updated successfully'
                 ];
             } else {
                 return [
                     'success' => false,
-                    'message' => 'Failed to retrieve document: ' . ($response['error'] ?? 'Unknown error')
+                    'message' => 'Failed to update document status in database'
                 ];
             }
         } catch (Exception $e) {
             return [
                 'success' => false,
-                'message' => 'Failed to retrieve document: ' . $e->getMessage()
+                'message' => 'Failed to update document status: ' . $e->getMessage()
+            ];
+        }
+    }
+
+
+    /**
+     * Create Perfex CRM document from UBL XML
+     * 
+     * @param string $ubl_xml UBL XML content
+     * @param array $notification Notification data
+     * @return array Creation result
+     */
+    private function _create_document_from_ubl($ubl_xml, $notification)
+    {
+        $CI = &get_instance();
+
+        try {
+            // Load einvoicing UBL reader
+            if (!class_exists('Einvoicing\\Readers\\UblReader')) {
+                return [
+                    'success' => false,
+                    'message' => 'UBL Reader not available'
+                ];
+            }
+
+            $reader = new \Einvoicing\Readers\UblReader();
+            $parsed_invoice = $reader->import($ubl_xml);
+
+            // Determine document type
+            $document_type = ($parsed_invoice->getType() === \Einvoicing\Invoice::TYPE_CREDIT_NOTE)
+                ? 'credit_note'
+                : 'invoice';
+
+            // Get or create client from seller information
+            $seller = $parsed_invoice->getSeller();
+            $client_result = $this->_get_or_create_client_from_party($seller, $notification);
+
+            if (!$client_result['success']) {
+                return [
+                    'success' => false,
+                    'message' => 'Failed to create/find client: ' . $client_result['message']
+                ];
+            }
+
+            $client_id = $client_result['client_id'];
+
+            // Prepare document data
+            $document_data = [
+                'clientid' => $client_id,
+                'number' => $parsed_invoice->getNumber(),
+                'date' => $parsed_invoice->getIssueDate() ? $parsed_invoice->getIssueDate()->format('Y-m-d') : date('Y-m-d'),
+                'currency' => $this->_get_currency_id($parsed_invoice->getCurrency()),
+                'subtotal' => 0,
+                'total' => 0,
+                'total_tax' => 0,
+                'clientnote' => $this->_extract_notes($parsed_invoice),
+                'terms' => $parsed_invoice->getPaymentTerms() ?? '',
+                'status' => 1, // Draft status initially
+                'datecreated' => date('Y-m-d H:i:s'),
+                'addedfrom' => 0, // System generated
+                'include_shipping' => 0,
+                'show_shipping_on_invoice' => 1,
+                'recurring' => 0,
+                'adjustment' => 0,
+                'discount_percent' => 0,
+                'discount_total' => 0,
+                'discount_type' => '',
+                'sale_agent' => 0,
+                'billing_street' => '',
+                'billing_city' => '',
+                'billing_state' => '',
+                'billing_zip' => '',
+                'billing_country' => 0,
+                'shipping_street' => '',
+                'shipping_city' => '',
+                'shipping_state' => '',
+                'shipping_zip' => '',
+                'shipping_country' => 0,
+                'allowed_payment_modes' => '',
+                'project_id' => 0,
+                'tags' => 'peppol,incoming',
+            ];
+
+            if ($document_type === 'credit_note') {
+                $document_data['duedate'] = null;
+                $CI->load->model('credit_notes_model');
+                $model = $CI->credit_notes_model;
+            } else {
+                $document_data['duedate'] = $parsed_invoice->getDueDate() ? $parsed_invoice->getDueDate()->format('Y-m-d') : date('Y-m-d', strtotime('+30 days'));
+                $CI->load->model('invoices_model');
+                $model = $CI->invoices_model;
+            }
+
+            // Create the document
+            $document_id = $model->add($document_data);
+
+            if (!$document_id) {
+                return [
+                    'success' => false,
+                    'message' => 'Failed to create ' . $document_type . ' in Perfex CRM'
+                ];
+            }
+
+            // Add line items
+            $line_items_result = $this->_add_line_items_to_document($parsed_invoice, $document_type, $document_id);
+
+            if (!$line_items_result['success']) {
+                // Delete the created document if line items failed
+                $model->delete($document_id);
+                return $line_items_result;
+            }
+
+            return [
+                'success' => true,
+                'data' => [
+                    'parsed_invoice' => $parsed_invoice,
+                    'client_id' => $client_id,
+                    'line_items_count' => $line_items_result['count']
+                ],
+                'document_type' => $document_type,
+                'document_id' => $document_id,
+                'message' => ucfirst($document_type) . ' created successfully from UBL'
+            ];
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Error parsing UBL: ' . $e->getMessage()
             ];
         }
     }
 
     /**
-     * Process incoming document notifications and retrieve documents
-     * 
-     * @param array $filters Optional filters for notifications
-     * @return array Processing results with retrieved documents
+     * Get or create client from UBL Party information
      */
-    public function process_incoming_notifications($filters = [])
+    private function _get_or_create_client_from_party($party, $notification)
     {
-        // Default to only incoming documents if no event type specified
-        if (empty($filters['eventType'])) {
-            $filters['eventType'] = 'DOCUMENT_RECEIVED';
-        }
+        $CI = &get_instance();
+        $CI->load->model('clients_model');
 
-        $notifications_response = $this->get_notifications($filters);
-        
-        if (!$notifications_response['success']) {
-            return $notifications_response;
-        }
+        try {
+            $company_name = $party->getName();
+            $vat_number = $party->getVatNumber();
+            $electronic_address = $party->getElectronicAddress();
 
-        $incoming_documents = [];
-        $errors = [];
+            $sender_identifier = $notification['sender'] ?? '';
 
-        foreach ($notifications_response['notifications'] as $notification) {
-            // Only process incoming document notifications
-            if ($notification['eventType'] === 'DOCUMENT_RECEIVED' && !empty($notification['transmissionId'])) {
-                
-                $document_response = $this->get_incoming_document($notification['transmissionId']);
-                
-                if ($document_response['success']) {
-                    $incoming_documents[] = [
-                        'notification' => $notification,
-                        'document' => $document_response['data'],
-                        'transmission_id' => $notification['transmissionId']
-                    ];
-                } else {
-                    $errors[] = [
-                        'transmission_id' => $notification['transmissionId'],
-                        'error' => $document_response['message']
-                    ];
-                }
+            // Try to find existing client by VAT number or PEPPOL identifier
+            $existing_client = null;
+
+            if ($vat_number) {
+                $CI->db->where('vat', $vat_number);
+                $existing_client = $CI->db->get(db_prefix() . 'clients')->row();
             }
-        }
 
-        return [
-            'success' => true,
-            'incoming_documents' => $incoming_documents,
-            'errors' => $errors,
-            'total_notifications' => count($notifications_response['notifications']),
-            'processed_documents' => count($incoming_documents),
-            'pagination' => $notifications_response['pagination']
-        ];
+            if (!$existing_client && $sender_identifier) {
+                // Search by PEPPOL identifier in custom fields
+                $CI->db->select('c.*')
+                    ->from(db_prefix() . 'clients c')
+                    ->join(db_prefix() . 'customfieldsvalues cfv', 'c.userid = cfv.relid')
+                    ->join(db_prefix() . 'customfields cf', 'cfv.fieldid = cf.id')
+                    ->where('cf.slug', 'customers_peppol_identifier')
+                    ->where('cfv.value', $sender_identifier);
+                $existing_client = $CI->db->get()->row();
+            }
+
+            if ($existing_client) {
+                return [
+                    'success' => true,
+                    'client_id' => $existing_client->userid,
+                    'was_existing' => true
+                ];
+            }
+
+            // Create new client
+            $client_data = [
+                'company' => $company_name ?: 'Unknown Company',
+                'vat' => $vat_number ?: '',
+                'phonenumber' => '',
+                'country' => $this->_get_country_id_from_party($party),
+                'city' => '',
+                'zip' => '',
+                'state' => '',
+                'address' => '',
+                'website' => '',
+                'datecreated' => date('Y-m-d H:i:s'),
+                'addedfrom' => 0,
+                'billing_street' => '',
+                'billing_city' => '',
+                'billing_state' => '',
+                'billing_zip' => '',
+                'billing_country' => $this->_get_country_id_from_party($party),
+                'shipping_street' => '',
+                'shipping_city' => '',
+                'shipping_state' => '',
+                'shipping_zip' => '',
+                'shipping_country' => $this->_get_country_id_from_party($party),
+                'default_language' => '',
+                'default_currency' => 0,
+                'show_primary_contact' => 1,
+                'stripe_id' => '',
+                'registration_confirmed' => 1,
+                'active' => 1
+            ];
+
+            $client_id = $CI->clients_model->add($client_data);
+
+            if (!$client_id) {
+                return [
+                    'success' => false,
+                    'message' => 'Failed to create client'
+                ];
+            }
+
+            // Add PEPPOL identifier as custom field if available
+            if ($sender_identifier && $electronic_address) {
+                $this->_set_client_peppol_identifier($client_id, $electronic_address->getValue(), $electronic_address->getScheme());
+            }
+
+            return [
+                'success' => true,
+                'client_id' => $client_id,
+                'was_existing' => false
+            ];
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Error creating client: ' . $e->getMessage()
+            ];
+        }
     }
 
     /**
-     * Get document status updates via notifications
-     * 
-     * @param array $filters Optional filters for status notifications
-     * @return array Status updates for sent documents
+     * Add line items to document from UBL
      */
-    public function get_document_status_updates($filters = [])
+    private function _add_line_items_to_document($parsed_invoice, $document_type, $document_id)
     {
-        // Status update event types
-        $status_event_types = [
-            'DOCUMENT_SENT',
-            'DOCUMENT_SEND_FAILED', 
-            'MLR_RECEIVED',
-            'INVOICE_RESPONSE_RECEIVED'
-        ];
+        $CI = &get_instance();
 
-        $all_status_updates = [];
+        try {
+            $line_count = 0;
+            foreach ($parsed_invoice->getLines() as $line) {
+                $line_data = [
+                    'description' => $line->getName() ?: 'Item',
+                    'long_description' => $line->getDescription() ?: '',
+                    'qty' => $line->getQuantity() ?: 1,
+                    'rate' => $line->getPrice() ?: 0,
+                    'order' => $line_count + 1
+                ];
 
-        foreach ($status_event_types as $event_type) {
-            $event_filters = array_merge($filters, ['eventType' => $event_type]);
-            $notifications_response = $this->get_notifications($event_filters);
-            
-            if ($notifications_response['success']) {
-                foreach ($notifications_response['notifications'] as $notification) {
-                    $all_status_updates[] = [
-                        'document_id' => $notification['documentId'] ?? null,
-                        'transmission_id' => $notification['transmissionId'] ?? null,
-                        'status' => $notification['documentStatus'] ?? $event_type,
-                        'event_type' => $notification['eventType'],
-                        'notification_date' => $notification['notificationDate'] ?? null,
-                        'document_type' => $notification['peppolDocumentType'] ?? null,
-                        'sender' => $notification['sender'] ?? null,
-                        'receiver' => $notification['receiver'] ?? null,
-                        'details' => $notification['details'] ?? []
-                    ];
+                if ($document_type === 'credit_note') {
+                    $line_data['rel_id'] = $document_id;
+                    $line_data['rel_type'] = 'credit_note';
+
+                    $line_id = $CI->db->insert(db_prefix() . 'itemable', $line_data);
+                } else {
+                    $line_data['rel_id'] = $document_id;
+                    $line_data['rel_type'] = 'invoice';
+
+                    $line_id = $CI->db->insert(db_prefix() . 'itemable', $line_data);
+                }
+
+                if ($line_id) {
+                    // Add tax if applicable
+                    $vat_rate = $line->getVatRate();
+                    if ($vat_rate > 0) {
+                        $this->_add_tax_to_line_item($line_id, $vat_rate, $document_type);
+                    }
+                    $line_count++;
                 }
             }
+
+            return [
+                'success' => true,
+                'count' => $line_count
+            ];
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Error adding line items: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Helper methods for UBL processing
+     */
+    private function _get_currency_id($currency_code)
+    {
+        $CI = &get_instance();
+
+        if (!$currency_code) {
+            return get_base_currency()->id;
         }
 
-        return [
-            'success' => true,
-            'status_updates' => $all_status_updates,
-            'total_updates' => count($all_status_updates)
-        ];
+        $CI->db->where('name', $currency_code);
+        $currency = $CI->db->get(db_prefix() . 'currencies')->row();
+
+        return $currency ? $currency->id : get_base_currency()->id;
+    }
+
+    private function _extract_notes($parsed_invoice)
+    {
+        $notes = [];
+        foreach ($parsed_invoice->getNotes() as $note) {
+            $notes[] = $note;
+        }
+        return implode("\n", $notes);
+    }
+
+    private function _get_country_id_from_party($party)
+    {
+        // Default to Belgium if no country specified
+        return 22; // Belgium's ID in most Perfex installations
+    }
+
+    private function _set_client_peppol_identifier($client_id, $identifier, $scheme)
+    {
+        $CI = &get_instance();
+
+        // Get PEPPOL identifier custom field
+        $CI->db->where('fieldto', 'customers');
+        $CI->db->where('slug', 'customers_peppol_identifier');
+        $custom_field = $CI->db->get(db_prefix() . 'customfields')->row();
+
+        if ($custom_field) {
+            $CI->db->insert(db_prefix() . 'customfieldsvalues', [
+                'relid' => $client_id,
+                'fieldid' => $custom_field->id,
+                'value' => $identifier
+            ]);
+        }
+
+        // Get PEPPOL scheme custom field
+        $CI->db->where('fieldto', 'customers');
+        $CI->db->where('slug', 'customers_peppol_scheme');
+        $scheme_field = $CI->db->get(db_prefix() . 'customfields')->row();
+
+        if ($scheme_field) {
+            $CI->db->insert(db_prefix() . 'customfieldsvalues', [
+                'relid' => $client_id,
+                'fieldid' => $scheme_field->id,
+                'value' => $scheme
+            ]);
+        }
+    }
+
+    private function _add_tax_to_line_item($line_id, $vat_rate, $document_type)
+    {
+        $CI = &get_instance();
+
+        // Find or create tax rate
+        $CI->db->where('taxrate', $vat_rate);
+        $tax = $CI->db->get(db_prefix() . 'taxes')->row();
+
+        if ($tax) {
+            $tax_data = [
+                'itemid' => $line_id,
+                'rel_id' => $line_id,
+                'rel_type' => $document_type,
+                'taxname' => $tax->name,
+                'taxrate' => $tax->taxrate
+            ];
+
+            $table_name = ($document_type === 'credit_note') ? 'item_tax' : 'item_tax';
+            $CI->db->insert(db_prefix() . $table_name, $tax_data);
+        }
+    }
+
+    /**
+     * Map Ademico status to internal PEPPOL status
+     */
+    private function _map_status_to_internal($ademico_status, $event_type)
+    {
+        switch ($event_type) {
+            case 'DOCUMENT_SENT':
+                return 'sent';
+            case 'DOCUMENT_SEND_FAILED':
+                return 'failed';
+            case 'MLR_RECEIVED':
+                return ($ademico_status === 'REJECTED') ? 'rejected' : 'delivered';
+            case 'INVOICE_RESPONSE_RECEIVED':
+                switch ($ademico_status) {
+                    case 'ACCEPTED':
+                        return 'accepted';
+                    case 'REJECTED':
+                        return 'rejected';
+                    case 'FULLY_PAID':
+                        return 'paid';
+                    case 'PARTIALLY_PAID':
+                        return 'partial_paid';
+                    default:
+                        return 'processed';
+                }
+            default:
+                return 'sent';
+        }
     }
 
     /**
@@ -1143,7 +1583,7 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
 
             // Get UBL endpoint with transmission ID and /ubl suffix
             $endpoint = $this->get_endpoint(self::ENDPOINT_GET_UBL) . '/' . $transmission_id . '/ubl';
-            
+
             $headers = [
                 'Authorization: ' . $token,
                 'Accept: application/xml'
@@ -1209,7 +1649,7 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
             // Check if response is XML
             if (strpos($content_type, 'application/xml') !== false || strpos($content_type, 'text/xml') !== false) {
                 return [
-                    'success' => true, 
+                    'success' => true,
                     'xml_content' => $response,
                     'content_type' => $content_type
                 ];
@@ -1219,15 +1659,15 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                 if (json_last_error() === JSON_ERROR_NONE && isset($json_response['message'])) {
                     return ['success' => false, 'error' => $json_response['message']];
                 }
-                
+
                 return [
-                    'success' => false, 
+                    'success' => false,
                     'error' => 'Expected XML content but received: ' . $content_type
                 ];
             }
         } else {
             $error_message = 'HTTP ' . $http_code;
-            
+
             // Try to parse JSON error response
             if ($response) {
                 $json_response = json_decode($response, true);

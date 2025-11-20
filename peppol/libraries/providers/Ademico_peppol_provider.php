@@ -18,6 +18,9 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
     const ENDPOINT_SEND_INVOICE = 'send_invoice';
     const ENDPOINT_SEND_CREDIT_NOTE = 'send_credit_note';
     const ENDPOINT_LEGAL_ENTITIES = 'legal_entities';
+    const ENDPOINT_NOTIFICATIONS = 'notifications';
+    const ENDPOINT_GET_DOCUMENT = 'get_document';
+    const ENDPOINT_GET_UBL = 'get_ubl';
 
     public function get_provider_info()
     {
@@ -223,7 +226,10 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                 self::ENDPOINT_CONNECTIVITY => $prod_api_base . '/tools/connectivity',
                 self::ENDPOINT_SEND_INVOICE => $prod_api_base . '/invoices/ubl-submissions',
                 self::ENDPOINT_SEND_CREDIT_NOTE => $prod_api_base . '/invoices/ubl-submissions',
-                self::ENDPOINT_LEGAL_ENTITIES => $prod_api_base . '/legal-entities'
+                self::ENDPOINT_LEGAL_ENTITIES => $prod_api_base . '/legal-entities',
+                self::ENDPOINT_NOTIFICATIONS => $prod_api_base . '/notifications',
+                self::ENDPOINT_GET_DOCUMENT => $prod_api_base . '/invoices',
+                self::ENDPOINT_GET_UBL => $prod_api_base . '/invoices'
             ],
             'sandbox' => [
                 self::ENDPOINT_OAUTH => $sandbox_oauth_base . '/oauth2/token',
@@ -231,7 +237,10 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                 self::ENDPOINT_CONNECTIVITY => $sandbox_api_base . '/tools/connectivity',
                 self::ENDPOINT_SEND_INVOICE => $sandbox_api_base . '/invoices/ubl-submissions',
                 self::ENDPOINT_SEND_CREDIT_NOTE => $sandbox_api_base . '/invoices/ubl-submissions',
-                self::ENDPOINT_LEGAL_ENTITIES => $sandbox_api_base . '/legal-entities'
+                self::ENDPOINT_LEGAL_ENTITIES => $sandbox_api_base . '/legal-entities',
+                self::ENDPOINT_NOTIFICATIONS => $sandbox_api_base . '/notifications',
+                self::ENDPOINT_GET_DOCUMENT => $sandbox_api_base . '/invoices',
+                self::ENDPOINT_GET_UBL => $sandbox_api_base . '/invoices'
             ]
         ];
     }
@@ -879,6 +888,358 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                 $parsed_error = $this->parse_ademico_error($decoded_response);
                 $error_message .= ': ' . $parsed_error;
             }
+            return ['success' => false, 'error' => $error_message];
+        }
+    }
+
+    /**
+     * Get notifications from Ademico API
+     * 
+     * @param array $filters Optional filters for notifications
+     * @return array Response with notifications data
+     */
+    public function get_notifications($filters = [])
+    {
+        $settings = $this->get_settings();
+
+        try {
+            $token = $this->get_access_token($settings);
+            if (!$token) {
+                return [
+                    'success' => false,
+                    'message' => 'Failed to obtain access token for notifications'
+                ];
+            }
+
+            $endpoint = $this->get_endpoint(self::ENDPOINT_NOTIFICATIONS);
+            
+            $headers = [
+                'Authorization: ' . $token,
+                'Content-Type: application/json'
+            ];
+
+            // Build query parameters from filters
+            $query_params = [];
+            
+            // Optional filters
+            if (!empty($filters['transmissionId'])) {
+                $query_params['transmissionId'] = $filters['transmissionId'];
+            }
+            if (!empty($filters['documentId'])) {
+                $query_params['documentId'] = $filters['documentId'];
+            }
+            if (!empty($filters['eventType'])) {
+                $query_params['eventType'] = $filters['eventType'];
+            }
+            if (!empty($filters['peppolDocumentType'])) {
+                $query_params['peppolDocumentType'] = $filters['peppolDocumentType'];
+            }
+            if (!empty($filters['sender'])) {
+                $query_params['sender'] = $filters['sender'];
+            }
+            if (!empty($filters['receiver'])) {
+                $query_params['receiver'] = $filters['receiver'];
+            }
+            if (!empty($filters['startDateTime'])) {
+                $query_params['startDateTime'] = $filters['startDateTime'];
+            }
+            if (!empty($filters['endDateTime'])) {
+                $query_params['endDateTime'] = $filters['endDateTime'];
+            }
+            
+            // Pagination
+            $query_params['page'] = $filters['page'] ?? 0;
+            $query_params['pageSize'] = $filters['pageSize'] ?? 50;
+
+            $response = $this->call_api($endpoint, null, $headers, $query_params, 'GET');
+
+            if ($response['success']) {
+                return [
+                    'success' => true,
+                    'data' => $response['data'],
+                    'notifications' => $response['data']['notifications'] ?? [],
+                    'pagination' => $response['data']['pagination'] ?? []
+                ];
+            } else {
+                return [
+                    'success' => false,
+                    'message' => 'Failed to retrieve notifications: ' . ($response['error'] ?? 'Unknown error')
+                ];
+            }
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Failed to retrieve notifications: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Get incoming document by transmission ID
+     * 
+     * @param string $transmission_id The transmission ID from notification
+     * @return array Response with document data
+     */
+    public function get_incoming_document($transmission_id)
+    {
+        $settings = $this->get_settings();
+
+        try {
+            $token = $this->get_access_token($settings);
+            if (!$token) {
+                return [
+                    'success' => false,
+                    'message' => 'Failed to obtain access token for document retrieval'
+                ];
+            }
+
+            // Get document endpoint with transmission ID
+            $endpoint = $this->get_endpoint(self::ENDPOINT_GET_DOCUMENT) . '/' . $transmission_id;
+            
+            $headers = [
+                'Authorization: ' . $token,
+                'Content-Type: application/json'
+            ];
+
+            $response = $this->call_api($endpoint, null, $headers, [], 'GET');
+
+            if ($response['success']) {
+                return [
+                    'success' => true,
+                    'data' => $response['data'],
+                    'transmission_id' => $transmission_id
+                ];
+            } else {
+                return [
+                    'success' => false,
+                    'message' => 'Failed to retrieve document: ' . ($response['error'] ?? 'Unknown error')
+                ];
+            }
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Failed to retrieve document: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Process incoming document notifications and retrieve documents
+     * 
+     * @param array $filters Optional filters for notifications
+     * @return array Processing results with retrieved documents
+     */
+    public function process_incoming_notifications($filters = [])
+    {
+        // Default to only incoming documents if no event type specified
+        if (empty($filters['eventType'])) {
+            $filters['eventType'] = 'DOCUMENT_RECEIVED';
+        }
+
+        $notifications_response = $this->get_notifications($filters);
+        
+        if (!$notifications_response['success']) {
+            return $notifications_response;
+        }
+
+        $incoming_documents = [];
+        $errors = [];
+
+        foreach ($notifications_response['notifications'] as $notification) {
+            // Only process incoming document notifications
+            if ($notification['eventType'] === 'DOCUMENT_RECEIVED' && !empty($notification['transmissionId'])) {
+                
+                $document_response = $this->get_incoming_document($notification['transmissionId']);
+                
+                if ($document_response['success']) {
+                    $incoming_documents[] = [
+                        'notification' => $notification,
+                        'document' => $document_response['data'],
+                        'transmission_id' => $notification['transmissionId']
+                    ];
+                } else {
+                    $errors[] = [
+                        'transmission_id' => $notification['transmissionId'],
+                        'error' => $document_response['message']
+                    ];
+                }
+            }
+        }
+
+        return [
+            'success' => true,
+            'incoming_documents' => $incoming_documents,
+            'errors' => $errors,
+            'total_notifications' => count($notifications_response['notifications']),
+            'processed_documents' => count($incoming_documents),
+            'pagination' => $notifications_response['pagination']
+        ];
+    }
+
+    /**
+     * Get document status updates via notifications
+     * 
+     * @param array $filters Optional filters for status notifications
+     * @return array Status updates for sent documents
+     */
+    public function get_document_status_updates($filters = [])
+    {
+        // Status update event types
+        $status_event_types = [
+            'DOCUMENT_SENT',
+            'DOCUMENT_SEND_FAILED', 
+            'MLR_RECEIVED',
+            'INVOICE_RESPONSE_RECEIVED'
+        ];
+
+        $all_status_updates = [];
+
+        foreach ($status_event_types as $event_type) {
+            $event_filters = array_merge($filters, ['eventType' => $event_type]);
+            $notifications_response = $this->get_notifications($event_filters);
+            
+            if ($notifications_response['success']) {
+                foreach ($notifications_response['notifications'] as $notification) {
+                    $all_status_updates[] = [
+                        'document_id' => $notification['documentId'] ?? null,
+                        'transmission_id' => $notification['transmissionId'] ?? null,
+                        'status' => $notification['documentStatus'] ?? $event_type,
+                        'event_type' => $notification['eventType'],
+                        'notification_date' => $notification['notificationDate'] ?? null,
+                        'document_type' => $notification['peppolDocumentType'] ?? null,
+                        'sender' => $notification['sender'] ?? null,
+                        'receiver' => $notification['receiver'] ?? null,
+                        'details' => $notification['details'] ?? []
+                    ];
+                }
+            }
+        }
+
+        return [
+            'success' => true,
+            'status_updates' => $all_status_updates,
+            'total_updates' => count($all_status_updates)
+        ];
+    }
+
+    /**
+     * Get UBL XML content for a document by transmission ID
+     * 
+     * @param string $transmission_id The transmission ID of the document
+     * @return array Response with UBL XML content
+     */
+    public function get_document_ubl($transmission_id)
+    {
+        $settings = $this->get_settings();
+
+        try {
+            $token = $this->get_access_token($settings);
+            if (!$token) {
+                return [
+                    'success' => false,
+                    'message' => 'Failed to obtain access token for UBL retrieval'
+                ];
+            }
+
+            // Get UBL endpoint with transmission ID and /ubl suffix
+            $endpoint = $this->get_endpoint(self::ENDPOINT_GET_UBL) . '/' . $transmission_id . '/ubl';
+            
+            $headers = [
+                'Authorization: ' . $token,
+                'Accept: application/xml'
+            ];
+
+            // Use a special method for XML response
+            $response = $this->call_ubl_api($endpoint, $headers, $settings);
+
+            if ($response['success']) {
+                return [
+                    'success' => true,
+                    'ubl_xml' => $response['xml_content'],
+                    'transmission_id' => $transmission_id,
+                    'content_type' => 'application/xml'
+                ];
+            } else {
+                return [
+                    'success' => false,
+                    'message' => 'Failed to retrieve UBL XML: ' . ($response['error'] ?? 'Unknown error')
+                ];
+            }
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Failed to retrieve UBL XML: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Make HTTP API call specifically for UBL XML content
+     * 
+     * @param string $url The full endpoint URL to call
+     * @param array $headers HTTP headers to include in the request
+     * @param array $settings Provider settings
+     * @return array Response array with 'success' boolean and 'xml_content'/'error' keys
+     */
+    private function call_ubl_api($url, $headers = [], $settings = [])
+    {
+        $ch = curl_init();
+        curl_setopt_array($ch, [
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => $settings['timeout'] ?? 30,
+            CURLOPT_HTTPHEADER => $headers,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+            CURLOPT_FOLLOWLOCATION => false,
+            CURLOPT_MAXREDIRS => 0
+        ]);
+
+        $response = curl_exec($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $content_type = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+        $error = curl_error($ch);
+        curl_close($ch);
+
+        if ($error) {
+            return ['success' => false, 'error' => 'CURL Error: ' . $error];
+        }
+
+        if ($http_code >= 200 && $http_code < 300) {
+            // Check if response is XML
+            if (strpos($content_type, 'application/xml') !== false || strpos($content_type, 'text/xml') !== false) {
+                return [
+                    'success' => true, 
+                    'xml_content' => $response,
+                    'content_type' => $content_type
+                ];
+            } else {
+                // Try to parse as JSON error response
+                $json_response = json_decode($response, true);
+                if (json_last_error() === JSON_ERROR_NONE && isset($json_response['message'])) {
+                    return ['success' => false, 'error' => $json_response['message']];
+                }
+                
+                return [
+                    'success' => false, 
+                    'error' => 'Expected XML content but received: ' . $content_type
+                ];
+            }
+        } else {
+            $error_message = 'HTTP ' . $http_code;
+            
+            // Try to parse JSON error response
+            if ($response) {
+                $json_response = json_decode($response, true);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    $parsed_error = $this->parse_ademico_error($json_response);
+                    $error_message .= ': ' . $parsed_error;
+                } else {
+                    // Include raw response if not JSON
+                    $error_message .= ' - ' . substr($response, 0, 200);
+                }
+            }
+
             return ['success' => false, 'error' => $error_message];
         }
     }

@@ -15,9 +15,43 @@ class Peppol_model extends App_Model
     public function get_peppol_document($document_type, $document_id)
     {
         return $this->db->where('document_type', $document_type)
-                       ->where('document_id', $document_id)
-                       ->get(db_prefix() . 'peppol_documents')
-                       ->row();
+            ->where('document_id', $document_id)
+            ->get(db_prefix() . 'peppol_documents')
+            ->row();
+    }
+
+    /**
+     * Get PEPPOL document by provider document ID
+     */
+    public function get_peppol_document_by_provider_id($provider_document_id, $provider = null)
+    {
+        $this->db->where('provider_document_id', $provider_document_id);
+
+        if ($provider !== null) {
+            $this->db->where('provider', $provider);
+        }
+
+        return $this->db->get(db_prefix() . 'peppol_documents')->row();
+    }
+
+    /**
+     * Find PEPPOL document by searching in metadata
+     * 
+     * @param string $key The metadata key to search for
+     * @param mixed $value The value to search for
+     * @param string $provider Optional provider filter
+     * @return object|null The first matching document or null
+     */
+    public function get_peppol_document_by_metadata($key, $value, $provider = null)
+    {
+        // Use JSON_EXTRACT to search in the metadata
+        $this->db->where("JSON_UNQUOTE(JSON_EXTRACT(provider_metadata, '$.$key')) =", $value);
+
+        if ($provider !== null) {
+            $this->db->where('provider', $provider);
+        }
+
+        return $this->db->get(db_prefix() . 'peppol_documents')->row();
     }
 
 
@@ -47,11 +81,11 @@ class Peppol_model extends App_Model
     {
         $this->db->where('provider', $provider_id);
         $this->db->order_by('created_at', 'DESC');
-        
+
         if ($limit !== null) {
             $this->db->limit($limit, $offset);
         }
-        
+
         return $this->db->get(db_prefix() . 'peppol_documents')->result();
     }
 
@@ -64,11 +98,11 @@ class Peppol_model extends App_Model
         $this->db->where('document_type', $document_type);
         $this->db->where('document_id', $document_id);
         $result = $this->db->get(db_prefix() . 'peppol_documents')->row();
-        
+
         if ($result && !empty($result->provider_metadata)) {
             return json_decode($result->provider_metadata, true);
         }
-        
+
         return null;
     }
 
@@ -82,7 +116,7 @@ class Peppol_model extends App_Model
             // Merge with existing metadata
             $current_metadata = json_decode($existing->provider_metadata ?? '{}', true);
             $updated_metadata = array_merge($current_metadata, $metadata);
-            
+
             $this->db->where('document_type', $document_type);
             $this->db->where('document_id', $document_id);
             return $this->db->update(db_prefix() . 'peppol_documents', [
@@ -90,7 +124,7 @@ class Peppol_model extends App_Model
                 'updated_at' => date('Y-m-d H:i:s')
             ]);
         }
-        
+
         return false;
     }
 
@@ -101,7 +135,7 @@ class Peppol_model extends App_Model
     public function log_activity($data)
     {
         $data['created_at'] = date('Y-m-d H:i:s');
-        
+
         $this->db->insert(db_prefix() . 'peppol_logs', $data);
         return $this->db->insert_id();
     }
@@ -127,16 +161,19 @@ class Peppol_model extends App_Model
                 // Count documents that don't have PEPPOL records
                 $this->db->select("COUNT(d.id) as count");
                 $this->db->from(db_prefix() . $table . ' d');
-                $this->db->join(db_prefix() . 'peppol_documents pd', 
-                    "pd.document_id = d.id AND pd.document_type = '$document_type'", 'left');
+                $this->db->join(
+                    db_prefix() . 'peppol_documents pd',
+                    "pd.document_id = d.id AND pd.document_type = '$document_type'",
+                    'left'
+                );
                 $this->db->where('pd.id IS NULL');
-                
+
                 if ($document_type === 'invoice') {
                     $this->db->where_in('d.status', [Invoices_model::STATUS_UNPAID, Invoices_model::STATUS_PAID, Invoices_model::STATUS_OVERDUE]);
                 } else {
                     $this->db->where('d.status >=', 1);
                 }
-                
+
                 if ($client_id) {
                     $this->db->where('d.clientid', $client_id);
                 }
@@ -148,7 +185,7 @@ class Peppol_model extends App_Model
                 $this->db->from(db_prefix() . 'peppol_documents pd');
                 $this->db->where('pd.document_type', $document_type);
                 $this->db->where('pd.status', 'failed');
-                
+
                 if ($client_id) {
                     $this->db->join(db_prefix() . $table . ' d', 'd.id = pd.document_id');
                     $this->db->where('d.clientid', $client_id);
@@ -161,7 +198,7 @@ class Peppol_model extends App_Model
                 $this->db->from(db_prefix() . 'peppol_documents pd');
                 $this->db->where('pd.document_type', $document_type);
                 $this->db->where_in('pd.status', ['sent', 'delivered']);
-                
+
                 if ($client_id) {
                     $this->db->join(db_prefix() . $table . ' d', 'd.id = pd.document_id');
                     $this->db->where('d.clientid', $client_id);
@@ -172,13 +209,13 @@ class Peppol_model extends App_Model
                 // Count all valid documents (sent and unsent)
                 $this->db->select("COUNT(d.id) as count");
                 $this->db->from(db_prefix() . $table . ' d');
-                
+
                 if ($document_type === 'invoice') {
                     $this->db->where_in('d.status', [Invoices_model::STATUS_UNPAID, Invoices_model::STATUS_PAID, Invoices_model::STATUS_OVERDUE]);
                 } else {
                     $this->db->where('d.status >=', 1);
                 }
-                
+
                 if ($client_id) {
                     $this->db->where('d.clientid', $client_id);
                 }
@@ -209,20 +246,23 @@ class Peppol_model extends App_Model
                 // Get documents without PEPPOL records
                 $this->db->select('d.id');
                 $this->db->from(db_prefix() . $table . ' d');
-                $this->db->join(db_prefix() . 'peppol_documents pd', 
-                    "pd.document_id = d.id AND pd.document_type = '$document_type'", 'left');
+                $this->db->join(
+                    db_prefix() . 'peppol_documents pd',
+                    "pd.document_id = d.id AND pd.document_type = '$document_type'",
+                    'left'
+                );
                 $this->db->where('pd.id IS NULL');
-                
+
                 if ($document_type === 'invoice') {
                     $this->db->where_in('d.status', [Invoices_model::STATUS_UNPAID, Invoices_model::STATUS_PAID, Invoices_model::STATUS_OVERDUE]);
                 } else {
                     $this->db->where('d.status >=', 1);
                 }
-                
+
                 if ($client_id) {
                     $this->db->where('d.clientid', $client_id);
                 }
-                
+
                 $results = $this->db->get()->result();
                 return array_column($results, 'id');
 
@@ -232,12 +272,12 @@ class Peppol_model extends App_Model
                 $this->db->from(db_prefix() . 'peppol_documents pd');
                 $this->db->where('pd.document_type', $document_type);
                 $this->db->where('pd.status', 'failed');
-                
+
                 if ($client_id) {
                     $this->db->join(db_prefix() . $table . ' d', 'd.id = pd.document_id');
                     $this->db->where('d.clientid', $client_id);
                 }
-                
+
                 $results = $this->db->get()->result();
                 return array_column($results, 'document_id');
 
@@ -252,9 +292,9 @@ class Peppol_model extends App_Model
     public function get_documents_by_status($document_type, $status)
     {
         return $this->db->where('document_type', $document_type)
-                       ->where('status', $status)
-                       ->get(db_prefix() . 'peppol_documents')
-                       ->result();
+            ->where('status', $status)
+            ->get(db_prefix() . 'peppol_documents')
+            ->result();
     }
 
     /**
@@ -263,9 +303,9 @@ class Peppol_model extends App_Model
     public function get_documents_by_statuses($document_type, $statuses)
     {
         return $this->db->where('document_type', $document_type)
-                       ->where_in('status', $statuses)
-                       ->get(db_prefix() . 'peppol_documents')
-                       ->result();
+            ->where_in('status', $statuses)
+            ->get(db_prefix() . 'peppol_documents')
+            ->result();
     }
 
     /**
@@ -275,11 +315,11 @@ class Peppol_model extends App_Model
     {
         $this->db->where('document_type', $document_type);
         $this->db->order_by('created_at', 'DESC');
-        
+
         if ($limit) {
             $this->db->limit($limit, $offset);
         }
-        
+
         return $this->db->get(db_prefix() . 'peppol_documents')->result();
     }
 
@@ -300,20 +340,23 @@ class Peppol_model extends App_Model
             'invoice' => 'invoices',
             'credit_note' => 'creditnotes'
         ];
-        
+
         $table = $table_map[$document_type];
         $this->db->select("COUNT(d.id) as count");
         $this->db->from(db_prefix() . $table . ' d');
-        $this->db->join(db_prefix() . 'peppol_documents pd', 
-            "pd.document_id = d.id AND pd.document_type = '$document_type'", 'left');
+        $this->db->join(
+            db_prefix() . 'peppol_documents pd',
+            "pd.document_id = d.id AND pd.document_type = '$document_type'",
+            'left'
+        );
         $this->db->where('pd.id IS NULL');
-        
+
         if ($document_type === 'invoice') {
             $this->db->where_in('d.status', [Invoices_model::STATUS_UNPAID, Invoices_model::STATUS_PAID, Invoices_model::STATUS_OVERDUE]);
         } else {
             $this->db->where('d.status >=', 1);
         }
-        
+
         $unsent_count = $this->db->get()->row()->count;
 
         // Format results
@@ -346,7 +389,7 @@ class Peppol_model extends App_Model
         $this->db->where('type', 'error');
         $this->db->order_by('created_at', 'DESC');
         $this->db->limit($limit);
-        
+
         return $this->db->get()->result();
     }
 
@@ -374,9 +417,9 @@ class Peppol_model extends App_Model
         $this->db->where_in('document_id', $document_ids);
         $this->db->where('type', 'error');
         $this->db->order_by('document_id, created_at DESC');
-        
+
         $results = $this->db->get()->result();
-        
+
         // Group by document_id and return latest error for each
         $errors = [];
         foreach ($results as $log) {
@@ -384,7 +427,7 @@ class Peppol_model extends App_Model
                 $errors[$log->document_id] = $log;
             }
         }
-        
+
         return $errors;
     }
 }

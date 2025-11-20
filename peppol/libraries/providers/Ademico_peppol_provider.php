@@ -912,9 +912,9 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
         ];
 
         try {
-            // Get recent notifications (last hour if no specific filters)
+            // Get recent notifications (last 24 hour if no specific filters)
             $filters = [
-                'startDateTime' => date('c', strtotime('-1 hour')),
+                'startDateTime' => date('c', strtotime('-24 hour')),
                 'pageSize' => 100
             ];
 
@@ -1104,11 +1104,12 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
 
             // Find the PEPPOL document record
             $peppol_document = null;
-            if ($document_id) {
-                $peppol_document = $CI->peppol_model->get_peppol_document_by_provider_id($document_id);
+            if ($transmission_id) {
+                $peppol_document = $CI->peppol_model->get_peppol_document_by_metadata('transmissionId', $transmission_id, $this->get_id());
             }
-            if (!$peppol_document && $transmission_id) {
-                $peppol_document = $CI->peppol_model->get_peppol_document_by_transmission_id($transmission_id);
+
+            if (!$peppol_document && $document_id) {
+                $peppol_document = $CI->peppol_model->get_peppol_document_by_provider_id($document_id, $this->get_id());
             }
 
             if (!$peppol_document) {
@@ -1170,7 +1171,7 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
 
 
     /**
-     * Create Perfex CRM document from UBL XML
+     * Create Perfex CRM document from UBL XML using service layer
      * 
      * @param string $ubl_xml UBL XML content
      * @param array $notification Notification data
@@ -1178,359 +1179,24 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
      */
     private function _create_document_from_ubl($ubl_xml, $notification)
     {
-        $CI = &get_instance();
+        // Load PEPPOL service
+        $this->CI->load->library('peppol/peppol_service');
 
-        try {
-            // Load einvoicing UBL reader
-            if (!class_exists('Einvoicing\\Readers\\UblReader')) {
-                return [
-                    'success' => false,
-                    'message' => 'UBL Reader not available'
-                ];
-            }
+        // Prepare metadata including notification info
+        $metadata = [
+            'provider' => $this->get_id(),
+            'notification' => $notification,
+            'received_at' => date('Y-m-d H:i:s')
+        ];
 
-            $reader = new \Einvoicing\Readers\UblReader();
-            $parsed_invoice = $reader->import($ubl_xml);
+        // Extract document ID from notification
+        $document_id = $notification['document_id'] ?? $notification['id'] ?? 'unknown';
 
-            // Determine document type
-            $document_type = ($parsed_invoice->getType() === \Einvoicing\Invoice::TYPE_CREDIT_NOTE)
-                ? 'credit_note'
-                : 'invoice';
-
-            // Get or create client from seller information
-            $seller = $parsed_invoice->getSeller();
-            $client_result = $this->_get_or_create_client_from_party($seller, $notification);
-
-            if (!$client_result['success']) {
-                return [
-                    'success' => false,
-                    'message' => 'Failed to create/find client: ' . $client_result['message']
-                ];
-            }
-
-            $client_id = $client_result['client_id'];
-
-            // Prepare document data
-            $document_data = [
-                'clientid' => $client_id,
-                'number' => $parsed_invoice->getNumber(),
-                'date' => $parsed_invoice->getIssueDate() ? $parsed_invoice->getIssueDate()->format('Y-m-d') : date('Y-m-d'),
-                'currency' => $this->_get_currency_id($parsed_invoice->getCurrency()),
-                'subtotal' => 0,
-                'total' => 0,
-                'total_tax' => 0,
-                'clientnote' => $this->_extract_notes($parsed_invoice),
-                'terms' => $parsed_invoice->getPaymentTerms() ?? '',
-                'status' => 1, // Draft status initially
-                'datecreated' => date('Y-m-d H:i:s'),
-                'addedfrom' => 0, // System generated
-                'include_shipping' => 0,
-                'show_shipping_on_invoice' => 1,
-                'recurring' => 0,
-                'adjustment' => 0,
-                'discount_percent' => 0,
-                'discount_total' => 0,
-                'discount_type' => '',
-                'sale_agent' => 0,
-                'billing_street' => '',
-                'billing_city' => '',
-                'billing_state' => '',
-                'billing_zip' => '',
-                'billing_country' => 0,
-                'shipping_street' => '',
-                'shipping_city' => '',
-                'shipping_state' => '',
-                'shipping_zip' => '',
-                'shipping_country' => 0,
-                'allowed_payment_modes' => '',
-                'project_id' => 0,
-                'tags' => 'peppol,incoming',
-            ];
-
-            if ($document_type === 'credit_note') {
-                $document_data['duedate'] = null;
-                $CI->load->model('credit_notes_model');
-                $model = $CI->credit_notes_model;
-            } else {
-                $document_data['duedate'] = $parsed_invoice->getDueDate() ? $parsed_invoice->getDueDate()->format('Y-m-d') : date('Y-m-d', strtotime('+30 days'));
-                $CI->load->model('invoices_model');
-                $model = $CI->invoices_model;
-            }
-
-            // Create the document
-            $document_id = $model->add($document_data);
-
-            if (!$document_id) {
-                return [
-                    'success' => false,
-                    'message' => 'Failed to create ' . $document_type . ' in Perfex CRM'
-                ];
-            }
-
-            // Add line items
-            $line_items_result = $this->_add_line_items_to_document($parsed_invoice, $document_type, $document_id);
-
-            if (!$line_items_result['success']) {
-                // Delete the created document if line items failed
-                $model->delete($document_id);
-                return $line_items_result;
-            }
-
-            return [
-                'success' => true,
-                'data' => [
-                    'parsed_invoice' => $parsed_invoice,
-                    'client_id' => $client_id,
-                    'line_items_count' => $line_items_result['count']
-                ],
-                'document_type' => $document_type,
-                'document_id' => $document_id,
-                'message' => ucfirst($document_type) . ' created successfully from UBL'
-            ];
-        } catch (Exception $e) {
-            return [
-                'success' => false,
-                'message' => 'Error parsing UBL: ' . $e->getMessage()
-            ];
-        }
+        // Use service layer to create document
+        return $this->CI->peppol_service->create_document_from_ubl($ubl_xml, $document_id, $metadata);
     }
 
-    /**
-     * Get or create client from UBL Party information
-     */
-    private function _get_or_create_client_from_party($party, $notification)
-    {
-        $CI = &get_instance();
-        $CI->load->model('clients_model');
 
-        try {
-            $company_name = $party->getName();
-            $vat_number = $party->getVatNumber();
-            $electronic_address = $party->getElectronicAddress();
-
-            $sender_identifier = $notification['sender'] ?? '';
-
-            // Try to find existing client by VAT number or PEPPOL identifier
-            $existing_client = null;
-
-            if ($vat_number) {
-                $CI->db->where('vat', $vat_number);
-                $existing_client = $CI->db->get(db_prefix() . 'clients')->row();
-            }
-
-            if (!$existing_client && $sender_identifier) {
-                // Search by PEPPOL identifier in custom fields
-                $CI->db->select('c.*')
-                    ->from(db_prefix() . 'clients c')
-                    ->join(db_prefix() . 'customfieldsvalues cfv', 'c.userid = cfv.relid')
-                    ->join(db_prefix() . 'customfields cf', 'cfv.fieldid = cf.id')
-                    ->where('cf.slug', 'customers_peppol_identifier')
-                    ->where('cfv.value', $sender_identifier);
-                $existing_client = $CI->db->get()->row();
-            }
-
-            if ($existing_client) {
-                return [
-                    'success' => true,
-                    'client_id' => $existing_client->userid,
-                    'was_existing' => true
-                ];
-            }
-
-            // Create new client
-            $client_data = [
-                'company' => $company_name ?: 'Unknown Company',
-                'vat' => $vat_number ?: '',
-                'phonenumber' => '',
-                'country' => $this->_get_country_id_from_party($party),
-                'city' => '',
-                'zip' => '',
-                'state' => '',
-                'address' => '',
-                'website' => '',
-                'datecreated' => date('Y-m-d H:i:s'),
-                'addedfrom' => 0,
-                'billing_street' => '',
-                'billing_city' => '',
-                'billing_state' => '',
-                'billing_zip' => '',
-                'billing_country' => $this->_get_country_id_from_party($party),
-                'shipping_street' => '',
-                'shipping_city' => '',
-                'shipping_state' => '',
-                'shipping_zip' => '',
-                'shipping_country' => $this->_get_country_id_from_party($party),
-                'default_language' => '',
-                'default_currency' => 0,
-                'show_primary_contact' => 1,
-                'stripe_id' => '',
-                'registration_confirmed' => 1,
-                'active' => 1
-            ];
-
-            $client_id = $CI->clients_model->add($client_data);
-
-            if (!$client_id) {
-                return [
-                    'success' => false,
-                    'message' => 'Failed to create client'
-                ];
-            }
-
-            // Add PEPPOL identifier as custom field if available
-            if ($sender_identifier && $electronic_address) {
-                $this->_set_client_peppol_identifier($client_id, $electronic_address->getValue(), $electronic_address->getScheme());
-            }
-
-            return [
-                'success' => true,
-                'client_id' => $client_id,
-                'was_existing' => false
-            ];
-        } catch (Exception $e) {
-            return [
-                'success' => false,
-                'message' => 'Error creating client: ' . $e->getMessage()
-            ];
-        }
-    }
-
-    /**
-     * Add line items to document from UBL
-     */
-    private function _add_line_items_to_document($parsed_invoice, $document_type, $document_id)
-    {
-        $CI = &get_instance();
-
-        try {
-            $line_count = 0;
-            foreach ($parsed_invoice->getLines() as $line) {
-                $line_data = [
-                    'description' => $line->getName() ?: 'Item',
-                    'long_description' => $line->getDescription() ?: '',
-                    'qty' => $line->getQuantity() ?: 1,
-                    'rate' => $line->getPrice() ?: 0,
-                    'order' => $line_count + 1
-                ];
-
-                if ($document_type === 'credit_note') {
-                    $line_data['rel_id'] = $document_id;
-                    $line_data['rel_type'] = 'credit_note';
-
-                    $line_id = $CI->db->insert(db_prefix() . 'itemable', $line_data);
-                } else {
-                    $line_data['rel_id'] = $document_id;
-                    $line_data['rel_type'] = 'invoice';
-
-                    $line_id = $CI->db->insert(db_prefix() . 'itemable', $line_data);
-                }
-
-                if ($line_id) {
-                    // Add tax if applicable
-                    $vat_rate = $line->getVatRate();
-                    if ($vat_rate > 0) {
-                        $this->_add_tax_to_line_item($line_id, $vat_rate, $document_type);
-                    }
-                    $line_count++;
-                }
-            }
-
-            return [
-                'success' => true,
-                'count' => $line_count
-            ];
-        } catch (Exception $e) {
-            return [
-                'success' => false,
-                'message' => 'Error adding line items: ' . $e->getMessage()
-            ];
-        }
-    }
-
-    /**
-     * Helper methods for UBL processing
-     */
-    private function _get_currency_id($currency_code)
-    {
-        $CI = &get_instance();
-
-        if (!$currency_code) {
-            return get_base_currency()->id;
-        }
-
-        $CI->db->where('name', $currency_code);
-        $currency = $CI->db->get(db_prefix() . 'currencies')->row();
-
-        return $currency ? $currency->id : get_base_currency()->id;
-    }
-
-    private function _extract_notes($parsed_invoice)
-    {
-        $notes = [];
-        foreach ($parsed_invoice->getNotes() as $note) {
-            $notes[] = $note;
-        }
-        return implode("\n", $notes);
-    }
-
-    private function _get_country_id_from_party($party)
-    {
-        // Default to Belgium if no country specified
-        return 22; // Belgium's ID in most Perfex installations
-    }
-
-    private function _set_client_peppol_identifier($client_id, $identifier, $scheme)
-    {
-        $CI = &get_instance();
-
-        // Get PEPPOL identifier custom field
-        $CI->db->where('fieldto', 'customers');
-        $CI->db->where('slug', 'customers_peppol_identifier');
-        $custom_field = $CI->db->get(db_prefix() . 'customfields')->row();
-
-        if ($custom_field) {
-            $CI->db->insert(db_prefix() . 'customfieldsvalues', [
-                'relid' => $client_id,
-                'fieldid' => $custom_field->id,
-                'value' => $identifier
-            ]);
-        }
-
-        // Get PEPPOL scheme custom field
-        $CI->db->where('fieldto', 'customers');
-        $CI->db->where('slug', 'customers_peppol_scheme');
-        $scheme_field = $CI->db->get(db_prefix() . 'customfields')->row();
-
-        if ($scheme_field) {
-            $CI->db->insert(db_prefix() . 'customfieldsvalues', [
-                'relid' => $client_id,
-                'fieldid' => $scheme_field->id,
-                'value' => $scheme
-            ]);
-        }
-    }
-
-    private function _add_tax_to_line_item($line_id, $vat_rate, $document_type)
-    {
-        $CI = &get_instance();
-
-        // Find or create tax rate
-        $CI->db->where('taxrate', $vat_rate);
-        $tax = $CI->db->get(db_prefix() . 'taxes')->row();
-
-        if ($tax) {
-            $tax_data = [
-                'itemid' => $line_id,
-                'rel_id' => $line_id,
-                'rel_type' => $document_type,
-                'taxname' => $tax->name,
-                'taxrate' => $tax->taxrate
-            ];
-
-            $table_name = ($document_type === 'credit_note') ? 'item_tax' : 'item_tax';
-            $CI->db->insert(db_prefix() . $table_name, $tax_data);
-        }
-    }
 
     /**
      * Map Ademico status to internal PEPPOL status

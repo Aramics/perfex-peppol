@@ -492,4 +492,21 @@ class Peppol_service
             'refund' => _l('peppol_payment_terms_refund')
         ];
     }
+
+    /**
+     * Create Perfex document from UBL XML using dedicated parser
+     * 
+     * @param string $ubl_xml The UBL XML content
+     * @param string $document_id External document ID
+     * @param array $metadata Additional metadata
+     * @return array Result with success status and created document info
+     */
+    public function create_document_from_ubl($ubl_xml, $document_id, $metadata = [])
+    {
+        // Load the dedicated UBL document parser
+        $this->CI->load->library('peppol/peppol_ubl_document_parser');
+        
+        // Use the parser to create the document
+        return $this->CI->peppol_ubl_document_parser->parse_and_create($ubl_xml, $document_id, $metadata);
+    }
 }

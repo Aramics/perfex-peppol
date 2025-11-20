@@ -1,5 +1,6 @@
 <?php
 
+use Einvoicing\Invoice;
 use Einvoicing\Readers\UblReader;
 
 defined('BASEPATH') or exit('No direct script access allowed');
@@ -87,14 +88,14 @@ class Peppol_ubl_document_parser
         try {
 
             // Parse UBL XML
-            $reader = new UblReader($ubl_xml);
+            $reader = new UblReader();
+            $invoice = $reader->import($ubl_xml);
 
-            // Detect document type
-            $is_credit_note = $this->_detect_credit_note($ubl_xml);
-            $document_type = $is_credit_note ? 'credit_note' : 'invoice';
+            // Detect document type using the Invoice object's type
+            $document_type = $this->_detect_document_type($invoice);
 
             // Parse document data from UBL
-            $parsed_data = $this->_parse_ubl_data($reader, $document_type, $external_document_id);
+            $parsed_data = $this->_parse_ubl_data($invoice, $document_type, $external_document_id);
 
             return [
                 'success' => true,
@@ -109,24 +110,39 @@ class Peppol_ubl_document_parser
     }
 
     /**
-     * Detect document type by examining UBL XML root element
+     * Detect document type using the Invoice object's type property
      * 
-     * Performs a simple string search to identify whether the UBL document
-     * is a credit note or invoice based on the root XML element name.
+     * Uses the josemmo/einvoicing library's built-in document type detection
+     * which is more reliable than XML string matching. The library properly
+     * parses the UBL structure and determines the correct document type.
      * 
-     * @param string $ubl_xml The complete UBL XML content
+     * @param Invoice $invoice The imported Invoice object from UblReader
      * 
-     * @return bool True if document is a credit note, false for invoice
+     * @return string Either 'credit_note' or 'invoice'
      * 
      * @since 1.0.0
      */
-    private function _detect_credit_note($ubl_xml)
+    private function _detect_document_type($invoice)
     {
-        return stripos($ubl_xml, '<CreditNote') !== false;
+
+        $type = $invoice->getType();
+
+        // Check for credit note types
+        if (
+            $type === Invoice::TYPE_CREDIT_NOTE_RELATED_TO_GOODS_OR_SERVICES ||
+            $type === Invoice::TYPE_CREDIT_NOTE_RELATED_TO_FINANCIAL_ADJUSTMENTS ||
+            $type === Invoice::TYPE_CREDIT_NOTE ||
+            stripos($type, '<CreditNote') !== false
+        ) {
+            return 'credit_note';
+        }
+
+        // Default to invoice for all other types
+        return 'invoice';
     }
 
     /**
-     * Extract and structure all data from UBL reader into standardized format
+     * Extract and structure all data from UBL Invoice object into standardized format
      * 
      * This method coordinates the extraction of all document components:
      * - Basic document information (dates, currency, references)
@@ -134,7 +150,7 @@ class Peppol_ubl_document_parser
      * - Line items with all details
      * - Document totals and tax information
      * 
-     * @param UblReader $reader The initialized UBL reader instance
+     * @param Invoice $invoice The imported Invoice object from UblReader
      * @param string $document_type Either 'invoice' or 'credit_note'
      * @param string|null $external_document_id Optional external reference ID
      * 
@@ -158,92 +174,50 @@ class Peppol_ubl_document_parser
      * 
      * @since 1.0.0
      */
-    private function _parse_ubl_data($reader, $document_type, $external_document_id)
+    private function _parse_ubl_data($invoice, $document_type, $external_document_id)
     {
+        // Extract dates with proper formatting
+        $issue_date = $invoice->getIssueDate();
+        $due_date = $invoice->getDueDate();
+
         $data = [
             'external_id' => $external_document_id,
             'document_type' => $document_type,
-            'document_number' => $this->_safe_get_value($reader, 'id'),
-            'issue_date' => $this->_safe_get_date($reader, 'issueDate'),
-            'due_date' => $this->_safe_get_date($reader, 'dueDate'),
-            'currency_code' => $this->_safe_get_value($reader, 'documentCurrencyCode'),
-            'notes' => $this->_extract_notes($reader),
-            'payment_terms' => $this->_safe_get_value($reader, 'paymentTerms'),
-            'billing_reference' => $this->_safe_get_value($reader, 'billingReference')
+            'document_number' => $invoice->getNumber(),
+            'issue_date' => $issue_date ? $issue_date->format('Y-m-d') : null,
+            'due_date' => $due_date ? $due_date->format('Y-m-d') : null,
+            'currency_code' => $invoice->getCurrency(),
+            'notes' => implode("\n", $invoice->getNotes()),
+            'payment_terms' => $invoice->getPaymentTerms() ?: '',
+            'billing_reference' => $this->_get_billing_reference($invoice)
         ];
 
         // Parse buyer/seller information
-        $data['buyer'] = $this->_parse_party_info($reader, 'buyer');
-        $data['seller'] = $this->_parse_party_info($reader, 'seller');
+        $data['buyer'] = $this->_parse_invoice_party_info($invoice, 'buyer');
+        $data['seller'] = $this->_parse_invoice_party_info($invoice, 'seller');
 
         // Parse line items
-        $data['items'] = $this->_parse_line_items($reader, $document_type);
+        $data['items'] = $this->_parse_invoice_line_items($invoice, $document_type);
 
         // Calculate totals
-        $data['totals'] = $this->_parse_totals($reader);
+        $data['totals'] = $this->_parse_invoice_totals($invoice);
 
         return $data;
     }
 
-    /**
-     * Extract party information (buyer or seller) from UBL reader
-     * 
-     * Extracts comprehensive party data including identification, contact
-     * information, and address details. Uses the UBL reader's getValue method
-     * with appropriate field prefixes to distinguish between buyer and seller.
-     * 
-     * @param UblReader $reader The UBL reader instance
-     * @param string $party_type Either 'buyer' or 'seller' to determine field prefix
-     * 
-     * @return array {
-     *     Complete party information structure
-     * 
-     *     @type string $name           Party/company name
-     *     @type string $identifier     PEPPOL or other business identifier
-     *     @type string $scheme         Identifier scheme code (e.g., '0208' for BE VAT)
-     *     @type string $vat_number     VAT registration number
-     *     @type string $email          Contact email address
-     *     @type string $address        Street address
-     *     @type string $city           City name
-     *     @type string $postal_code    ZIP/postal code
-     *     @type string $country_code   ISO 3166-1 alpha-2 country code
-     *     @type string $telephone      Phone number
-     *     @type string $website        Website URL
-     * }
-     * 
-     * @since 1.0.0
-     */
-    private function _parse_party_info($reader, $party_type)
-    {
-        $prefix = $party_type; // 'buyer' or 'seller'
-
-        return [
-            'name' => $this->_safe_get_value($reader, $prefix . 'Name'),
-            'identifier' => $this->_safe_get_value($reader, $prefix . 'Id'),
-            'scheme' => $this->_safe_get_value($reader, $prefix . 'IdScheme'),
-            'vat_number' => $this->_safe_get_value($reader, $prefix . 'CompanyId'),
-            'email' => $this->_safe_get_value($reader, $prefix . 'ElectronicMail'),
-            'address' => $this->_safe_get_value($reader, $prefix . 'Address'),
-            'city' => $this->_safe_get_value($reader, $prefix . 'City'),
-            'postal_code' => $this->_safe_get_value($reader, $prefix . 'PostalCode'),
-            'country_code' => $this->_safe_get_value($reader, $prefix . 'CountryCode'),
-            'telephone' => $this->_safe_get_value($reader, $prefix . 'Telephone'),
-            'website' => $this->_safe_get_value($reader, $prefix . 'Website')
-        ];
-    }
 
     /**
      * Extract and process line items from UBL document
      * 
-     * Processes invoice lines or credit note lines depending on document type.
+     * Processes line items from UBL documents using the Invoice object's getLines() method.
      * Each line item is converted to Perfex CRM item format with proper
-     * quantity handling for credit notes (credited quantities) vs invoices
-     * (invoiced quantities).
+     * quantity handling - credit notes try getCreditedQuantity first, falling back
+     * to getInvoicedQuantity if not available.
      * 
-     * Falls back to creating a single placeholder item if line parsing fails,
-     * ensuring the document can still be processed.
+     * Exceptions are allowed to bubble up if line parsing fails completely,
+     * as this indicates a fundamental issue with the UBL document.
      * 
-     * @param UblReader $reader The UBL reader instance
+     * @param Invoice $invoice The imported Invoice object
      * @param string $document_type Either 'invoice' or 'credit_note'
      * 
      * @return array {
@@ -254,191 +228,107 @@ class Peppol_ubl_document_parser
      *     @type string $long_description Detailed item description
      *     @type float  $qty             Item quantity (positive for both types)
      *     @type float  $rate            Unit price/rate
+     *     @type string $unit            Unit of measure code (e.g., 'PCE', 'KGM')
      *     @type int    $order           Line item order/sequence
      *     @type array  $taxname         Tax information (empty array for now)
      * }
      * 
+     * @throws Exception When line items cannot be extracted from the Invoice object
+     * 
      * @since 1.0.0
      */
-    private function _parse_line_items($reader, $document_type)
+    private function _parse_invoice_line_items($invoice, $document_type)
     {
         $items = [];
 
-        try {
-            // Get line items based on document type
-            $lines = $document_type === 'credit_note'
-                ? $reader->getCreditNoteLines()
-                : $reader->getInvoiceLines();
+        // Get line items using the Invoice object - let exceptions bubble up
+        $lines = $invoice->getLines();
 
-            $order = 1;
-            foreach ($lines as $line) {
-                $items[] = [
-                    'description' => $this->_safe_get_line_value($line, 'getNote') ?: $this->_safe_get_line_value($line, 'getDescription') ?: 'Item',
-                    'long_description' => $this->_safe_get_line_value($line, 'getDescription') ?: '',
-                    'qty' => $document_type === 'credit_note'
-                        ? ($this->_safe_get_line_value($line, 'getCreditedQuantity') ?: 1)
-                        : ($this->_safe_get_line_value($line, 'getInvoicedQuantity') ?: 1),
-                    'rate' => $this->_safe_get_line_value($line, 'getPrice') ?: 0,
-                    'order' => $order++,
-                    'taxname' => [] // Tax handling can be enhanced later
-                ];
-            }
-        } catch (Exception $e) {
-            // If line parsing fails, create a single item with totals
-            $items = [[
-                'description' => 'UBL Document Item',
-                'long_description' => 'Item imported from UBL document',
-                'qty' => 1,
-                'rate' => 0,
-                'order' => 1,
-                'taxname' => []
-            ]];
+        $order = 1;
+        foreach ($lines as $line) {
+            $items[] = [
+                'description' => clear_textarea_breaks($line->getName()),
+                'long_description' => clear_textarea_breaks($line->getDescription()),
+                'qty' => $line->getQuantity() ?: $line->getBaseQuantity(),
+                'rate' => $line->getPrice(),
+                'unit' => 1, //$line->getUnit(), // default to "C62"
+                'order' => $order++,
+                'taxname' => [] // Tax handling can be enhanced later
+            ];
         }
 
         return $items;
     }
 
     /**
-     * Extract financial totals from UBL document
+     * Extract financial totals from Invoice object
      * 
-     * Retrieves the key monetary amounts from the UBL document including
-     * subtotal (before tax), tax amount, and final payable amount.
-     * All amounts default to 0 if not found in the UBL.
+     * @param Invoice $invoice The Invoice object
      * 
-     * @param UblReader $reader The UBL reader instance
-     * 
-     * @return array {
-     *     Financial totals structure
-     * 
-     *     @type float $subtotal   Line extension amount (before tax)
-     *     @type float $tax_amount Tax exclusive amount or tax total
-     *     @type float $total      Final payable amount including all charges
-     * }
+     * @return array Financial totals structure
      * 
      * @since 1.0.0
      */
-    private function _parse_totals($reader)
+    private function _parse_invoice_totals($invoice)
     {
+        $totals = $invoice->getTotals();
+
         return [
-            'subtotal' => $this->_safe_get_value($reader, 'lineExtensionAmount') ?: 0,
-            'tax_amount' => $this->_safe_get_value($reader, 'taxExclusiveAmount') ?: 0,
-            'total' => $this->_safe_get_value($reader, 'payableAmount') ?: 0
+            'subtotal' => $totals->taxExclusiveAmount ?? 0,
+            'tax_amount' => $totals->vatAmount ?? 0,
+            'total' => $totals->payableAmount ?? 0
+        ];
+    }
+
+    /**
+     * Extract party information from Invoice object
+     * 
+     * @param Invoice $invoice The Invoice object
+     * @param string $party_type Either 'buyer' or 'seller'
+     * 
+     * @return array Complete party information structure
+     * 
+     * @since 1.0.0
+     */
+    private function _parse_invoice_party_info($invoice, $party_type)
+    {
+        if ($party_type === 'buyer') {
+            $party = $invoice->getBuyer();
+        } else {
+            $party = $invoice->getSeller();
+        }
+
+        return [
+            'name' => $party->getName(),
+            'identifier' => $party->getElectronicAddress(),
+            'scheme' => $party->getElectronicAddressScheme(),
+            'vat_number' => $party->getVatNumber(),
+            'email' => $party->getEmailAddress(),
+            'address' => $party->getAddress(),
+            'city' => $party->getCity(),
+            'postal_code' => $party->getPostalCode(),
+            'country_code' => $party->getCountryCode(),
+            'telephone' => $party->getPhone(),
+            'website' => ''
         ];
     }
 
 
     /**
-     * Extract and concatenate all document notes from UBL
+     * Extract billing reference from Invoice object
      * 
-     * Retrieves all note elements from the UBL document and combines them
-     * into a single string with newline separators. Handles cases where
-     * the getNotes method is not available or fails.
+     * @param Invoice $invoice The Invoice object
      * 
-     * @param UblReader $reader The UBL reader instance
-     * 
-     * @return string Concatenated notes separated by newlines, empty string if no notes
+     * @return string Billing reference or empty string
      * 
      * @since 1.0.0
      */
-    private function _extract_notes($reader)
+    private function _get_billing_reference($invoice)
     {
-        try {
-            $notes = [];
-            if (method_exists($reader, 'getNotes')) {
-                foreach ($reader->getNotes() as $note) {
-                    $notes[] = $note;
-                }
-            }
-            return implode("\n", $notes);
-        } catch (Exception $e) {
-            return '';
+        $references = $invoice->getPrecedingInvoiceReferences();
+        if ($references && is_array($references) && !empty($references)) {
+            return $references[0]->getValue() ?? '';
         }
-    }
-
-
-    /**
-     * Safely extract values from UBL reader with error handling
-     * 
-     * Attempts to retrieve values from the UBL reader using either the
-     * getValue method or direct method calls. Provides graceful error
-     * handling for missing methods or extraction failures.
-     * 
-     * This method abstracts the complexity of the UBL reader API and
-     * ensures consistent behavior across different UBL document structures.
-     * 
-     * @param UblReader $reader The UBL reader instance
-     * @param string $method The field name or method name to retrieve
-     * 
-     * @return mixed|null The extracted value or null if not found/accessible
-     * 
-     * @since 1.0.0
-     */
-    private function _safe_get_value($reader, $method)
-    {
-        try {
-            if (method_exists($reader, 'getValue')) {
-                return $reader->getValue($method);
-            } elseif (method_exists($reader, $method)) {
-                return $reader->$method();
-            }
-        } catch (Exception $e) {
-            // Silently handle missing values
-        }
-        return null;
-    }
-
-    /**
-     * Safely extract and normalize date values from UBL reader
-     * 
-     * Retrieves date values from UBL and converts them to standardized
-     * Y-m-d format for Perfex CRM compatibility. Handles both DateTime
-     * objects and string dates with proper error handling.
-     * 
-     * @param UblReader $reader The UBL reader instance
-     * @param string $method The date field name to retrieve
-     * 
-     * @return string|null Date in Y-m-d format or null if parsing fails
-     * 
-     * @since 1.0.0
-     */
-    private function _safe_get_date($reader, $method)
-    {
-        try {
-            $date = $this->_safe_get_value($reader, $method);
-            if ($date && $date instanceof DateTime) {
-                return $date->format('Y-m-d');
-            } elseif ($date && is_string($date)) {
-                return date('Y-m-d', strtotime($date));
-            }
-        } catch (Exception $e) {
-            // Silently handle date parsing errors
-        }
-        return null;
-    }
-
-    /**
-     * Safely extract values from UBL line item objects with error handling
-     * 
-     * Similar to _safe_get_value but specifically designed for UBL line item
-     * objects which may have different method availability. Provides consistent
-     * error handling for line item data extraction.
-     * 
-     * @param object $line The UBL line item object
-     * @param string $method The method name to call on the line item
-     * 
-     * @return mixed|null The extracted value or null if method fails/unavailable
-     * 
-     * @since 1.0.0
-     */
-    private function _safe_get_line_value($line, $method)
-    {
-        try {
-            if (method_exists($line, $method)) {
-                return $line->$method();
-            }
-        } catch (Exception $e) {
-            // Silently handle missing values
-        }
-        return null;
+        return '';
     }
 }

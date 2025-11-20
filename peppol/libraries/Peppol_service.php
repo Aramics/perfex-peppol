@@ -509,13 +509,13 @@ class Peppol_service
 
             // Parse the UBL (parser only parses, no database operations)
             $parse_result = $this->CI->peppol_ubl_document_parser->parse($ubl_xml, $document_id);
-            dd($parse_result);
             if (!$parse_result['success']) {
                 return $parse_result;
             }
 
-            $parsed_data = $parse_result['data'];
+            dd($parse_result); //do not remove, im debugging.
 
+            $parsed_data = $parse_result['data'];
             // Service handles all database operations
             // Get or create client
             $client_result = $this->_get_or_create_client_from_parsed_data($parsed_data);

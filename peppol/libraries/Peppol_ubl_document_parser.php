@@ -246,6 +246,7 @@ class Peppol_ubl_document_parser
 
         $order = 1;
         foreach ($lines as $line) {
+            $tax_rate = $line->getVatRate();
             $items[] = [
                 'description' => clear_textarea_breaks($line->getName()),
                 'long_description' => clear_textarea_breaks($line->getDescription()),
@@ -253,7 +254,7 @@ class Peppol_ubl_document_parser
                 'rate' => $line->getPrice(),
                 'unit' => 1, //$line->getUnit(), // default to "C62"
                 'order' => $order++,
-                'taxname' => [] // Tax handling can be enhanced later
+                'taxname' => $tax_rate ? ['VAT' . '|' . $tax_rate] : []
             ];
         }
 
@@ -300,15 +301,15 @@ class Peppol_ubl_document_parser
 
         return [
             'name' => $party->getName(),
-            'identifier' => $party->getElectronicAddress(),
-            'scheme' => $party->getElectronicAddressScheme(),
+            'identifier' => $party->getElectronicAddress()->getValue(),
+            'scheme' => $party->getElectronicAddress()->getScheme(),
             'vat_number' => $party->getVatNumber(),
-            'email' => $party->getEmailAddress(),
+            'email' => $party->getContactEmail(),
             'address' => $party->getAddress(),
             'city' => $party->getCity(),
             'postal_code' => $party->getPostalCode(),
-            'country_code' => $party->getCountryCode(),
-            'telephone' => $party->getPhone(),
+            'country_code' => $party->getCountry(),
+            'telephone' => $party->getContactPhone(),
             'website' => ''
         ];
     }

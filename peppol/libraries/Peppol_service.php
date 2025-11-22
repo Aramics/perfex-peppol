@@ -707,22 +707,41 @@ class Peppol_service
             $model = $this->CI->invoices_model;
         }
 
+        // Get buyer (customer) info from parsed data for billing address
+        $buyer = $parsed_data['buyer'] ?? [];
+        $buyer['country'] = $this->_get_country_id_from_code($buyer['country_code']);
+
         $base_data = [
+            'number' => $document_type == 'invoice' ? get_option('next_invoice_number') : get_option('next_credit_note_number'),
             'clientid' => $client_id,
             'date' => $parsed_data['issue_date'] ?: date('Y-m-d'),
             'currency' => $this->_get_currency_id($parsed_data['currency_code']),
             'newitems' => $parsed_data['items'],
             'subtotal' => $parsed_data['totals']['subtotal'],
             'total' => $parsed_data['totals']['total'],
-            'adminnote' => 'Created from PEPPOL UBL document: ' . $parsed_data['external_id']
+            'total_tax' => $parsed_data['totals']['tax_amount'],
+            'adminnote' => 'Created from PEPPOL UBL document: ' . $parsed_data['external_id'],
+            // Add required billing address fields to prevent errors
+            'billing_street' => $buyer['address'],
+            'billing_city' => $buyer['city'],
+            'billing_state' => $buyer['state'],
+            'billing_zip' => $buyer['postal_code'],
+            'billing_country' => $buyer['country'],
+            "shipping_street" => $buyer['address'],
+            "shipping_city" => $buyer['city'],
+            "shipping_state" => $buyer['state'],
+            "shipping_zip" => $buyer['postal_code'],
+            "shipping_country" => $buyer['country'],
         ];
 
-        // Set external reference if available
-        if (!empty($parsed_data['document_number'])) {
-            $base_data['reference_no'] = $parsed_data['document_number'];
-        }
+
 
         if ($document_type === 'credit_note') {
+            // Set external reference if available
+            if (!empty($parsed_data['document_number'])) {
+                $base_data['reference_no'] = $parsed_data['document_number'];
+            }
+
             $document_data = array_merge($base_data, [
                 'status' => 1, // Open status
             ]);
@@ -731,14 +750,14 @@ class Peppol_service
             if (!empty($parsed_data['billing_reference'])) {
                 $document_data['clientnote'] = 'Reference to invoice: ' . $parsed_data['billing_reference'];
             } elseif (!empty($parsed_data['notes'])) {
-                $document_data['clientnote'] = $parsed_data['notes'];
+                $document_data['clientnote'] = trim($parsed_data['notes']) ?: '';
             }
         } else {
             $document_data = array_merge($base_data, [
                 'duedate' => $parsed_data['due_date'] ?: date('Y-m-d', strtotime('+30 days')),
                 'status' => Invoices_model::STATUS_UNPAID,
-                'clientnote' => $parsed_data['notes'] ?: '',
-                'terms' => $parsed_data['payment_terms'] ?: ''
+                'clientnote' => trim($parsed_data['notes'] ?? '') ?: '',
+                'terms' => trim($parsed_data['payment_terms'] ?? '') ?: ''
             ]);
         }
 
@@ -768,8 +787,8 @@ class Peppol_service
             'status' => 'received',
             'provider' => $metadata['provider'] ?? 'unknown',
             'provider_document_id' => $external_id,
-            'provider_metadata' => json_encode($metadata),
-            'received_at' => date('Y-m-d H:i:s'),
+            'provider_metadata' => json_encode($metadata['notification'] ?? $metadata),
+            'received_at' => date('Y-m-d H:i:s', strtotime($metadata['received_at'])) ?? date('Y-m-d H:i:s'),
             'created_at' => date('Y-m-d H:i:s')
         ];
 

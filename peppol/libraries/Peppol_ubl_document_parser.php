@@ -251,9 +251,9 @@ class Peppol_ubl_document_parser
             $tax_rate = $line->getVatRate();
             $items[] = [
                 'description' => clear_textarea_breaks($line->getName()),
-                'long_description' => clear_textarea_breaks($line->getDescription()),
-                'qty' => $line->getQuantity() ?: $line->getBaseQuantity(),
-                'rate' => $line->getPrice(),
+                'long_description' => clear_textarea_breaks($line->getDescription() ?? ''),
+                'qty' => $line->getQuantity() ?? $line->getBaseQuantity(),
+                'rate' => (float)$line->getPrice(),
                 'unit' => 1, //$line->getUnit(), // default to "C62"
                 'order' => $order++,
                 'taxname' => $tax_rate > 0 ? ['VAT' . '|' . $tax_rate] : []
@@ -302,16 +302,17 @@ class Peppol_ubl_document_parser
         }
 
         return [
-            'name' => $party->getName(),
-            'identifier' => $party->getElectronicAddress()->getValue(),
-            'scheme' => $party->getElectronicAddress()->getScheme(),
-            'vat_number' => $party->getVatNumber(),
-            'email' => $party->getContactEmail(),
-            'address' => $party->getAddress(),
-            'city' => $party->getCity(),
-            'postal_code' => $party->getPostalCode(),
-            'country_code' => $party->getCountry(),
-            'telephone' => $party->getContactPhone(),
+            'name' => $party->getName() ?? '',
+            'identifier' => $party->getElectronicAddress()->getValue() ?? '',
+            'scheme' => $party->getElectronicAddress()->getScheme() ?? '',
+            'vat_number' => $party->getVatNumber() ?? '',
+            'email' => $party->getContactEmail() ?? '',
+            'address' => implode("\n", $party->getAddress()),
+            'city' => $party->getCity() ?? '',
+            'state' => $party->getSubdivision() ?? '',
+            'postal_code' => $party->getPostalCode() ?? '',
+            'country_code' => $party->getCountry() ?? '',
+            'telephone' => $party->getContactPhone() ?? '',
             'website' => ''
         ];
     }

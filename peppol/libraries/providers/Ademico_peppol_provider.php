@@ -967,7 +967,7 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                         $results['processed_incoming'],
                         $results['updated_statuses']
                     ),
-                    'metadata' => json_encode([
+                    'data' => json_encode([
                         'processed_incoming' => $results['processed_incoming'],
                         'updated_statuses' => $results['updated_statuses'],
                         'errors_count' => count($results['errors'])
@@ -1059,13 +1059,12 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
             ];
 
             // Parse UBL XML and create Perfex CRM document
-            $perfex_result = $this->_create_document_from_ubl($ubl_response['ubl_xml'], $notification);
-            if ($perfex_result['success']) {
-                $document_data['perfex_document'] = $perfex_result['data'];
-                $document_data['perfex_document_type'] = $perfex_result['document_type'];
-                $document_data['perfex_document_id'] = $perfex_result['document_id'];
+            $result = $this->_create_document_from_ubl($ubl_response['ubl_xml'], $notification);
+            if ($result['success']) {
+                $document_data['document_type'] = $result['document_type'];
+                $document_data['document_id'] = $result['document_id'];
             } else {
-                $document_data['perfex_error'] = $perfex_result['message'];
+                $document_data['error'] = $result['message'];
             }
 
             return [
@@ -1186,7 +1185,7 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
         $metadata = [
             'provider' => $this->get_id(),
             'notification' => $notification,
-            'received_at' => date('Y-m-d H:i:s')
+            'received_at' => $notification['receivedDate'] ?? $notification['notificationDate'] ?? date('Y-m-d H:i:s'),
         ];
 
         // Extract document ID from notification

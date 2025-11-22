@@ -861,6 +861,8 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
             elseif ($data) {
                 curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
             }
+        } elseif ($method === 'DELETE') {
+            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
         }
         // GET request - no additional setup needed
 
@@ -914,7 +916,7 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
         try {
             // Get recent notifications (last 24 hour if no specific filters)
             $filters = [
-                'startDateTime' => date('c', strtotime('-62 hour')),
+                'startDateTime' => date('c', strtotime('-100 hour')),
                 'pageSize' => 100
             ];
 
@@ -927,6 +929,9 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
             }
 
             foreach ($notifications_response['notifications'] as $notification) {
+                $notification_id = $notification['notificationId'] ?? null;
+                $notification_processed = false;
+
                 try {
                     $event_type = $notification['eventType'] ?? '';
                     $transmission_id = $notification['transmissionId'] ?? '';
@@ -938,6 +943,10 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                         if ($incoming_result['success']) {
                             $results['processed_incoming']++;
                             $results['incoming_documents'][] = $incoming_result['data'];
+                            $notification_processed = true;
+                        } elseif (isset($incoming_result['already_processed']) && $incoming_result['already_processed']) {
+                            // Document was already processed, still mark notification as processed to consume it
+                            $notification_processed = true;
                         } else {
                             $results['errors'][] = 'Failed to process incoming document ' . $transmission_id . ': ' . $incoming_result['message'];
                         }
@@ -949,8 +958,18 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                         if ($status_result['success']) {
                             $results['updated_statuses']++;
                             $results['status_updates'][] = $status_result['data'];
+                            $notification_processed = true;
                         } else {
                             $results['errors'][] = 'Failed to update status for document ' . ($notification['documentId'] ?? $transmission_id) . ': ' . $status_result['message'];
+                        }
+                    }
+
+                    // Consume (delete) notification if it was successfully processed
+                    if ($notification_processed && $notification_id) {
+                        $consume_result = $this->consume_notification($notification_id);
+                        if (!$consume_result['success']) {
+                            // Log consumption error but don't fail the whole webhook
+                            $results['errors'][] = 'Warning: Failed to consume notification ' . $notification_id . ': ' . $consume_result['message'];
                         }
                     }
                 } catch (Exception $e) {
@@ -1038,8 +1057,34 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
      */
     private function _process_incoming_document($notification)
     {
+        $CI = &get_instance();
+        $CI->load->model('peppol/peppol_model');
+
         try {
             $transmission_id = $notification['transmissionId'];
+
+            // Check if this notification has already been processed
+            $notification_id = $notification['notificationId'] ?? null;
+            $existing_document = null;
+
+            if ($notification_id) {
+                $existing_document = $CI->peppol_model->get_peppol_document_by_metadata('notificationId', $notification_id, $this->get_id());
+            }
+
+            if ($existing_document) {
+                return [
+                    'success' => false,
+                    'already_processed' => true,
+                    'message' => 'Notification ' . $notification_id . ' has already been processed',
+                    'data' => [
+                        'notification_id' => $notification_id,
+                        'transmission_id' => $transmission_id,
+                        'existing_document_id' => $existing_document->document_id,
+                        'existing_document_type' => $existing_document->document_type,
+                        'processed_at' => $existing_document->created_at
+                    ]
+                ];
+            }
 
             // Get UBL XML content directly (Ademico only provides UBL endpoint)
             $ubl_response = $this->get_document_ubl($transmission_id);
@@ -1181,18 +1226,18 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
         // Load PEPPOL service
         $this->CI->load->library('peppol/peppol_service');
 
-        // Prepare metadata including notification info
-        $metadata = [
+        // Prepare metadata including notification info with Ademico-specific fields
+        $extra_data = [
             'provider' => $this->get_id(),
-            'notification' => $notification,
             'received_at' => $notification['receivedDate'] ?? $notification['notificationDate'] ?? date('Y-m-d H:i:s'),
+            'metadata' => $notification,
         ];
 
         // Extract document ID from notification
-        $document_id = $notification['documentId'] ?? $notification['id'] ?? 'unknown';
+        $document_id = $notification['documentId'] ?? 'unknown';
 
         // Use service layer to create document
-        return $this->CI->peppol_service->create_document_from_ubl($ubl_xml, $document_id, $metadata);
+        return $this->CI->peppol_service->create_document_from_ubl($ubl_xml, $document_id, $extra_data);
     }
 
 
@@ -1346,6 +1391,55 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
             }
 
             return ['success' => false, 'error' => $error_message];
+        }
+    }
+
+    /**
+     * Consume (delete) a notification to remove it from the queue
+     * 
+     * @param int $notification_id The notification ID to consume
+     * @return array Response with success status
+     */
+    public function consume_notification($notification_id)
+    {
+        $settings = $this->get_settings();
+
+        try {
+            $token = $this->get_access_token($settings);
+            if (!$token) {
+                return [
+                    'success' => false,
+                    'message' => 'Failed to obtain access token for notification consumption'
+                ];
+            }
+
+            // Build DELETE endpoint URL
+            $endpoint = $this->get_endpoint(self::ENDPOINT_NOTIFICATIONS) . '/' . $notification_id;
+
+            $headers = [
+                'Authorization: ' . $token,
+                'Content-Type: application/json'
+            ];
+
+            $response = $this->call_api($endpoint, null, $headers, [], 'DELETE');
+
+            if ($response['success']) {
+                return [
+                    'success' => true,
+                    'message' => 'Notification consumed successfully',
+                    'notification_id' => $notification_id
+                ];
+            } else {
+                return [
+                    'success' => false,
+                    'message' => 'Failed to consume notification: ' . ($response['error'] ?? 'Unknown error')
+                ];
+            }
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Failed to consume notification: ' . $e->getMessage()
+            ];
         }
     }
 }

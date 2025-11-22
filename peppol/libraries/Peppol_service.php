@@ -498,10 +498,10 @@ class Peppol_service
      * 
      * @param string $ubl_xml The UBL XML content
      * @param string $document_id External document ID
-     * @param array $metadata Additional metadata
+     * @param array $extra_data Additional information including metadata
      * @return array Result with success status and created document info
      */
-    public function create_document_from_ubl($ubl_xml, $document_id, $metadata = [])
+    public function create_document_from_ubl($ubl_xml, $document_id, $extra_data = [])
     {
         try {
             // Load the dedicated UBL document parser
@@ -538,8 +538,8 @@ class Peppol_service
             }
 
             // Store PEPPOL metadata for tracking
-            if (!empty($metadata)) {
-                $metadata_result = $this->_store_document_metadata($document_result['document_id'], $parsed_data['document_type'], $document_id, $metadata);
+            if (!empty($extra_data)) {
+                $metadata_result = $this->_store_document_metadata($document_result['document_id'], $parsed_data['document_type'], $document_id, $extra_data);
                 if (!$metadata_result) {
                     // Rollback transaction on metadata storage failure
                     $this->CI->db->trans_rollback();
@@ -779,16 +779,16 @@ class Peppol_service
     /**
      * Store PEPPOL document metadata
      */
-    private function _store_document_metadata($document_id, $document_type, $external_id, $metadata)
+    private function _store_document_metadata($document_id, $document_type, $external_id, $extra_data)
     {
         $peppol_data = [
             'document_type' => $document_type,
             'document_id' => $document_id,
             'status' => 'received',
-            'provider' => $metadata['provider'] ?? 'unknown',
+            'provider' => $extra_data['provider'] ?? 'unknown',
             'provider_document_id' => $external_id,
-            'provider_metadata' => json_encode($metadata['notification'] ?? $metadata),
-            'received_at' => date('Y-m-d H:i:s', strtotime($metadata['received_at'])) ?? date('Y-m-d H:i:s'),
+            'provider_metadata' => json_encode($extra_data['metadata'] ?? []),
+            'received_at' => date('Y-m-d H:i:s', strtotime($extra_data['received_at'] ?? 'now')),
             'created_at' => date('Y-m-d H:i:s')
         ];
 

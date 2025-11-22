@@ -513,25 +513,52 @@ class Peppol_service
                 return $parse_result;
             }
 
-            dd($parse_result); //do not remove, im debugging.
+            //            dd($parse_result); //do not remove, im debugging.
 
             $parsed_data = $parse_result['data'];
-            // Service handles all database operations
+
+            // Start database transaction after successful parsing
+            $this->CI->db->trans_start();
+
+            // Service handles all database operations within transaction
             // Get or create client
             $client_result = $this->_get_or_create_client_from_parsed_data($parsed_data);
             if (!$client_result['success']) {
+                // Rollback transaction on client creation failure
+                $this->CI->db->trans_rollback();
                 return $client_result;
             }
 
             // Create the document
             $document_result = $this->_create_document_from_parsed_data($parsed_data, $client_result['client_id']);
             if (!$document_result['success']) {
+                // Rollback transaction on document creation failure
+                $this->CI->db->trans_rollback();
                 return $document_result;
             }
 
             // Store PEPPOL metadata for tracking
             if (!empty($metadata)) {
-                $this->_store_document_metadata($document_result['document_id'], $parsed_data['document_type'], $document_id, $metadata);
+                $metadata_result = $this->_store_document_metadata($document_result['document_id'], $parsed_data['document_type'], $document_id, $metadata);
+                if (!$metadata_result) {
+                    // Rollback transaction on metadata storage failure
+                    $this->CI->db->trans_rollback();
+                    return [
+                        'success' => false,
+                        'message' => 'Error storing PEPPOL metadata: Transaction rolled back'
+                    ];
+                }
+            }
+
+            // Complete the transaction
+            $this->CI->db->trans_complete();
+
+            // Check if transaction was successful
+            if ($this->CI->db->trans_status() === FALSE) {
+                return [
+                    'success' => false,
+                    'message' => 'Database transaction failed: All changes have been rolled back'
+                ];
             }
 
             return [
@@ -542,6 +569,15 @@ class Peppol_service
                 'message' => ucfirst($parsed_data['document_type']) . ' created successfully from UBL'
             ];
         } catch (Exception $e) {
+            // Rollback transaction on any exception if it was started
+            if ($this->CI->db->trans_status() !== null) {
+                $this->CI->db->trans_rollback();
+                return [
+                    'success' => false,
+                    'message' => 'Error creating document from UBL: ' . $e->getMessage() . ' (Transaction rolled back)'
+                ];
+            }
+
             return [
                 'success' => false,
                 'message' => 'Error creating document from UBL: ' . $e->getMessage()

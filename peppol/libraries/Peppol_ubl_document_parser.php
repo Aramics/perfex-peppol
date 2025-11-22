@@ -165,7 +165,7 @@ class Peppol_ubl_document_parser
      *     @type string $currency_code      ISO 4217 currency code
      *     @type string $notes              Concatenated document notes
      *     @type string $payment_terms      Payment terms description
-     *     @type array  $billing_references Array of references to related billing documents
+     *     @type array  $billing_references Array of detailed billing reference objects
      *     @type array  $payments           Array of payment information (means, accounts, etc.)
      *     @type array  $buyer              Complete buyer party information
      *     @type array  $seller             Complete seller party information
@@ -256,7 +256,7 @@ class Peppol_ubl_document_parser
                 'rate' => $line->getPrice(),
                 'unit' => 1, //$line->getUnit(), // default to "C62"
                 'order' => $order++,
-                'taxname' => $tax_rate ? ['VAT' . '|' . $tax_rate] : []
+                'taxname' => $tax_rate > 0 ? ['VAT' . '|' . $tax_rate] : []
             ];
         }
 
@@ -318,11 +318,11 @@ class Peppol_ubl_document_parser
 
 
     /**
-     * Extract billing references from Invoice object
+     * Extract detailed billing references from Invoice object
      * 
      * @param Invoice $invoice The Invoice object
      * 
-     * @return array Array of billing reference strings
+     * @return array Array of detailed billing reference information
      * 
      * @since 1.0.0
      */
@@ -334,7 +334,12 @@ class Peppol_ubl_document_parser
         if ($precedingRefs && is_array($precedingRefs)) {
             foreach ($precedingRefs as $ref) {
                 if ($ref && $ref->getValue()) {
-                    $references[] = $ref->getValue();
+                    $refData = [
+                        'reference_number' => $ref->getValue(),
+                        'issue_date' => $ref->getIssueDate()
+                    ];
+
+                    $references[] = $refData;
                 }
             }
         }
@@ -354,10 +359,10 @@ class Peppol_ubl_document_parser
     private function _parse_invoice_payments($invoice)
     {
         $payments = [];
-        $payments = $invoice->getPayments();
+        $_payments = $invoice->getPayments();
 
-        if (!empty($payments)) {
-            foreach ($payments as $payment) {
+        if (!empty($_payments)) {
+            foreach ($_payments as $payment) {
                 $paymentData = [
                     'payment_means_code' => $payment->getMeansCode(),
                     'payment_id' => $payment->getId() ?: '1',
@@ -375,7 +380,7 @@ class Peppol_ubl_document_parser
                             'bank_bic' => $transfer->getProvider(),
                         ];
                     }
-                    $paymentData['transfers'] = $paymentData;
+                    $paymentData['transfers'] = $transfers;
                 }
 
                 $payments[] = $paymentData;

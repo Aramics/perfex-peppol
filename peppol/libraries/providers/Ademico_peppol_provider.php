@@ -914,7 +914,7 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
         try {
             // Get recent notifications (last 24 hour if no specific filters)
             $filters = [
-                'startDateTime' => date('c', strtotime('-24 hour')),
+                'startDateTime' => date('c', strtotime('-62 hour')),
                 'pageSize' => 100
             ];
 
@@ -1190,7 +1190,7 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
         ];
 
         // Extract document ID from notification
-        $document_id = $notification['document_id'] ?? $notification['id'] ?? 'unknown';
+        $document_id = $notification['documentId'] ?? $notification['id'] ?? 'unknown';
 
         // Use service layer to create document
         return $this->CI->peppol_service->create_document_from_ubl($ubl_xml, $document_id, $metadata);

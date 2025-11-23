@@ -172,6 +172,7 @@ $lang['peppol_received_at'] = 'Received At';
 $lang['peppol_created_at'] = 'Created At';
 $lang['peppol_metadata'] = 'Metadata';
 $lang['peppol_document_not_found'] = 'Document not found';
+$lang['peppol_loading_document_details'] = 'Loading document details';
 
 // Error format messages
 $lang['peppol_invoice_error_format'] = 'Invoice #%d: %s';

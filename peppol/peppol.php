@@ -5,7 +5,7 @@ defined('BASEPATH') or exit('No direct script access allowed');
 /*
 Module Name: PEPPOL Integration
 Description: Simple PEPPOL integration for sending invoices and credit notes via PEPPOL network
-Version: 1.0.0
+Version: 1.3.0
 Requires at least: 3.4.*
 Author: ulutfa
 */
@@ -27,6 +27,14 @@ function peppol_module_activation_hook()
 {
     $CI = &get_instance();
     require_once(__DIR__ . '/install.php');
+
+    // Set initial module version if not set
+    if (!get_option('peppol_module_version')) {
+        add_option('peppol_module_version', '1.3.0');
+    }
+
+    // Run upgrade script if needed
+    require_once(__DIR__ . '/upgrade.php');
 }
 
 /**

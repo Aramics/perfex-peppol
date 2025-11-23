@@ -375,3 +375,4 @@ $lang['peppol_ubl_content_empty'] = 'UBL content is empty or not found in provid
 $lang['peppol_invalid_identifier_type'] = 'Invalid identifier type. Expected string (transmission_id) or document object';
 $lang['peppol_no_transmission_id'] = 'No transmission ID available for UBL retrieval';
 $lang['peppol_ubl_retrieve_error'] = 'Error retrieving UBL from provider: %s';
+$lang['peppol_no_local_reference'] = 'No Reference';

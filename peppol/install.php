@@ -13,7 +13,7 @@ if (!$CI->db->table_exists($peppol_docs_table)) {
         CREATE TABLE `' . db_prefix() . 'peppol_documents` (
             `id` int(11) NOT NULL AUTO_INCREMENT,
             `document_type` varchar(20) NOT NULL DEFAULT "invoice",
-            `document_id` int(11) NOT NULL,
+            `local_reference_id` int(11) DEFAULT NULL,
             `status` varchar(50) NOT NULL DEFAULT "pending",
             `provider` varchar(100) DEFAULT NULL,
             `provider_document_id` varchar(150) DEFAULT NULL,
@@ -24,8 +24,7 @@ if (!$CI->db->table_exists($peppol_docs_table)) {
             `updated_at` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY (`id`),
             KEY `document_type` (`document_type`),
-            KEY `document_id` (`document_id`),
-            UNIQUE KEY `unique_document` (`document_type`, `document_id`)
+            KEY `local_reference_id` (`local_reference_id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
     ');
 }
@@ -37,16 +36,12 @@ if (!$CI->db->table_exists(db_prefix() . 'peppol_logs')) {
             `id` int(11) NOT NULL AUTO_INCREMENT,
             `type` varchar(50) NOT NULL,
             `document_type` varchar(20) DEFAULT NULL,
-            `document_id` int(11) DEFAULT NULL,
+            `local_reference_id` int(11) DEFAULT NULL,
             `message` text NOT NULL,
             `data` text DEFAULT NULL,
             `staff_id` int(11) DEFAULT NULL,
             `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (`id`),
-            KEY `type` (`type`),
-            KEY `document_type` (`document_type`),
-            KEY `document_id` (`document_id`),
-            KEY `staff_id` (`staff_id`)
+            PRIMARY KEY (`id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
     ');
 }

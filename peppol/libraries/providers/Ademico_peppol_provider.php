@@ -1079,7 +1079,7 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                     'data' => [
                         'notification_id' => $notification_id,
                         'transmission_id' => $transmission_id,
-                        'existing_document_id' => $existing_document->document_id,
+                        'existing_document_id' => $existing_document->local_reference_id,
                         'existing_document_type' => $existing_document->document_type,
                         'processed_at' => $existing_document->created_at
                     ]
@@ -1172,7 +1172,7 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                 $status_data = [
                     'peppol_document_id' => $peppol_document->id,
                     'document_type' => $peppol_document->document_type,
-                    'document_id' => $peppol_document->document_id,
+                    'local_reference_id' => $peppol_document->local_reference_id,
                     'old_status' => $peppol_document->status,
                     'new_status' => $internal_status,
                     'provider_status' => $status,

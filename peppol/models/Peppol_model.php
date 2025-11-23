@@ -15,7 +15,7 @@ class Peppol_model extends App_Model
     public function get_peppol_document($document_type, $document_id)
     {
         return $this->db->where('document_type', $document_type)
-            ->where('document_id', $document_id)
+            ->where('local_reference_id', $document_id)
             ->get(db_prefix() . 'peppol_documents')
             ->row();
     }
@@ -96,7 +96,7 @@ class Peppol_model extends App_Model
     {
         $this->db->select('provider_metadata');
         $this->db->where('document_type', $document_type);
-        $this->db->where('document_id', $document_id);
+        $this->db->where('local_reference_id', $document_id);
         $result = $this->db->get(db_prefix() . 'peppol_documents')->row();
 
         if ($result && !empty($result->provider_metadata)) {
@@ -118,7 +118,7 @@ class Peppol_model extends App_Model
             $updated_metadata = array_merge($current_metadata, $metadata);
 
             $this->db->where('document_type', $document_type);
-            $this->db->where('document_id', $document_id);
+            $this->db->where('local_reference_id', $document_id);
             return $this->db->update(db_prefix() . 'peppol_documents', [
                 'provider_metadata' => json_encode($updated_metadata),
                 'updated_at' => date('Y-m-d H:i:s')
@@ -158,15 +158,15 @@ class Peppol_model extends App_Model
 
         switch ($action) {
             case 'send_unsent':
-                // Count documents that don't have PEPPOL records
+                // Count documents that don't have PEPPOL records (using subquery - no JOIN)
                 $this->db->select("COUNT(d.id) as count");
                 $this->db->from(db_prefix() . $table . ' d');
-                $this->db->join(
-                    db_prefix() . 'peppol_documents pd',
-                    "pd.document_id = d.id AND pd.document_type = '$document_type'",
-                    'left'
-                );
-                $this->db->where('pd.id IS NULL');
+                $this->db->where("d.id NOT IN (
+                    SELECT COALESCE(local_reference_id, 0) 
+                    FROM " . db_prefix() . "peppol_documents 
+                    WHERE document_type = " . $this->db->escape($document_type) . " 
+                    AND local_reference_id IS NOT NULL
+                )");
 
                 if ($document_type === 'invoice') {
                     $this->db->where_in('d.status', [Invoices_model::STATUS_UNPAID, Invoices_model::STATUS_PAID, Invoices_model::STATUS_OVERDUE]);
@@ -180,28 +180,32 @@ class Peppol_model extends App_Model
                 break;
 
             case 'retry_failed':
-                // Count documents with 'failed' status
+                // Count documents with 'failed' status (using subquery - no JOIN)
                 $this->db->select('COUNT(*) as count');
                 $this->db->from(db_prefix() . 'peppol_documents pd');
                 $this->db->where('pd.document_type', $document_type);
                 $this->db->where('pd.status', 'failed');
 
                 if ($client_id) {
-                    $this->db->join(db_prefix() . $table . ' d', 'd.id = pd.document_id');
-                    $this->db->where('d.clientid', $client_id);
+                    $this->db->where("pd.local_reference_id IN (
+                        SELECT id FROM " . db_prefix() . $table . " 
+                        WHERE clientid = " . (int)$client_id . "
+                    )");
                 }
                 break;
 
             case 'download_sent':
-                // Count documents with 'sent' or 'delivered' status
+                // Count documents with 'sent' or 'delivered' status (using subquery - no JOIN)
                 $this->db->select('COUNT(*) as count');
                 $this->db->from(db_prefix() . 'peppol_documents pd');
                 $this->db->where('pd.document_type', $document_type);
                 $this->db->where_in('pd.status', ['sent', 'delivered']);
 
                 if ($client_id) {
-                    $this->db->join(db_prefix() . $table . ' d', 'd.id = pd.document_id');
-                    $this->db->where('d.clientid', $client_id);
+                    $this->db->where("pd.local_reference_id IN (
+                        SELECT id FROM " . db_prefix() . $table . " 
+                        WHERE clientid = " . (int)$client_id . "
+                    )");
                 }
                 break;
 
@@ -243,15 +247,15 @@ class Peppol_model extends App_Model
 
         switch ($action) {
             case 'send_unsent':
-                // Get documents without PEPPOL records
+                // Get documents without PEPPOL records (using subquery - no JOIN)
                 $this->db->select('d.id');
                 $this->db->from(db_prefix() . $table . ' d');
-                $this->db->join(
-                    db_prefix() . 'peppol_documents pd',
-                    "pd.document_id = d.id AND pd.document_type = '$document_type'",
-                    'left'
-                );
-                $this->db->where('pd.id IS NULL');
+                $this->db->where("d.id NOT IN (
+                    SELECT COALESCE(local_reference_id, 0) 
+                    FROM " . db_prefix() . "peppol_documents 
+                    WHERE document_type = " . $this->db->escape($document_type) . " 
+                    AND local_reference_id IS NOT NULL
+                )");
 
                 if ($document_type === 'invoice') {
                     $this->db->where_in('d.status', [Invoices_model::STATUS_UNPAID, Invoices_model::STATUS_PAID, Invoices_model::STATUS_OVERDUE]);
@@ -268,18 +272,18 @@ class Peppol_model extends App_Model
 
             case 'retry_failed':
                 // Get failed PEPPOL documents
-                $this->db->select('pd.document_id');
+                $this->db->select('pd.local_reference_id');
                 $this->db->from(db_prefix() . 'peppol_documents pd');
                 $this->db->where('pd.document_type', $document_type);
                 $this->db->where('pd.status', 'failed');
 
                 if ($client_id) {
-                    $this->db->join(db_prefix() . $table . ' d', 'd.id = pd.document_id');
+                    $this->db->join(db_prefix() . $table . ' d', 'd.id = pd.local_reference_id');
                     $this->db->where('d.clientid', $client_id);
                 }
 
                 $results = $this->db->get()->result();
-                return array_column($results, 'document_id');
+                return array_column($results, 'local_reference_id');
 
             default:
                 return [];
@@ -344,12 +348,12 @@ class Peppol_model extends App_Model
         $table = $table_map[$document_type];
         $this->db->select("COUNT(d.id) as count");
         $this->db->from(db_prefix() . $table . ' d');
-        $this->db->join(
-            db_prefix() . 'peppol_documents pd',
-            "pd.document_id = d.id AND pd.document_type = '$document_type'",
-            'left'
-        );
-        $this->db->where('pd.id IS NULL');
+        $this->db->where("d.id NOT IN (
+            SELECT COALESCE(local_reference_id, 0) 
+            FROM " . db_prefix() . "peppol_documents 
+            WHERE document_type = " . $this->db->escape($document_type) . " 
+            AND local_reference_id IS NOT NULL
+        )");
 
         if ($document_type === 'invoice') {
             $this->db->where_in('d.status', [Invoices_model::STATUS_UNPAID, Invoices_model::STATUS_PAID, Invoices_model::STATUS_OVERDUE]);
@@ -391,7 +395,7 @@ class Peppol_model extends App_Model
         $this->db->select('message, data, created_at');
         $this->db->from(db_prefix() . 'peppol_logs');
         $this->db->where('document_type', $document_type);
-        $this->db->where('document_id', $document_id);
+        $this->db->where('local_reference_id', $document_id);
         $this->db->where('type', 'error');
         $this->db->order_by('created_at', 'DESC');
         $this->db->limit($limit);
@@ -436,20 +440,20 @@ class Peppol_model extends App_Model
             return [];
         }
 
-        $this->db->select('document_id, message, data, created_at');
+        $this->db->select('local_reference_id, message, data, created_at');
         $this->db->from(db_prefix() . 'peppol_logs');
         $this->db->where('document_type', $document_type);
-        $this->db->where_in('document_id', $document_ids);
+        $this->db->where_in('local_reference_id', $document_ids);
         $this->db->where('type', 'error');
-        $this->db->order_by('document_id, created_at DESC');
+        $this->db->order_by('local_reference_id, created_at DESC');
 
         $results = $this->db->get()->result();
 
-        // Group by document_id and return latest error for each
+        // Group by local_reference_id and return latest error for each
         $errors = [];
         foreach ($results as $log) {
-            if (!isset($errors[$log->document_id])) {
-                $errors[$log->document_id] = $log;
+            if (!isset($errors[$log->local_reference_id])) {
+                $errors[$log->local_reference_id] = $log;
             }
         }
 

@@ -616,15 +616,48 @@ class Peppol extends AdminController
             return;
         }
 
-        // Get document with related data
-        $this->db->select('pd.*, c.company as client_name, COALESCE(i.number, cn.number) as document_number');
-        $this->db->from(db_prefix() . 'peppol_documents pd');
-        $this->db->join(db_prefix() . 'invoices i', 'pd.document_type = "invoice" AND pd.document_id = i.id', 'left');
-        $this->db->join(db_prefix() . 'creditnotes cn', 'pd.document_type = "credit_note" AND pd.document_id = cn.id', 'left');
-        $this->db->join(db_prefix() . 'clients c', 'c.userid = COALESCE(i.clientid, cn.clientid)', 'left');
-        $this->db->where('pd.id', $id);
-        
+        // Get document data without JOINs for better performance
+        $this->db->select('*');
+        $this->db->from(db_prefix() . 'peppol_documents');
+        $this->db->where('id', $id);
         $document = $this->db->get()->row();
+        
+        if ($document && $document->local_reference_id) {
+            // Fetch related data only if needed and document has local reference
+            if ($document->document_type === 'invoice') {
+                $this->db->select('number, clientid');
+                $this->db->from(db_prefix() . 'invoices');
+                $this->db->where('id', $document->local_reference_id);
+                $doc_data = $this->db->get()->row();
+                
+                if ($doc_data) {
+                    $document->document_number = $doc_data->number;
+                    $client_id = $doc_data->clientid;
+                }
+            } elseif ($document->document_type === 'credit_note') {
+                $this->db->select('number, clientid');
+                $this->db->from(db_prefix() . 'creditnotes');
+                $this->db->where('id', $document->local_reference_id);
+                $doc_data = $this->db->get()->row();
+                
+                if ($doc_data) {
+                    $document->document_number = $doc_data->number;
+                    $client_id = $doc_data->clientid;
+                }
+            }
+            
+            // Get client name if we have client_id
+            if (isset($client_id) && $client_id) {
+                $this->db->select('company');
+                $this->db->from(db_prefix() . 'clients');
+                $this->db->where('userid', $client_id);
+                $client = $this->db->get()->row();
+                
+                if ($client) {
+                    $document->client_name = $client->company;
+                }
+            }
+        }
 
         if (!$document) {
             echo json_encode(['success' => false, 'message' => _l('peppol_document_not_found')]);

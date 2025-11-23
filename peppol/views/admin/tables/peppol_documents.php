@@ -18,8 +18,8 @@ $sTable       = db_prefix() . 'peppol_documents pd';
 $sIndexColumn = 'pd.id';
 
 $join = [
-    'LEFT JOIN ' . db_prefix() . 'invoices i ON pd.document_type = "invoice" AND pd.document_id = i.id',
-    'LEFT JOIN ' . db_prefix() . 'creditnotes cn ON pd.document_type = "credit_note" AND pd.document_id = cn.id',
+    'LEFT JOIN ' . db_prefix() . 'invoices i ON pd.document_type = "invoice" AND pd.local_reference_id = i.id',
+    'LEFT JOIN ' . db_prefix() . 'creditnotes cn ON pd.document_type = "credit_note" AND pd.local_reference_id = cn.id',
     'LEFT JOIN ' . db_prefix() . 'clients c ON c.userid = COALESCE(i.clientid, cn.clientid)',
 ];
 
@@ -44,7 +44,7 @@ if ($CI->input->post('filter_provider') && $CI->input->post('filter_provider') !
 
 $result = data_tables_init($aColumns, $sIndexColumn, $sTable, $join, $where, [
     'pd.id',
-    'pd.document_id',
+    'pd.local_reference_id',
     'pd.provider_document_id',
     'pd.sent_at',
     'pd.received_at',
@@ -65,13 +65,13 @@ foreach ($rResult as $aRow) {
 
     // Document number with link
     $documentLink = '';
-    if ($aRow['document_type'] === 'invoice' && !empty($aRow['document_id'])) {
-        $documentLink = admin_url('invoices/list_invoices/' . $aRow['document_id']);
-    } elseif ($aRow['document_type'] === 'credit_note' && !empty($aRow['document_id'])) {
-        $documentLink = admin_url('credit_notes/list_credit_notes/' . $aRow['document_id']);
+    if ($aRow['document_type'] === 'invoice' && !empty($aRow['local_reference_id'])) {
+        $documentLink = admin_url('invoices/list_invoices/' . $aRow['local_reference_id']);
+    } elseif ($aRow['document_type'] === 'credit_note' && !empty($aRow['local_reference_id'])) {
+        $documentLink = admin_url('credit_notes/list_credit_notes/' . $aRow['local_reference_id']);
     }
     
-    $documentNumber = $aRow['document_number'] ?: '#' . $aRow['document_id'];
+    $documentNumber = $aRow['document_number'] ?: (!empty($aRow['local_reference_id']) ? '#' . $aRow['local_reference_id'] : _l('peppol_no_local_reference'));
     $row[] = $documentLink ? 
              '<a href="' . $documentLink . '" target="_blank">' . e($documentNumber) . '</a>' :
              e($documentNumber);

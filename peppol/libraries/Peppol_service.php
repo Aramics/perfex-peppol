@@ -148,7 +148,7 @@ class Peppol_service
             // Store PEPPOL document metadata
             $peppol_data = [
                 'document_type' => $document_type,
-                'document_id' => $document_id,
+                'local_reference_id' => $document_id,
                 'status' => 'sent',
                 'provider' => $provider->get_id(),
                 'provider_document_id' => $result['document_id'] ?? null,
@@ -354,7 +354,7 @@ class Peppol_service
                 'success' => true,
                 'ubl_content' => $ubl_content,
                 'document' => $peppol_document,
-                'filename' => $peppol_document->document_type . '_' . $peppol_document->document_id . '_provider_ubl.xml'
+                'filename' => $peppol_document->document_type . '_' . ($peppol_document->local_reference_id ?? 'unknown') . '_provider_ubl.xml'
             ];
 
         } catch (Exception $e) {

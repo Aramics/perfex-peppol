@@ -1,7 +1,0 @@
-# Test credentials file - DO NOT COMMIT
-test_credentials.php
-
-# Test logs and temporary files
-*.log
-*.tmp
-test_results/

@@ -7,6 +7,7 @@ if (file_exists(FCPATH . 'modules/peppol/vendor/autoload.php')) {
     require_once(FCPATH . 'modules/peppol/vendor/autoload.php');
 }
 
+use Einvoicing\Attachment;
 use Einvoicing\Invoice;
 use Einvoicing\Party;
 use Einvoicing\InvoiceLine;
@@ -86,6 +87,11 @@ class Peppol_ubl_generator
             // Add payment information if invoice has payments
             if (isset($invoice->payments) && !empty($invoice->payments)) {
                 $this->_add_payment_information($ublInvoice, $invoice, $invoice->payments, 'invoice');
+            }
+
+            // Add attachment information
+            if (isset($invoice->attachments)) {
+                $this->_add_attachments($ublInvoice, $invoice);
             }
 
             // Generate UBL XML
@@ -175,6 +181,11 @@ class Peppol_ubl_generator
             // Add payment information if credit note has refunds
             if (isset($credit_note->refunds) && !empty($credit_note->refunds)) {
                 $this->_add_payment_information($ublCreditNote, $credit_note, $credit_note->refunds, 'credit_note');
+            }
+
+            // Add attachment information
+            if (isset($credit_note->attachments)) {
+                $this->_add_attachments($ublCreditNote, $credit_note);
             }
 
             // Generate UBL XML
@@ -381,6 +392,33 @@ class Peppol_ubl_generator
                 );
                 $ublDocument->setPaymentTerms($payment_terms);
             }
+        }
+    }
+
+    /**
+     * Add attachements to UBL document (invoice or credit note)
+     * 
+     * @param Invoice $ublDocument UBL Document object (Invoice or Credit Note)
+     * @param object $document Sale document object 
+     */
+    private function _add_attachments($ublDocument, $document)
+    {
+        foreach ($document->attachments as $attachment) {
+
+            $ublAttachment = new Attachment();
+
+            $ublAttachment->setFilename($attachment['file_name'] ?? '');
+            $ublAttachment->setExternalUrl($attachment['external_link'] ?? '');
+
+            if (isset($attachment['description'])) {
+                $ublAttachment->setDescription($attachment['description']);
+            }
+
+            if (isset($attachment['filetype'])) {
+                $ublAttachment->setMimeCode($attachment['filetype']);
+            }
+
+            $ublDocument->addAttachment($ublAttachment);
         }
     }
 

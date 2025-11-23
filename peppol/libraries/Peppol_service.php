@@ -95,6 +95,8 @@ class Peppol_service
             ];
         }
 
+        $document->attachments = $this->prepare_attachments($document, $document_type);
+
         // Get client data
         $client = $this->get_client($document->clientid);
         if (!$client) {
@@ -203,7 +205,7 @@ class Peppol_service
             ],
             'contact' => [
                 'phone' => get_option('invoice_company_phonenumber') ?: get_option('company_phonenumber'),
-                'email' => get_option('smtp_email') ?: get_admin_email()
+                'email' =>  get_option('company_email') ?: get_option('smtp_email')
             ]
         ];
     }
@@ -245,6 +247,7 @@ class Peppol_service
      */
     public function generate_invoice_ubl($invoice, $sender_info, $receiver_info)
     {
+        $invoice = $this->prepare_attachments($invoice, 'invoice');
         return $this->CI->peppol_ubl_generator->generate_invoice_ubl($invoice, $sender_info, $receiver_info);
     }
 
@@ -253,6 +256,7 @@ class Peppol_service
      */
     public function generate_credit_note_ubl($credit_note, $sender_info, $receiver_info)
     {
+        $credit_note = $this->prepare_attachments($credit_note, 'credit_note');
         return $this->CI->peppol_ubl_generator->generate_credit_note_ubl($credit_note, $sender_info, $receiver_info);
     }
 
@@ -312,7 +316,7 @@ class Peppol_service
 
             // Get registered providers
             $providers = peppol_get_registered_providers();
-            
+
             if (!isset($providers[$peppol_document->provider])) {
                 return [
                     'success' => false,
@@ -342,7 +346,7 @@ class Peppol_service
 
             // Get UBL content from response (different providers may use different field names)
             $ubl_content = $ubl_result['ubl_content'] ?? $ubl_result['ubl_xml'] ?? $ubl_result['data'] ?? '';
-            
+
             if (empty($ubl_content)) {
                 return [
                     'success' => false,
@@ -356,7 +360,6 @@ class Peppol_service
                 'document' => $peppol_document,
                 'filename' => $peppol_document->document_type . '_' . ($peppol_document->local_reference_id ?? 'unknown') . '_provider_ubl.xml'
             ];
-
         } catch (Exception $e) {
             return [
                 'success' => false,
@@ -365,33 +368,27 @@ class Peppol_service
         }
     }
 
-    /**
-     * Get currency ID from currency code
-     */
-    private function _get_currency_id($currency_code)
+    public function prepare_attachments($document, $document_type)
     {
-        if (!$currency_code) {
-            return get_base_currency()->id;
+        if (!isset($document->attachments)) return $document;
+
+        $attachments = [];
+        foreach ($document->attachments as $key => $attachment) {
+            if ($attachment['visible_to_customer'] == 1) {
+                $link = base_url('download/file/sales_attachment/' . $attachment['attachment_key']);
+                $attachment['external_link'] = empty($attachment['external_link']) ? $link : $attachment['external_link'];
+                $attachments[] = $attachment;
+            }
         }
 
-        $this->CI->db->where('name', $currency_code);
-        $currency = $this->CI->db->get(db_prefix() . 'currencies')->row();
+        // Add link to the where pdf can be downloaded i.e view as customer.
+        $document_number = $document_type == 'invoice' ? format_invoice_number($document->id) : format_credit_note_number($document->id);
+        $attachments[] = [
+            'description' => $document_number . ' PDF',
+            'file_name' => $document_number . ' PDF',
+            'external_link' => base_url('invoice/' . $document->id . '/' . $document->hash),
+        ];
 
-        return $currency ? $currency->id : get_base_currency()->id;
-    }
-
-    /**
-     * Get country ID from ISO country code
-     */
-    private function _get_country_id_from_code($country_code)
-    {
-        if (!$country_code) {
-            return 0;
-        }
-
-        $this->CI->db->where('iso2', strtoupper($country_code));
-        $country = $this->CI->db->get(db_prefix() . 'countries')->row();
-
-        return $country ? $country->country_id : 0;
+        return $attachments;
     }
 }

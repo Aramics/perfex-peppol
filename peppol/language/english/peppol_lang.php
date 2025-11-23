@@ -18,6 +18,8 @@ $lang['peppol_status_sent'] = 'Sent';
 $lang['peppol_status_delivered'] = 'Delivered';
 $lang['peppol_status_failed'] = 'Failed';
 $lang['peppol_status_received'] = 'Received';
+$lang['peppol_status_rejected'] = 'Rejected';
+$lang['peppol_status_rejected_inbound'] = 'Rejected (Inbound)';
 $lang['peppol_status_processed'] = 'Processed';
 
 // Client bulk actions

@@ -95,6 +95,8 @@ foreach ($rResult as $aRow) {
             $statusClass = 'label-warning';
             break;
         case 'failed':
+        case 'rejected':
+        case 'rejected_inbound':
             $statusClass = 'label-danger';
             break;
         case 'received':

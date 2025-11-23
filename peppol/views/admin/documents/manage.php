@@ -16,85 +16,46 @@
 
                         <!-- Statistics Cards -->
                         <div class="row tw-mb-6">
-                            <div class="col-md-3 col-sm-6">
+                            <div class="col-md-6">
                                 <div class="panel_s">
                                     <div class="panel-body padding-10-20">
                                         <div class="widget-drilldown">
                                             <h4 class="tw-mt-0"><?php echo _l('peppol_invoice_documents'); ?></h4>
                                             <div class="tw-flex tw-items-center tw-justify-between">
                                                 <span class="tw-font-semibold tw-text-lg text-primary">
-                                                    <?php echo ($invoice_stats['total_processed'] ?? 0) + ($invoice_stats['unsent'] ?? 0); ?>
+                                                    <?php echo $invoice_stats['total'] ?? 0; ?>
                                                 </span>
                                                 <i class="fa fa-file-text-o tw-text-2xl text-muted"></i>
                                             </div>
                                             <div class="tw-text-xs tw-text-neutral-500 tw-mt-2">
-                                                <?php echo _l('peppol_sent'); ?>:
-                                                <?php echo $invoice_stats['sent'] ?? 0; ?> |
-                                                <?php echo _l('peppol_failed'); ?>:
-                                                <?php echo $invoice_stats['failed'] ?? 0; ?>
+                                                <?php echo _l('peppol_sent'); ?>: <?php echo $invoice_stats['sent'] ?? 0; ?> |
+                                                <?php echo _l('peppol_failed'); ?>: <?php echo $invoice_stats['failed'] ?? 0; ?> |
+                                                <?php echo _l('peppol_status_received'); ?>: <?php echo $invoice_stats['received'] ?? 0; ?> |
+                                                <?php echo _l('peppol_status_rejected'); ?>: <?php echo $invoice_stats['rejected'] ?? 0; ?> |
+                                                <?php echo _l('peppol_status_rejected_inbound'); ?>: <?php echo $invoice_stats['rejected_inbound'] ?? 0; ?>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="col-md-3 col-sm-6">
+                            <div class="col-md-6">
                                 <div class="panel_s">
                                     <div class="panel-body padding-10-20">
                                         <div class="widget-drilldown">
                                             <h4 class="tw-mt-0"><?php echo _l('peppol_credit_note_documents'); ?></h4>
                                             <div class="tw-flex tw-items-center tw-justify-between">
                                                 <span class="tw-font-semibold tw-text-lg text-info">
-                                                    <?php echo ($credit_note_stats['total_processed'] ?? 0) + ($credit_note_stats['unsent'] ?? 0); ?>
+                                                    <?php echo $credit_note_stats['total'] ?? 0; ?>
                                                 </span>
                                                 <i class="fa fa-file-o tw-text-2xl text-muted"></i>
                                             </div>
                                             <div class="tw-text-xs tw-text-neutral-500 tw-mt-2">
-                                                <?php echo _l('peppol_sent'); ?>:
-                                                <?php echo $credit_note_stats['sent'] ?? 0; ?> |
-                                                <?php echo _l('peppol_failed'); ?>:
-                                                <?php echo $credit_note_stats['failed'] ?? 0; ?>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-md-3 col-sm-6">
-                                <div class="panel_s">
-                                    <div class="panel-body padding-10-20">
-                                        <div class="widget-drilldown">
-                                            <h4 class="tw-mt-0"><?php echo _l('peppol_received_documents'); ?></h4>
-                                            <div class="tw-flex tw-items-center tw-justify-between">
-                                                <span class="tw-font-semibold tw-text-lg text-success">
-                                                    <?php echo ($invoice_stats['received'] ?? 0) + ($credit_note_stats['received'] ?? 0); ?>
-                                                </span>
-                                                <i class="fa fa-download tw-text-2xl text-muted"></i>
-                                            </div>
-                                            <div class="tw-text-xs tw-text-neutral-500 tw-mt-2">
-                                                <?php echo _l('peppol_documents_received_from_network'); ?>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-md-3 col-sm-6">
-                                <div class="panel_s">
-                                    <div class="panel-body padding-10-20">
-                                        <div class="widget-drilldown">
-                                            <h4 class="tw-mt-0"><?php echo _l('peppol_active_provider'); ?></h4>
-                                            <div class="tw-flex tw-items-center tw-justify-between">
-                                                <span class="tw-font-semibold tw-text-sm">
-                                                    <?php echo $active_provider ? ucfirst($active_provider) : _l('peppol_not_configured'); ?>
-                                                </span>
-                                                <i class="fa fa-plug tw-text-2xl text-muted"></i>
-                                            </div>
-                                            <div class="tw-text-xs tw-text-neutral-500 tw-mt-2">
-                                                <a href="<?php echo admin_url('settings?group=peppol'); ?>"
-                                                    class="text-muted">
-                                                    <?php echo _l('peppol_configure'); ?>
-                                                </a>
+                                                <?php echo _l('peppol_sent'); ?>: <?php echo $credit_note_stats['sent'] ?? 0; ?> |
+                                                <?php echo _l('peppol_failed'); ?>: <?php echo $credit_note_stats['failed'] ?? 0; ?> |
+                                                <?php echo _l('peppol_status_received'); ?>: <?php echo $credit_note_stats['received'] ?? 0; ?> |
+                                                <?php echo _l('peppol_status_rejected'); ?>: <?php echo $credit_note_stats['rejected'] ?? 0; ?> |
+                                                <?php echo _l('peppol_status_rejected_inbound'); ?>: <?php echo $credit_note_stats['rejected_inbound'] ?? 0; ?>
                                             </div>
                                         </div>
                                     </div>
@@ -123,7 +84,9 @@
                                                 ['id' => 'sent', 'name' => _l('peppol_status_sent')],
                                                 ['id' => 'delivered', 'name' => _l('peppol_status_delivered')],
                                                 ['id' => 'failed', 'name' => _l('peppol_status_failed')],
-                                                ['id' => 'received', 'name' => _l('peppol_status_received')]
+                                                ['id' => 'received', 'name' => _l('peppol_status_received')],
+                                                ['id' => 'rejected', 'name' => _l('peppol_status_rejected')],
+                                                ['id' => 'rejected_inbound', 'name' => _l('peppol_status_rejected_inbound')]
                                             ], ['id', 'name'], _l('peppol_status'), ''); ?>
                                         </div>
 

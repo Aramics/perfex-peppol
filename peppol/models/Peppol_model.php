@@ -366,6 +366,9 @@ class Peppol_model extends App_Model
             'sent' => 0,
             'delivered' => 0,
             'failed' => 0,
+            'received' => 0,
+            'rejected' => 0,
+            'rejected_inbound' => 0,
             'total_processed' => 0
         ];
 
@@ -373,6 +376,9 @@ class Peppol_model extends App_Model
             $stats[$row->status] = $row->count;
             $stats['total_processed'] += $row->count;
         }
+
+        // Calculate total as only PEPPOL documents (not including unsent)
+        $stats['total'] = $stats['total_processed'];
 
         return $stats;
     }

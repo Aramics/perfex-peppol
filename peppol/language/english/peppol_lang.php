@@ -7,6 +7,8 @@ $lang['peppol'] = 'PEPPOL';
 $lang['peppol_status'] = 'PEPPOL Status';
 $lang['peppol_not_sent'] = 'Not sent';
 $lang['peppol_invoices'] = 'PEPPOL Invoices';
+$lang['peppol_documents'] = 'PEPPOL Documents';
+$lang['peppol_settings'] = 'PEPPOL Settings';
 
 // Status labels
 $lang['peppol_status_pending'] = 'Pending';
@@ -140,6 +142,34 @@ $lang['peppol_credit_note_already_processed'] = 'Credit note already processed v
 // Activity messages
 $lang['peppol_invoice_sent_activity'] = 'Invoice sent via PEPPOL';
 $lang['peppol_credit_note_sent_activity'] = 'Credit note sent via PEPPOL';
+
+// Documents management
+$lang['peppol_invoice_documents'] = 'Invoices';
+$lang['peppol_credit_note_documents'] = 'Credit Notes';
+$lang['peppol_received_documents'] = 'Received';
+$lang['peppol_documents_received_from_network'] = 'Documents received from PEPPOL network';
+$lang['peppol_configure'] = 'Configure';
+$lang['peppol_filter_documents'] = 'Filter Documents';
+$lang['peppol_all_document_types'] = 'All Document Types';
+$lang['peppol_all_statuses'] = 'All Statuses';
+$lang['peppol_all_providers'] = 'All Providers';
+$lang['peppol_apply_filters'] = 'Apply Filters';
+$lang['peppol_clear_filters'] = 'Clear Filters';
+$lang['peppol_documents_list'] = 'Documents List';
+$lang['peppol_document_type'] = 'Type';
+$lang['peppol_document_number'] = 'Number';
+$lang['peppol_total_amount'] = 'Amount';
+$lang['peppol_provider'] = 'Provider';
+$lang['peppol_date'] = 'Date';
+$lang['peppol_document_details'] = 'Document Details';
+$lang['peppol_document_information'] = 'Document Information';
+$lang['peppol_transmission_details'] = 'Transmission Details';
+$lang['peppol_provider_document_id'] = 'Provider Document ID';
+$lang['peppol_sent_at'] = 'Sent At';
+$lang['peppol_received_at'] = 'Received At';
+$lang['peppol_created_at'] = 'Created At';
+$lang['peppol_metadata'] = 'Metadata';
+$lang['peppol_document_not_found'] = 'Document not found';
 
 // Error format messages
 $lang['peppol_invoice_error_format'] = 'Invoice #%d: %s';

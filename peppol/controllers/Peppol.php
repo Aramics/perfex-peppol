@@ -548,4 +548,131 @@ class Peppol extends AdminController
             ]);
         }
     }
+
+    // ================================
+    // DOCUMENTS MANAGEMENT METHODS
+    // ================================
+
+    /**
+     * Test method to create sample PEPPOL document (for debugging)
+     */
+    public function create_test_document()
+    {
+        if (!is_admin()) {
+            access_denied('admin');
+        }
+
+        $data = [
+            'document_type' => 'invoice',
+            'document_id' => 1, // Assuming invoice ID 1 exists
+            'status' => 'sent',
+            'provider' => 'ademico',
+            'provider_document_id' => 'test-' . time(),
+            'provider_metadata' => json_encode(['test' => true]),
+            'sent_at' => date('Y-m-d H:i:s'),
+            'created_at' => date('Y-m-d H:i:s')
+        ];
+
+        $this->db->insert(db_prefix() . 'peppol_documents', $data);
+        $id = $this->db->insert_id();
+
+        echo json_encode(['success' => true, 'id' => $id, 'message' => 'Test document created with ID: ' . $id]);
+    }
+
+    /**
+     * Documents management page
+     */
+    public function documents($table = '')
+    {
+        if (!staff_can('view', 'peppol')) {
+            access_denied('peppol');
+        }
+
+        // Return the table data for ajax request
+        if ($this->input->is_ajax_request()) {
+            $this->app->get_table_data(module_views_path(PEPPOL_MODULE_NAME, 'admin/tables/peppol_documents'));
+        }
+
+        $data['title'] = _l('peppol_documents');
+        
+        // Get statistics for different document types
+        $data['invoice_stats'] = $this->peppol_model->get_document_statistics('invoice');
+        $data['credit_note_stats'] = $this->peppol_model->get_document_statistics('credit_note');
+        
+        // Get provider information
+        $data['providers'] = peppol_get_registered_providers();
+        $data['active_provider'] = get_option('peppol_active_provider', '');
+
+        $this->load->view('peppol/admin/documents/manage', $data);
+    }
+
+    /**
+     * View PEPPOL document details (AJAX)
+     */
+    public function view_document($id)
+    {
+        if (!staff_can('view', 'peppol')) {
+            echo json_encode(['success' => false, 'message' => _l('access_denied')]);
+            return;
+        }
+
+        // Get document with related data
+        $this->db->select('pd.*, c.company as client_name, COALESCE(i.number, cn.number) as document_number');
+        $this->db->from(db_prefix() . 'peppol_documents pd');
+        $this->db->join(db_prefix() . 'invoices i', 'pd.document_type = "invoice" AND pd.document_id = i.id', 'left');
+        $this->db->join(db_prefix() . 'creditnotes cn', 'pd.document_type = "credit_note" AND pd.document_id = cn.id', 'left');
+        $this->db->join(db_prefix() . 'clients c', 'c.userid = COALESCE(i.clientid, cn.clientid)', 'left');
+        $this->db->where('pd.id', $id);
+        
+        $document = $this->db->get()->row();
+
+        if (!$document) {
+            echo json_encode(['success' => false, 'message' => _l('peppol_document_not_found')]);
+            return;
+        }
+
+        // Parse metadata
+        $metadata = json_decode($document->provider_metadata, true) ?: [];
+
+        $response = [
+            'success' => true,
+            'document' => [
+                'id' => $document->id,
+                'type' => ucfirst(str_replace('_', ' ', $document->document_type)),
+                'document_id' => $document->document_id,
+                'document_number' => $document->document_number,
+                'client_name' => $document->client_name,
+                'status' => ucfirst($document->status),
+                'provider' => ucfirst($document->provider),
+                'provider_document_id' => $document->provider_document_id,
+                'sent_at' => $document->sent_at ? _dt($document->sent_at) : null,
+                'received_at' => $document->received_at ? _dt($document->received_at) : null,
+                'created_at' => _dt($document->created_at),
+                'metadata' => $metadata
+            ]
+        ];
+
+        echo json_encode($response);
+    }
+
+    /**
+     * Get status badge CSS class
+     */
+    private function _get_status_badge_class($status)
+    {
+        switch ($status) {
+            case 'sent':
+            case 'delivered':
+                return 'label-success';
+            case 'pending':
+            case 'queued':
+                return 'label-warning';
+            case 'failed':
+                return 'label-danger';
+            case 'received':
+                return 'label-info';
+            default:
+                return 'label-default';
+        }
+    }
 }

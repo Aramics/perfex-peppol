@@ -42,7 +42,8 @@ $hook_files = [
     'add_bulk_action_to_credit_notes_table.php',
     'add_settings_tab.php',
     'client_form_enhancement.php',
-    'provider_registration.php'
+    'provider_registration.php',
+    'add_admin_menu.php'
 ];
 
 foreach ($hook_files as $hook_file) {
@@ -52,4 +53,4 @@ foreach ($hook_files as $hook_file) {
     }
 }
 
-dd(peppol_get_active_provider()->webhook([]));
+//dd(peppol_get_active_provider()->webhook([]));

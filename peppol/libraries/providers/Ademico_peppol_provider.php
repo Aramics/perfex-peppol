@@ -1086,36 +1086,22 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                 ];
             }
 
-            // Get UBL XML content directly (Ademico only provides UBL endpoint)
-            $ubl_response = $this->get_document_ubl($transmission_id);
-            if (!$ubl_response['success']) {
-                return $ubl_response;
-            }
-
+            // Store only notification metadata - no document creation
             $document_data = [
-                'notification' => $notification,
-                'ubl_xml' => $ubl_response['ubl_xml'],
+                'notification_id' => $notification_id,
                 'transmission_id' => $transmission_id,
-                'document_type' => $notification['peppolDocumentType'] ?? null,
+                'document_type' => $notification['peppolDocumentType'] ?? 'unknown',
                 'sender' => $notification['sender'] ?? null,
                 'receiver' => $notification['receiver'] ?? null,
                 'notification_date' => $notification['notificationDate'] ?? null,
-                'processed_at' => date('Y-m-d H:i:s')
+                'processed_at' => date('Y-m-d H:i:s'),
+                'metadata' => $notification
             ];
-
-            // Parse UBL XML and create Perfex CRM document
-            $result = $this->_create_document_from_ubl($ubl_response['ubl_xml'], $notification);
-            if ($result['success']) {
-                $document_data['document_type'] = $result['document_type'];
-                $document_data['document_id'] = $result['document_id'];
-            } else {
-                $document_data['error'] = $result['message'];
-            }
 
             return [
                 'success' => true,
                 'data' => $document_data,
-                'message' => 'Incoming document processed successfully'
+                'message' => 'Incoming document notification processed successfully'
             ];
         } catch (Exception $e) {
             return [
@@ -1212,34 +1198,6 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
             ];
         }
     }
-
-
-    /**
-     * Create Perfex CRM document from UBL XML using service layer
-     * 
-     * @param string $ubl_xml UBL XML content
-     * @param array $notification Notification data
-     * @return array Creation result
-     */
-    private function _create_document_from_ubl($ubl_xml, $notification)
-    {
-        // Load PEPPOL service
-        $this->CI->load->library('peppol/peppol_service');
-
-        // Prepare metadata including notification info with Ademico-specific fields
-        $extra_data = [
-            'provider' => $this->get_id(),
-            'received_at' => $notification['receivedDate'] ?? $notification['notificationDate'] ?? date('Y-m-d H:i:s'),
-            'metadata' => $notification,
-        ];
-
-        // Extract document ID from notification
-        $document_id = $notification['documentId'] ?? 'unknown';
-
-        // Use service layer to create document
-        return $this->CI->peppol_service->create_document_from_ubl($ubl_xml, $document_id, $extra_data);
-    }
-
 
 
     /**

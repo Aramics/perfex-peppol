@@ -113,7 +113,7 @@
                                                 ['id' => '', 'name' => _l('peppol_all_document_types')],
                                                 ['id' => 'invoice', 'name' => _l('invoice')],
                                                 ['id' => 'credit_note', 'name' => _l('credit_note')]
-                                            ], ['id', 'name'], _l('peppol_document_type'), '', ['id' => 'filter-document-type']); ?>
+                                            ], ['id', 'name'], _l('peppol_document_type'), ''); ?>
                                         </div>
 
                                         <div class="col-md-3">
@@ -124,7 +124,7 @@
                                                 ['id' => 'delivered', 'name' => _l('peppol_status_delivered')],
                                                 ['id' => 'failed', 'name' => _l('peppol_status_failed')],
                                                 ['id' => 'received', 'name' => _l('peppol_status_received')]
-                                            ], ['id', 'name'], _l('peppol_status'), '', ['id' => 'filter-status']); ?>
+                                            ], ['id', 'name'], _l('peppol_status'), ''); ?>
                                         </div>
 
                                         <div class="col-md-3">
@@ -138,7 +138,7 @@
                                                     // Skip invalid providers
                                                 }
                                             }
-                                            echo render_select('filter_provider', $provider_options, ['id', 'name'], _l('peppol_provider'), '', ['id' => 'filter-provider']);
+                                            echo render_select('filter_provider', $provider_options, ['id', 'name'], _l('peppol_provider'), '');
                                             ?>
                                         </div>
 
@@ -209,31 +209,48 @@
 
 <script>
 $(function() {
-    // Initialize DataTable with Perfex pattern but custom AJAX for filters
-    var peppolTable = initDataTable('.table-peppol-documents', admin_url + 'peppol/documents', undefined, undefined, undefined, [6, 'desc']);
-    
-    // Override the AJAX data function to include filter data
+    // Initialize DataTable with Perfex pattern
+    var peppolTable = initDataTable('.table-peppol-documents', admin_url + 'peppol/documents', undefined,
+        undefined, undefined, [6, 'desc']);
+
+    // Use preXhr event to modify data before sending
     peppolTable.on('preXhr.dt', function(e, settings, data) {
-        // Add filter data to the request
-        data.filter_document_type = $('#filter-document-type').val();
-        data.filter_status = $('#filter-status').val();
-        data.filter_provider = $('#filter-provider').val();
+        data.filter_document_type = $('#filter_document_type').val() || '';
+        data.filter_status = $('#filter_status').val() || '';
+        data.filter_provider = $('#filter_provider').val() || '';
+
+        // Debug logging
+        console.log('Sending filter values:', {
+            document_type: data.filter_document_type,
+            status: data.filter_status,
+            provider: data.filter_provider
+        });
+        console.log('Form element values:', {
+            document_type: $('#filter_document_type').length,
+            status: $('#filter_status').length,
+            provider: $('#filter_provider').length
+        });
     });
 
     // Filter functionality  
-    $('#apply-filters').on('click', function() {
+    $('#apply-filters').on('click', function(e) {
+        e.preventDefault();
+        console.log('Apply filters clicked');
         peppolTable.ajax.reload();
     });
 
-    $('#clear-filters').on('click', function() {
-        $('#filter-document-type').val('').trigger('change');
-        $('#filter-status').val('').trigger('change');
-        $('#filter-provider').val('').trigger('change');
+    $('#clear-filters').on('click', function(e) {
+        e.preventDefault();
+        console.log('Clear filters clicked');
+        $('#filter_document_type').val('').trigger('change');
+        $('#filter_status').val('').trigger('change');
+        $('#filter_provider').val('').trigger('change');
         peppolTable.ajax.reload();
     });
 
     // Auto-apply filters on change
-    $('#filter-document-type, #filter-status, #filter-provider').on('change', function() {
+    $('#filter_document_type, #filter_status, #filter_provider').on('change', function() {
+        console.log('Filter changed:', $(this).attr('id'), $(this).val());
         peppolTable.ajax.reload();
     });
 });

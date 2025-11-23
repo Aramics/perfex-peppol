@@ -376,4 +376,40 @@ function getStatusBadge(status) {
 
     return '<span class="label ' + badgeClass + '">' + displayStatus + '</span>';
 }
+
+/**
+ * Download UBL from provider
+ */
+function downloadProviderUbl(documentId) {
+    // Show loading indicator
+    var button = $('a[onclick="downloadProviderUbl(' + documentId + ')"]');
+    var originalHtml = button.html();
+    button.html('<i class="fa fa-spinner fa-spin"></i>');
+    button.prop('disabled', true);
+
+    // Create a temporary form to trigger download
+    var form = $('<form>').attr({
+        method: 'POST',
+        action: admin_url + 'peppol/download_provider_ubl/' + documentId,
+        target: '_blank'
+    });
+    
+    // Add CSRF token if available
+    if (typeof csrfData !== 'undefined') {
+        form.append($('<input>').attr({
+            type: 'hidden',
+            name: csrfData.token_name,
+            value: csrfData.hash
+        }));
+    }
+
+    // Append form to body and submit
+    form.appendTo('body').submit().remove();
+
+    // Reset button after a short delay
+    setTimeout(function() {
+        button.html(originalHtml);
+        button.prop('disabled', false);
+    }, 2000);
+}
 </script>

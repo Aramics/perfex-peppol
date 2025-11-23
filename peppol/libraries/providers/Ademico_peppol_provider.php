@@ -1273,16 +1273,53 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
     }
 
     /**
-     * Get UBL XML content for a document by transmission ID
+     * Get UBL XML content for a document by transmission ID or document object
      * 
-     * @param string $transmission_id The transmission ID of the document
+     * @param string|object $identifier The transmission ID (string) or PEPPOL document object
+     * @param array $metadata Optional metadata for additional context (when using string identifier)
      * @return array Response with UBL XML content
      */
-    public function get_document_ubl($transmission_id)
+    public function get_document_ubl($identifier, $metadata = [])
     {
         $settings = $this->get_settings();
 
         try {
+            // Handle method overloading - extract transmission_id from identifier
+            $transmission_id = null;
+            $document_metadata = $metadata;
+
+            if (is_string($identifier)) {
+                // Direct transmission ID passed as string
+                $transmission_id = $identifier;
+            } elseif (is_object($identifier)) {
+                // PEPPOL document object passed
+                // Check if metadata is already decoded (from model method), otherwise decode it
+                if (isset($identifier->metadata) && is_array($identifier->metadata)) {
+                    $document_metadata = $identifier->metadata;
+                } else {
+                    $document_metadata = json_decode($identifier->provider_metadata ?? '{}', true);
+                }
+                
+                // Try to get transmission_id from metadata first, fallback to provider_document_id
+                if (isset($document_metadata['transmissionId'])) {
+                    $transmission_id = $document_metadata['transmissionId'];
+                } else {
+                    $transmission_id = $identifier->provider_document_id;
+                }
+            } else {
+                return [
+                    'success' => false,
+                    'message' => _l('peppol_invalid_identifier_type')
+                ];
+            }
+
+            if (empty($transmission_id)) {
+                return [
+                    'success' => false,
+                    'message' => _l('peppol_no_transmission_id')
+                ];
+            }
+
             $token = $this->get_access_token($settings);
             if (!$token) {
                 return [
@@ -1312,13 +1349,13 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
             } else {
                 return [
                     'success' => false,
-                    'message' => 'Failed to retrieve UBL XML: ' . ($response['error'] ?? 'Unknown error')
+                    'message' => sprintf(_l('peppol_failed_to_retrieve_ubl') . ': %s', ($response['error'] ?? _l('peppol_ademico_unknown_error')))
                 ];
             }
         } catch (Exception $e) {
             return [
                 'success' => false,
-                'message' => 'Failed to retrieve UBL XML: ' . $e->getMessage()
+                'message' => sprintf(_l('peppol_failed_to_retrieve_ubl') . ': %s', $e->getMessage())
             ];
         }
     }

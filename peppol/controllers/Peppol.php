@@ -656,6 +656,31 @@ class Peppol extends AdminController
     }
 
     /**
+     * Download UBL from provider (original UBL file)
+     */
+    public function download_provider_ubl($document_id)
+    {
+        if (!staff_can('view', 'peppol')) {
+            access_denied('peppol');
+        }
+
+        // Use service layer to retrieve UBL
+        $result = $this->peppol_service->get_provider_ubl($document_id);
+
+        if (!$result['success']) {
+            show_error($result['message']);
+            return;
+        }
+
+        // Set headers and output UBL content
+        header('Content-Type: application/xml; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $result['filename'] . '"');
+        header('Content-Length: ' . strlen($result['ubl_content']));
+        
+        echo $result['ubl_content'];
+    }
+
+    /**
      * Get status badge CSS class
      */
     private function _get_status_badge_class($status)

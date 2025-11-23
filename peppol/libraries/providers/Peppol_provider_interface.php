@@ -81,4 +81,13 @@ interface Peppol_provider_interface
      * @return string Provider unique identifier
      */
     public function get_id();
+
+    /**
+     * Get UBL document content from provider
+     * 
+     * @param string|object $identifier Document identifier (transmission_id) or PEPPOL document object
+     * @param array $metadata Optional metadata for additional context
+     * @return array Array with 'success', 'message', and 'ubl_xml'/'ubl_content' keys
+     */
+    public function get_document_ubl($identifier, $metadata = []);
 }

@@ -856,4 +856,86 @@ class Peppol_service
 
         return $country ? $country->country_id : 0;
     }
+
+    /**
+     * Retrieve UBL document content from provider
+     * 
+     * @param int $peppol_document_id PEPPOL document ID
+     * @return array Response with UBL content
+     */
+    public function get_provider_ubl($peppol_document_id)
+    {
+        try {
+            // Get the PEPPOL document with decoded metadata
+            $peppol_document = $this->CI->peppol_model->get_peppol_document_by_id($peppol_document_id);
+
+            if (!$peppol_document) {
+                return [
+                    'success' => false,
+                    'message' => _l('peppol_document_not_found')
+                ];
+            }
+
+            // Check if document has provider document ID
+            if (empty($peppol_document->provider_document_id)) {
+                return [
+                    'success' => false,
+                    'message' => _l('peppol_provider_ubl_not_available')
+                ];
+            }
+
+            // Get registered providers
+            $providers = peppol_get_registered_providers();
+            
+            if (!isset($providers[$peppol_document->provider])) {
+                return [
+                    'success' => false,
+                    'message' => sprintf(_l('peppol_provider_not_found_error'), $peppol_document->provider)
+                ];
+            }
+
+            $provider_instance = $providers[$peppol_document->provider];
+
+            // Check if provider supports UBL retrieval
+            if (!method_exists($provider_instance, 'get_document_ubl')) {
+                return [
+                    'success' => false,
+                    'message' => sprintf(_l('peppol_provider_no_ubl_support'), $peppol_document->provider)
+                ];
+            }
+
+            // Retrieve UBL from provider - pass the document object directly
+            $ubl_result = $provider_instance->get_document_ubl($peppol_document);
+
+            if (!$ubl_result['success']) {
+                return [
+                    'success' => false,
+                    'message' => sprintf(_l('peppol_ubl_retrieve_failed'), $ubl_result['message'])
+                ];
+            }
+
+            // Get UBL content from response (different providers may use different field names)
+            $ubl_content = $ubl_result['ubl_content'] ?? $ubl_result['ubl_xml'] ?? $ubl_result['data'] ?? '';
+            
+            if (empty($ubl_content)) {
+                return [
+                    'success' => false,
+                    'message' => _l('peppol_ubl_content_empty')
+                ];
+            }
+
+            return [
+                'success' => true,
+                'ubl_content' => $ubl_content,
+                'document' => $peppol_document,
+                'filename' => $peppol_document->document_type . '_' . $peppol_document->document_id . '_provider_ubl.xml'
+            ];
+
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => sprintf(_l('peppol_ubl_retrieve_error'), $e->getMessage())
+            ];
+        }
+    }
 }

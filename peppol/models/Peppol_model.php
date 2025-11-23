@@ -409,6 +409,25 @@ class Peppol_model extends App_Model
     }
 
     /**
+     * Get PEPPOL document by ID with optional metadata decoding
+     * 
+     * @param int $id Document ID
+     * @param bool $decode_metadata Whether to decode JSON metadata (default: true)
+     * @return object|null Document object with decoded metadata or null if not found
+     */
+    public function get_peppol_document_by_id($id, $decode_metadata = true)
+    {
+        $this->db->where('id', $id);
+        $document = $this->db->get(db_prefix() . 'peppol_documents')->row();
+
+        if ($document && $decode_metadata && !empty($document->provider_metadata)) {
+            $document->metadata = json_decode($document->provider_metadata, true) ?: [];
+        }
+
+        return $document;
+    }
+
+    /**
      * Get error summary for failed documents in bulk operations
      */
     public function get_bulk_operation_errors($document_type, $document_ids)

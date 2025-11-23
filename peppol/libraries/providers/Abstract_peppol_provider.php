@@ -55,6 +55,17 @@ abstract class Abstract_peppol_provider implements Peppol_provider_interface
     }
 
     /**
+     * Default UBL retrieval handler (override in subclasses if UBL retrieval is supported)
+     */
+    public function get_document_ubl($identifier, $metadata = [])
+    {
+        return [
+            'success' => false,
+            'message' => 'UBL document retrieval not supported by this provider'
+        ];
+    }
+
+    /**
      * Default implementation for getting settings
      */
     public function get_settings()

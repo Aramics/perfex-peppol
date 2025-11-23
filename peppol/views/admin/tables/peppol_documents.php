@@ -116,8 +116,15 @@ foreach ($rResult as $aRow) {
     // Actions
     $actions = '';
     if (staff_can('view', 'peppol')) {
+        // View document details
         $actions .= '<a href="#" onclick="viewPeppolDocument(' . $aRow['id'] . ')" class="btn btn-default btn-icon" data-toggle="tooltip" title="' . _l('view') . '">';
         $actions .= '<i class="fa fa-eye"></i></a>';
+        
+        // Download UBL from provider (only for sent/delivered documents)
+        if (in_array($aRow['status'], ['sent', 'delivered', 'received']) && !empty($aRow['provider_document_id'])) {
+            $actions .= ' <a href="#" onclick="downloadProviderUbl(' . $aRow['id'] . ')" class="btn btn-default btn-icon" data-toggle="tooltip" title="' . _l('peppol_download_provider_ubl') . '">';
+            $actions .= '<i class="fa fa-cloud-download"></i></a>';
+        }
     }
     $row[] = $actions;
 

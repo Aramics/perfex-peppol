@@ -187,8 +187,6 @@
     </div>
 </div>
 
-<!-- Include Document Details Modal Template -->
-<?php $this->load->view('peppol/templates/document_details_modal'); ?>
 
 <?php init_tail(); ?>
 
@@ -247,9 +245,11 @@ function viewPeppolDocument(documentId) {
     // Show modal and reset content with fresh preloader
     $('#document-details-modal').modal('show');
 
-    // Show preloader using template
-    var preloaderTemplate = $('#document-details-preloader-template').html();
-    $('#document-details-content').html(preloaderTemplate);
+    // Show preloader
+    $('#document-details-content').html('<div class="text-center tw-p-8">' +
+        '<i class="fa fa-spinner fa-spin fa-2x text-primary"></i>' +
+        '<div class="tw-mt-3"><p class="text-muted"><?php echo _l("peppol_loading_document_details"); ?>...</p></div>' +
+        '</div>');
 
     $.ajax({
         url: admin_url + 'peppol/view_document/' + documentId,
@@ -257,39 +257,8 @@ function viewPeppolDocument(documentId) {
         dataType: 'json',
         success: function(response) {
             if (response.success) {
-                var docData = response.document;
-
-                // Prepare template data
-                var templateData = {
-                    typeClass: getTypeClass(docData.original_type || docData.type),
-                    type: docData.type, // Raw type (credit_note, invoice)
-                    typeFormatted: docData.type_formatted,
-                    documentNumber: docData.document_number || '#' + docData.local_reference_id,
-                    localReferenceId: docData.local_reference_id,
-                    localReferenceLink: docData.local_reference_link,
-                    hasLocalReference: docData.local_reference_id?.length > 0,
-                    clientName: docData.client_name || '<span class="text-muted">-</span>',
-                    statusBadge: getStatusBadge(docData.status),
-                    provider: docData.provider,
-                    providerDocumentId: docData.provider_document_id ?
-                        '<code>' + docData.provider_document_id + '</code>' :
-                        '<span class="text-muted">-</span>',
-                    sentAt: docData.sent_at ?
-                        '<span class="tw-text-sm">' + docData.sent_at + '</span>' :
-                        '<span class="text-muted">-</span>',
-                    receivedAt: docData.received_at ?
-                        '<span class="tw-text-sm">' + docData.received_at + '</span>' :
-                        '<span class="text-muted">-</span>',
-                    createdAt: docData.created_at,
-                    hasAttachments: docData.attachments && docData.attachments.length > 0,
-                    attachmentsList: formatAttachmentsList(docData.attachments),
-                    hasMetadata: docData.metadata && Object.keys(docData.metadata).length > 0,
-                    metadata: docData.metadata ? JSON.stringify(docData.metadata, null, 2) : ''
-                };
-
-                // Render template with data
-                var content = renderTemplate('document-details-template', templateData);
-                $('#document-details-content').html(content);
+                // Simply load the pre-rendered content from backend
+                $('#document-details-content').html(response.content);
             } else {
                 $('#document-details-modal').modal('hide');
                 alert_float('danger', response.message);
@@ -302,123 +271,6 @@ function viewPeppolDocument(documentId) {
     });
 }
 
-/**
- * Simple template renderer
- */
-function renderTemplate(templateId, data) {
-    var template = $('#' + templateId).html();
-
-    // Replace simple variables {{variable}}
-    for (var key in data) {
-        if (data.hasOwnProperty(key)) {
-            var regex = new RegExp('\{\{' + key + '\}\}', 'g');
-            template = template.replace(regex, data[key]);
-        }
-    }
-
-    // Handle simple conditionals {{#if condition}}...{{/if}}
-    template = template.replace(/\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g, function(match, condition, content) {
-        return data[condition] ? content : '';
-    });
-
-    // Handle negative conditionals {{#unless condition}}...{{/unless}}
-    template = template.replace(/\{\{#unless\s+(\w+)\}\}([\s\S]*?)\{\{\/unless\}\}/g, function(match, condition,
-        content) {
-        return !data[condition] ? content : '';
-    });
-
-    return template;
-}
-
-/**
- * Get CSS class for document type
- */
-function getTypeClass(type) {
-    return type.toLowerCase().includes('invoice') ? 'label-primary' : 'label-info';
-}
-
-/**
- * Format attachments list for display
- */
-function formatAttachmentsList(attachments) {
-    if (!attachments || attachments.length === 0) {
-        return '';
-    }
-
-    var html = '';
-    for (var i = 0; i < attachments.length; i++) {
-        var attachment = attachments[i];
-        var fileName = attachment.file_name || attachment.filename || 'Unknown File';
-        var fileSize = attachment.file_size ? ' (' + formatFileSize(attachment.file_size) + ')' : '';
-        var description = attachment.description || fileName;
-
-        html += '<div class="list-group-item tw-flex tw-items-center tw-justify-between">';
-        html += '<div>';
-        html += '<i class="fa fa-file-o fa-fw text-muted"></i> ';
-
-        if (attachment.external_link) {
-            html += '<a href="' + attachment.external_link + '" target="_blank" class="text-primary">';
-            html += '<strong>' + fileName + '</strong>' + fileSize;
-            html += ' <i class="fa fa-external-link fa-xs"></i>';
-            html += '</a>';
-        } else {
-            html += '<strong>' + fileName + '</strong>' + fileSize;
-        }
-
-        if (description !== fileName) {
-            html += '<br><small class="text-muted">' + description + '</small>';
-        }
-
-        html += '</div>';
-        html += '</div>';
-    }
-
-    return html;
-}
-
-/**
- * Format file size in human readable format
- */
-function formatFileSize(bytes) {
-    if (!bytes || bytes === 0) return '0 B';
-
-    var k = 1024;
-    var sizes = ['B', 'KB', 'MB', 'GB'];
-    var i = Math.floor(Math.log(bytes) / Math.log(k));
-
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-}
-
-/**
- * Get status badge HTML
- */
-function getStatusBadge(status) {
-    var badgeClass = '';
-    var displayStatus = status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ');
-
-    switch (status.toLowerCase()) {
-        case 'sent':
-        case 'delivered':
-            badgeClass = 'label-success';
-            break;
-        case 'pending':
-        case 'queued':
-            badgeClass = 'label-warning';
-            break;
-        case 'failed':
-        case 'rejected':
-        case 'rejected_inbound':
-            badgeClass = 'label-danger';
-            break;
-        case 'received':
-            badgeClass = 'label-info';
-            break;
-        default:
-            badgeClass = 'label-default';
-    }
-
-    return '<span class="label ' + badgeClass + '">' + displayStatus + '</span>';
-}
 
 /**
  * Download UBL from provider

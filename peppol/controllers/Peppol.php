@@ -623,27 +623,29 @@ class Peppol extends AdminController
             return;
         }
 
-        $response = [
-            'success' => true,
-            'document' => [
-                'id' => $document->id,
-                'type' => $document->document_type,
-                'type_formatted' => ucfirst(str_replace('_', ' ', $document->document_type)),
-                'local_reference_id' => $document->local_reference_id,
-                'local_reference_link' => admin_url($document->document_type . 's/list_' . $document->document_type . 's/' . $document->local_reference_id),
-                'client_name' => $document->client->company ?? '',
-                'status' => ucfirst($document->status),
-                'provider' => ucfirst($document->provider),
-                'provider_document_id' => $document->provider_document_id,
-                'sent_at' => $document->sent_at ? _dt($document->sent_at) : null,
-                'received_at' => $document->received_at ? _dt($document->received_at) : null,
-                'created_at' => _dt($document->created_at),
-                'metadata' => $document->metadata,
-                'attachments' => $document->ubl_document['attachments'] ?? []
-            ]
+        // Parse metadata
+        $metadata = json_decode($document->provider_metadata ?? '{}', true) ?: [];
+
+        // Get attachments from UBL document
+        $attachments = [];
+        if (isset($document->ubl_document['data']['attachments'])) {
+            $attachments = $document->ubl_document['data']['attachments'];
+        }
+
+        // Prepare simplified view data - pass document directly with minimal processing
+        $view_data = [
+            'document' => $document,
+            'metadata' => $metadata,
+            'attachments' => $attachments
         ];
 
-        echo json_encode($response);
+        // Render the view content
+        $content = $this->load->view('peppol/templates/document_details_content', $view_data, true);
+
+        echo json_encode([
+            'success' => true,
+            'content' => $content
+        ]);
     }
 
     /**
@@ -670,4 +672,5 @@ class Peppol extends AdminController
 
         echo $result['ubl_content'];
     }
+
 }

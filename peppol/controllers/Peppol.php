@@ -616,7 +616,8 @@ class Peppol extends AdminController
             return;
         }
 
-        $document = $this->peppol_service->get_document($id);
+        $document = $this->peppol_service->get_enriched_document($id);
+
         if (empty($document->id)) {
             echo json_encode(['success' => false, 'message' => _l('peppol_document_not_found')]);
             return;
@@ -629,7 +630,7 @@ class Peppol extends AdminController
                 'type' => $document->document_type,
                 'type_formatted' => ucfirst(str_replace('_', ' ', $document->document_type)),
                 'local_reference_id' => $document->local_reference_id,
-                'document_number' => $document->document_number,
+                'local_reference_link' => admin_url($document->document_type . 's/list_' . $document->document_type . 's/' . $document->local_reference_id),
                 'client_name' => $document->client->company ?? '',
                 'status' => ucfirst($document->status),
                 'provider' => ucfirst($document->provider),

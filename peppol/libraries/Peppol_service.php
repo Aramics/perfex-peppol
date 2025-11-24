@@ -13,6 +13,7 @@ class Peppol_service
 
         // Load the advanced UBL generator if available
         $this->CI->load->library('peppol/peppol_ubl_generator');
+        $this->CI->load->library('peppol/peppol_ubl_document_parser');
     }
 
     /**
@@ -399,10 +400,59 @@ class Peppol_service
         }
     }
 
-    public function get_document($document_id, $with_provider_ubl = true)
+    /**
+     * Retrieve enriched PEPPOL document with optional UBL parsing and client data
+     * 
+     * This method fetches a PEPPOL document and optionally enriches it with:
+     * - Provider UBL content and parsed data (attachments, structured content)
+     * - Related local document data (invoice/credit note information)
+     * - Client information (company details)
+     * 
+     * The method provides two modes of operation:
+     * 1. Full enrichment (default): Includes UBL parsing and all related data
+     * 2. Basic mode: Returns only the PEPPOL document record without UBL processing
+     * 
+     * When UBL parsing is enabled, the method will:
+     * - Retrieve the original UBL XML from the provider
+     * - Parse the UBL document to extract structured data including attachments
+     * - Add the parsed data to the document object for easy access
+     * 
+     * @param int $document_id The PEPPOL document ID to retrieve
+     * @param bool $include_ubl_data Whether to fetch and parse UBL data from provider
+     *                               - true: Full document with UBL parsing and attachments
+     *                               - false: Basic document record only
+     * 
+     * @return object|array Returns enriched document object on success, or error array on failure
+     * 
+     * Document object properties when successful:
+     * - Basic PEPPOL document fields (id, status, provider_document_id, etc.)
+     * - ubl_content: Raw UBL XML content (if $include_ubl_data = true)
+     * - ubl_document: Parsed UBL data array including attachments (if $include_ubl_data = true)
+     * - ubl_file_name: Generated filename for UBL download (if $include_ubl_data = true)
+     * - client: Full client object with company details (if local_reference_id exists)
+     * 
+     * Error array format:
+     * - success: false
+     * - message: Error description
+     * 
+     * @throws Exception When UBL parsing fails or provider communication errors occur
+     * 
+     * @since 1.0.0
+     * @see get_provider_ubl() For UBL retrieval from providers
+     * @see Peppol_ubl_document_parser For UBL parsing functionality
+     * 
+     * @example
+     * // Get full document with UBL data and attachments
+     * $document = $this->peppol_service->get_enriched_document(123);
+     * $attachments = $document->ubl_document['attachments'] ?? [];
+     * 
+     * // Get basic document only
+     * $document = $this->peppol_service->get_enriched_document(123, false);
+     */
+    public function get_enriched_document($document_id, $include_ubl_data = true)
     {
         $document = null;
-        if ($with_provider_ubl) {
+        if ($include_ubl_data) {
             $response = $this->get_provider_ubl($document_id);
             $document = $response['document'] ?? null;
             if (empty($document)) {
@@ -410,7 +460,7 @@ class Peppol_service
             }
 
             $document->ubl_content = $response['ubl_content'];
-            $document->ubl_document = new Peppol_ubl_document_parser($document->ubl_content);
+            $document->ubl_document = $this->CI->peppol_ubl_document_parser->parse($response['ubl_content']);
             $document->ubl_file_name = $response['filename'];
         } else {
             $document = $this->CI->peppol_model->get_peppol_document_by_id($document_id);
@@ -422,6 +472,7 @@ class Peppol_service
 
         if (!empty($document->local_reference_id)) {
             // Fetch related data only if needed and document has local reference
+            $this->CI->load->model(['invoices_model', 'credit_notes_model', 'clients_model']);
 
             $doc_data = $document->document_type === 'credit_note' ?
                 $this->CI->credit_notes_model->get($document->local_reference_id)  :

@@ -13,12 +13,14 @@
                             <span class="label {{typeClass}}">{{typeFormatted}}</span>
                         </td>
                     </tr>
+                    {{#if hasLocalReference}}
                     <tr>
                         <td class="tw-font-medium"><?php echo _l('peppol_document_number'); ?></td>
                         <td>
-                            <code>{{documentNumber}}</code><a href="<?= admin_url(''); ?>{{type}}s/list_{{type}}s/{{localReferenceId}}" target="_blank"><i class="fa fa-eye"></i></a>
+                            <code>{{localReferenceId}}</code><a href="{{localReferenceLink}}" target="_blank"><i class="fa fa-eye"></i></a>
                         </td>
                     </tr>
+                    {{/if}}
                     <tr>
                         <td class="tw-font-medium"><?php echo _l('client'); ?></td>
                         <td>{{clientName}}</td>

@@ -266,6 +266,8 @@ function viewPeppolDocument(documentId) {
                     typeFormatted: docData.type_formatted,
                     documentNumber: docData.document_number || '#' + docData.local_reference_id,
                     localReferenceId: docData.local_reference_id,
+                    localReferenceLink: docData.local_reference_link,
+                    hasLocalReference: docData.local_reference_id?.length > 0,
                     clientName: docData.client_name || '<span class="text-muted">-</span>',
                     statusBadge: getStatusBadge(docData.status),
                     provider: docData.provider,
@@ -318,9 +320,10 @@ function renderTemplate(templateId, data) {
     template = template.replace(/\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g, function(match, condition, content) {
         return data[condition] ? content : '';
     });
-    
+
     // Handle negative conditionals {{#unless condition}}...{{/unless}}
-    template = template.replace(/\{\{#unless\s+(\w+)\}\}([\s\S]*?)\{\{\/unless\}\}/g, function(match, condition, content) {
+    template = template.replace(/\{\{#unless\s+(\w+)\}\}([\s\S]*?)\{\{\/unless\}\}/g, function(match, condition,
+        content) {
         return !data[condition] ? content : '';
     });
 
@@ -341,18 +344,18 @@ function formatAttachmentsList(attachments) {
     if (!attachments || attachments.length === 0) {
         return '';
     }
-    
+
     var html = '';
     for (var i = 0; i < attachments.length; i++) {
         var attachment = attachments[i];
         var fileName = attachment.file_name || attachment.filename || 'Unknown File';
         var fileSize = attachment.file_size ? ' (' + formatFileSize(attachment.file_size) + ')' : '';
         var description = attachment.description || fileName;
-        
+
         html += '<div class="list-group-item tw-flex tw-items-center tw-justify-between">';
         html += '<div>';
         html += '<i class="fa fa-file-o fa-fw text-muted"></i> ';
-        
+
         if (attachment.external_link) {
             html += '<a href="' + attachment.external_link + '" target="_blank" class="text-primary">';
             html += '<strong>' + fileName + '</strong>' + fileSize;
@@ -361,15 +364,15 @@ function formatAttachmentsList(attachments) {
         } else {
             html += '<strong>' + fileName + '</strong>' + fileSize;
         }
-        
+
         if (description !== fileName) {
             html += '<br><small class="text-muted">' + description + '</small>';
         }
-        
+
         html += '</div>';
         html += '</div>';
     }
-    
+
     return html;
 }
 
@@ -378,11 +381,11 @@ function formatAttachmentsList(attachments) {
  */
 function formatFileSize(bytes) {
     if (!bytes || bytes === 0) return '0 B';
-    
+
     var k = 1024;
     var sizes = ['B', 'KB', 'MB', 'GB'];
     var i = Math.floor(Math.log(bytes) / Math.log(k));
-    
+
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
 

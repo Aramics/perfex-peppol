@@ -399,13 +399,25 @@ class Peppol_service
         }
     }
 
-    public function get_document($document_id)
+    public function get_document($document_id, $with_provider_ubl = true)
     {
+        $document = null;
+        if ($with_provider_ubl) {
+            $response = $this->get_provider_ubl($document_id);
+            $document = $response['document'] ?? null;
+            if (empty($document)) {
+                return $response;
+            }
 
-        $response = $this->get_provider_ubl($document_id);
-        $document = $response['document'] ?? null;
+            $document->ubl_content = $response['ubl_content'];
+            $document->ubl_document = new Peppol_ubl_document_parser($document->ubl_content);
+            $document->ubl_file_name = $response['filename'];
+        } else {
+            $document = $this->CI->peppol_model->get_peppol_document_by_id($document_id);
+        }
+
         if (empty($document)) {
-            return $response;
+            return $document;
         }
 
         if (!empty($document->local_reference_id)) {
@@ -427,10 +439,6 @@ class Peppol_service
                 }
             }
         }
-
-        $document->ubl_content = $response['ubl_content'];
-        $document->ubl_document = new Peppol_ubl_document_parser($document->ubl_content);
-        $document->ubl_file_name = $response['filename'];
 
         return $document;
     }

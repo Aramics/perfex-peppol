@@ -187,6 +187,9 @@
     </div>
 </div>
 
+<!-- Include Document Details Modal Template -->
+<?php $this->load->view('peppol/templates/document_details_modal'); ?>
+
 <?php init_tail(); ?>
 
 <script>
@@ -243,96 +246,45 @@ $(function() {
 function viewPeppolDocument(documentId) {
     // Show modal and reset content with fresh preloader
     $('#document-details-modal').modal('show');
-    
-    // Create fresh preloader HTML
-    var preloaderHtml = '<div id="document-details-preloader" class="text-center" style="padding: 40px;">' +
-        '<div class="spinner-border text-primary" role="status">' +
-        '<i class="fa fa-spinner fa-spin fa-2x"></i>' +
-        '<span class="sr-only"><?php echo _l('loading'); ?></span>' +
-        '</div>' +
-        '<div class="tw-mt-3">' +
-        '<p class="text-muted"><?php echo _l('peppol_loading_document_details'); ?>...</p>' +
-        '</div>' +
-        '</div>';
+
+    // Show preloader using template
+    var preloaderTemplate = $('#document-details-preloader-template').html();
+    $('#document-details-content').html(preloaderTemplate);
 
     $.ajax({
         url: admin_url + 'peppol/view_document/' + documentId,
         type: 'POST',
         dataType: 'json',
-        beforeSend: function() {
-            // Show fresh preloader
-            $('#document-details-content').html(preloaderHtml);
-        },
         success: function(response) {
             if (response.success) {
-                var document = response.document;
-                var content = '';
+                var docData = response.document;
 
-                content += '<div class="row">';
-                content += '<div class="col-md-6">';
-                content +=
-                    '<h5 class="tw-text-lg tw-font-semibold tw-mb-4"><?php echo _l("peppol_document_information"); ?></h5>';
-                content += '<div class="table-responsive">';
-                content += '<table class="table table-bordered table-striped">';
-                content +=
-                    '<tr><td class="tw-font-medium"><?php echo _l("peppol_document_type"); ?></td><td>' +
-                    '<span class="label label-' + (document.type.toLowerCase().includes('invoice') ?
-                        'primary' : 'info') + '">' + document.type + '</span></td></tr>';
-                content +=
-                    '<tr><td class="tw-font-medium"><?php echo _l("peppol_document_number"); ?></td><td>' +
-                    '<code>' + (document.document_number || '#' + document.document_id) +
-                    '</code></td></tr>';
-                content += '<tr><td class="tw-font-medium"><?php echo _l("client"); ?></td><td>' + (document
-                    .client_name || '<span class="text-muted">-</span>') + '</td></tr>';
-                content += '<tr><td class="tw-font-medium"><?php echo _l("peppol_status"); ?></td><td>' +
-                    getStatusBadge(document.status) + '</td></tr>';
-                content += '<tr><td class="tw-font-medium"><?php echo _l("peppol_provider"); ?></td><td>' +
-                    '<span class="tw-capitalize">' + document.provider + '</span></td></tr>';
-                content += '</table>';
-                content += '</div>';
-                content += '</div>';
+                // Prepare template data
+                var templateData = {
+                    typeClass: getTypeClass(docData.original_type || docData.type),
+                    type: docData.type, // Raw type (credit_note, invoice)
+                    typeFormatted: docData.type_formatted,
+                    documentNumber: docData.document_number || '#' + docData.local_reference_id,
+                    localReferenceId: docData.local_reference_id,
+                    clientName: docData.client_name || '<span class="text-muted">-</span>',
+                    statusBadge: getStatusBadge(docData.status),
+                    provider: docData.provider,
+                    providerDocumentId: docData.provider_document_id ?
+                        '<code>' + docData.provider_document_id + '</code>' :
+                        '<span class="text-muted">-</span>',
+                    sentAt: docData.sent_at ?
+                        '<span class="tw-text-sm">' + docData.sent_at + '</span>' :
+                        '<span class="text-muted">-</span>',
+                    receivedAt: docData.received_at ?
+                        '<span class="tw-text-sm">' + docData.received_at + '</span>' :
+                        '<span class="text-muted">-</span>',
+                    createdAt: docData.created_at,
+                    hasMetadata: docData.metadata && Object.keys(docData.metadata).length > 0,
+                    metadata: docData.metadata ? JSON.stringify(docData.metadata, null, 2) : ''
+                };
 
-                content += '<div class="col-md-6">';
-                content +=
-                    '<h5 class="tw-text-lg tw-font-semibold tw-mb-4"><?php echo _l("peppol_transmission_details"); ?></h5>';
-                content += '<div class="table-responsive">';
-                content += '<table class="table table-bordered table-striped">';
-                content +=
-                    '<tr><td class="tw-font-medium"><?php echo _l("peppol_provider_document_id"); ?></td><td>' +
-                    (document.provider_document_id ? '<code>' + document.provider_document_id + '</code>' :
-                        '<span class="text-muted">-</span>') + '</td></tr>';
-                content += '<tr><td class="tw-font-medium"><?php echo _l("peppol_sent_at"); ?></td><td>' + (
-                    document.sent_at ? '<span class="tw-text-sm">' + document.sent_at + '</span>' :
-                    '<span class="text-muted">-</span>') + '</td></tr>';
-                content +=
-                    '<tr><td class="tw-font-medium"><?php echo _l("peppol_received_at"); ?></td><td>' + (
-                        document.received_at ? '<span class="tw-text-sm">' + document.received_at +
-                        '</span>' : '<span class="text-muted">-</span>') + '</td></tr>';
-                content +=
-                    '<tr><td class="tw-font-medium"><?php echo _l("peppol_created_at"); ?></strong></td><td>' +
-                    '<span class="tw-text-sm">' + document.created_at + '</span></td></tr>';
-                content += '</table>';
-                content += '</div>';
-                content += '</div>';
-                content += '</div>';
-
-                // Show metadata if available
-                if (document.metadata && Object.keys(document.metadata).length > 0) {
-                    content += '<div class="row tw-mt-6">';
-                    content += '<div class="col-md-12">';
-                    content +=
-                        '<h5 class="tw-text-lg tw-font-semibold tw-mb-4"><?php echo _l("peppol_metadata"); ?></h5>';
-                    content += '<div class="tw-bg-neutral-50 tw-border tw-rounded tw-p-4">';
-                    content +=
-                        '<pre class="tw-text-sm tw-m-0" style="max-height: 300px; overflow-y: auto;">' +
-                        JSON
-                        .stringify(document.metadata, null, 2) + '</pre>';
-                    content += '</div>';
-                    content += '</div>';
-                    content += '</div>';
-                }
-
-                // Hide preloader and show content
+                // Render template with data
+                var content = renderTemplate('document-details-template', templateData);
                 $('#document-details-content').html(content);
             } else {
                 $('#document-details-modal').modal('hide');
@@ -344,6 +296,35 @@ function viewPeppolDocument(documentId) {
             alert_float('danger', '<?php echo _l("something_went_wrong"); ?>');
         }
     });
+}
+
+/**
+ * Simple template renderer
+ */
+function renderTemplate(templateId, data) {
+    var template = $('#' + templateId).html();
+
+    // Replace simple variables {{variable}}
+    for (var key in data) {
+        if (data.hasOwnProperty(key)) {
+            var regex = new RegExp('\{\{' + key + '\}\}', 'g');
+            template = template.replace(regex, data[key]);
+        }
+    }
+
+    // Handle simple conditionals {{#if condition}}...{{/if}}
+    template = template.replace(/\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g, function(match, condition, content) {
+        return data[condition] ? content : '';
+    });
+
+    return template;
+}
+
+/**
+ * Get CSS class for document type
+ */
+function getTypeClass(type) {
+    return type.toLowerCase().includes('invoice') ? 'label-primary' : 'label-info';
 }
 
 /**
@@ -393,7 +374,7 @@ function downloadProviderUbl(documentId) {
         action: admin_url + 'peppol/download_provider_ubl/' + documentId,
         target: '_blank'
     });
-    
+
     // Add CSRF token if available
     if (typeof csrfData !== 'undefined') {
         form.append($('<input>').attr({

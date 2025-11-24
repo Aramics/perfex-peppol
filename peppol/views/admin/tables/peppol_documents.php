@@ -60,8 +60,8 @@ foreach ($rResult as $aRow) {
 
     // Document type with badge
     $typeClass = $aRow['document_type'] === 'invoice' ? 'primary' : 'info';
-    $row[] = '<span class="label label-' . $typeClass . '">' . 
-             ucfirst(str_replace('_', ' ', $aRow['document_type'])) . '</span>';
+    $row[] = '<span class="label label-' . $typeClass . '">' .
+        ucfirst(str_replace('_', ' ', $aRow['document_type'])) . '</span>';
 
     // Document number with link
     $documentLink = '';
@@ -70,18 +70,18 @@ foreach ($rResult as $aRow) {
     } elseif ($aRow['document_type'] === 'credit_note' && !empty($aRow['local_reference_id'])) {
         $documentLink = admin_url('credit_notes/list_credit_notes/' . $aRow['local_reference_id']);
     }
-    
+
     $documentNumber = $aRow['document_number'] ?: (!empty($aRow['local_reference_id']) ? '#' . $aRow['local_reference_id'] : _l('peppol_no_local_reference'));
-    $row[] = $documentLink ? 
-             '<a href="' . $documentLink . '" target="_blank">' . e($documentNumber) . '</a>' :
-             e($documentNumber);
+    $row[] = $documentLink ?
+        '<a href="' . $documentLink . '" target="_blank">' . e($documentNumber) . '</a>' :
+        e($documentNumber);
 
     // Client name
     $row[] = !empty($aRow['client_name']) ? e($aRow['client_name']) : '-';
 
     // Document total
-    $row[] = !empty($aRow['document_total']) ? 
-             app_format_money($aRow['document_total'], get_base_currency()) : '-';
+    $row[] = !empty($aRow['document_total']) ?
+        app_format_money($aRow['document_total'], get_base_currency()) : '-';
 
     // Status with badge
     $statusClass = '';
@@ -119,7 +119,7 @@ foreach ($rResult as $aRow) {
         // View document details
         $actions .= '<a href="#" onclick="viewPeppolDocument(' . $aRow['id'] . ')" class="btn btn-default btn-icon" data-toggle="tooltip" title="' . _l('view') . '">';
         $actions .= '<i class="fa fa-eye"></i></a>';
-        
+
         // Download UBL from provider (only for sent/delivered documents)
         if (in_array($aRow['status'], ['sent', 'delivered', 'received']) && !empty($aRow['provider_document_id'])) {
             $actions .= ' <a href="#" onclick="downloadProviderUbl(' . $aRow['id'] . ')" class="btn btn-default btn-icon" data-toggle="tooltip" title="' . _l('peppol_download_provider_ubl') . '">';
@@ -130,4 +130,3 @@ foreach ($rResult as $aRow) {
 
     $output['aaData'][] = $row;
 }
-?>

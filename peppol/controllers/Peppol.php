@@ -594,11 +594,11 @@ class Peppol extends AdminController
         }
 
         $data['title'] = _l('peppol_documents');
-        
+
         // Get statistics for different document types
         $data['invoice_stats'] = $this->peppol_model->get_document_statistics('invoice');
         $data['credit_note_stats'] = $this->peppol_model->get_document_statistics('credit_note');
-        
+
         // Get provider information
         $data['providers'] = peppol_get_registered_providers();
         $data['active_provider'] = get_option('peppol_active_provider', '');
@@ -621,7 +621,7 @@ class Peppol extends AdminController
         $this->db->from(db_prefix() . 'peppol_documents');
         $this->db->where('id', $id);
         $document = $this->db->get()->row();
-        
+
         if ($document && $document->local_reference_id) {
             // Fetch related data only if needed and document has local reference
             if ($document->document_type === 'invoice') {
@@ -629,7 +629,7 @@ class Peppol extends AdminController
                 $this->db->from(db_prefix() . 'invoices');
                 $this->db->where('id', $document->local_reference_id);
                 $doc_data = $this->db->get()->row();
-                
+
                 if ($doc_data) {
                     $document->document_number = $doc_data->number;
                     $client_id = $doc_data->clientid;
@@ -639,20 +639,20 @@ class Peppol extends AdminController
                 $this->db->from(db_prefix() . 'creditnotes');
                 $this->db->where('id', $document->local_reference_id);
                 $doc_data = $this->db->get()->row();
-                
+
                 if ($doc_data) {
                     $document->document_number = $doc_data->number;
                     $client_id = $doc_data->clientid;
                 }
             }
-            
+
             // Get client name if we have client_id
             if (isset($client_id) && $client_id) {
                 $this->db->select('company');
                 $this->db->from(db_prefix() . 'clients');
                 $this->db->where('userid', $client_id);
                 $client = $this->db->get()->row();
-                
+
                 if ($client) {
                     $document->client_name = $client->company;
                 }
@@ -671,8 +671,9 @@ class Peppol extends AdminController
             'success' => true,
             'document' => [
                 'id' => $document->id,
-                'type' => ucfirst(str_replace('_', ' ', $document->document_type)),
-                'document_id' => $document->document_id,
+                'type' => $document->document_type,
+                'type_formatted' => ucfirst(str_replace('_', ' ', $document->document_type)),
+                'local_reference_id' => $document->local_reference_id,
                 'document_number' => $document->document_number,
                 'client_name' => $document->client_name,
                 'status' => ucfirst($document->status),
@@ -709,7 +710,7 @@ class Peppol extends AdminController
         header('Content-Type: application/xml; charset=utf-8');
         header('Content-Disposition: attachment; filename="' . $result['filename'] . '"');
         header('Content-Length: ' . strlen($result['ubl_content']));
-        
+
         echo $result['ubl_content'];
     }
 

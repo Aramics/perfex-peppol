@@ -89,13 +89,13 @@ class Peppol_ubl_document_parser
 
             // Parse UBL XML
             $reader = new UblReader();
-            $invoice = $reader->import($ubl_xml);
+            $document = $reader->import($ubl_xml);
 
             // Detect document type using the Invoice object's type
-            $document_type = $this->_detect_document_type($invoice);
+            $document_type = $this->_detect_document_type($document);
 
             // Parse document data from UBL
-            $parsed_data = $this->_parse_ubl_data($invoice, $document_type, $external_document_id);
+            $parsed_data = $this->_parse_ubl_data($document, $document_type, $external_document_id);
 
             return [
                 'success' => true,
@@ -116,16 +116,16 @@ class Peppol_ubl_document_parser
      * which is more reliable than XML string matching. The library properly
      * parses the UBL structure and determines the correct document type.
      * 
-     * @param Invoice $invoice The imported Invoice object from UblReader
+     * @param Invoice $document The imported Invoice object from UblReader
      * 
      * @return string Either 'credit_note' or 'invoice'
      * 
      * @since 1.0.0
      */
-    private function _detect_document_type($invoice)
+    private function _detect_document_type($document)
     {
 
-        $type = $invoice->getType();
+        $type = $document->getType();
 
         // Check for credit note types
         if (
@@ -150,7 +150,7 @@ class Peppol_ubl_document_parser
      * - Line items with all details
      * - Document totals and tax information
      * 
-     * @param Invoice $invoice The imported Invoice object from UblReader
+     * @param Invoice $document The imported Invoice object from UblReader
      * @param string $document_type Either 'invoice' or 'credit_note'
      * @param string|null $external_document_id Optional external reference ID
      * 
@@ -175,34 +175,36 @@ class Peppol_ubl_document_parser
      * 
      * @since 1.0.0
      */
-    private function _parse_ubl_data($invoice, $document_type, $external_document_id)
+    private function _parse_ubl_data($document, $document_type, $external_document_id)
     {
         // Extract dates with proper formatting
-        $issue_date = $invoice->getIssueDate();
-        $due_date = $invoice->getDueDate();
+        $issue_date = $document->getIssueDate();
+        $due_date = $document->getDueDate();
 
         $data = [
             'external_id' => $external_document_id,
             'document_type' => $document_type,
-            'document_number' => $invoice->getNumber(),
+            'document_number' => $document->getNumber(),
             'issue_date' => $issue_date ? $issue_date->format('Y-m-d') : null,
             'due_date' => $due_date ? $due_date->format('Y-m-d') : null,
-            'currency_code' => $invoice->getCurrency(),
-            'notes' => implode("\n", $invoice->getNotes()),
-            'payment_terms' => $invoice->getPaymentTerms() ?: '',
-            'billing_references' => $this->_get_billing_references($invoice),
-            'payments' => $this->_parse_invoice_payments($invoice)
+            'currency_code' => $document->getCurrency(),
+            'notes' => implode("\n", $document->getNotes()),
+            'payment_terms' => $document->getPaymentTerms() ?: '',
+            'billing_references' => $this->_get_billing_references($document),
+            'payments' => $this->_parse_invoice_payments($document)
         ];
 
         // Parse buyer/seller information
-        $data['buyer'] = $this->_parse_invoice_party_info($invoice, 'buyer');
-        $data['seller'] = $this->_parse_invoice_party_info($invoice, 'seller');
+        $data['buyer'] = $this->_parse_invoice_party_info($document, 'buyer');
+        $data['seller'] = $this->_parse_invoice_party_info($document, 'seller');
 
         // Parse line items
-        $data['items'] = $this->_parse_invoice_line_items($invoice, $document_type);
+        $data['items'] = $this->_parse_invoice_line_items($document, $document_type);
 
         // Calculate totals
-        $data['totals'] = $this->_parse_invoice_totals($invoice);
+        $data['totals'] = $this->_parse_invoice_totals($document);
+
+        $data['attachments'] = $this->_parse_attachments($document);
 
         return $data;
     }
@@ -219,7 +221,7 @@ class Peppol_ubl_document_parser
      * Exceptions are allowed to bubble up if line parsing fails completely,
      * as this indicates a fundamental issue with the UBL document.
      * 
-     * @param Invoice $invoice The imported Invoice object
+     * @param Invoice $document The imported Invoice object
      * @param string $document_type Either 'invoice' or 'credit_note'
      * 
      * @return array {
@@ -239,12 +241,12 @@ class Peppol_ubl_document_parser
      * 
      * @since 1.0.0
      */
-    private function _parse_invoice_line_items($invoice, $document_type)
+    private function _parse_invoice_line_items($document, $document_type)
     {
         $items = [];
 
         // Get line items using the Invoice object - let exceptions bubble up
-        $lines = $invoice->getLines();
+        $lines = $document->getLines();
 
         $order = 1;
         foreach ($lines as $line) {
@@ -266,15 +268,15 @@ class Peppol_ubl_document_parser
     /**
      * Extract financial totals from Invoice object
      * 
-     * @param Invoice $invoice The Invoice object
+     * @param Invoice $document The Invoice object
      * 
      * @return array Financial totals structure
      * 
      * @since 1.0.0
      */
-    private function _parse_invoice_totals($invoice)
+    private function _parse_invoice_totals($document)
     {
-        $totals = $invoice->getTotals();
+        $totals = $document->getTotals();
 
         return [
             'subtotal' => $totals->taxExclusiveAmount ?? 0,
@@ -286,19 +288,19 @@ class Peppol_ubl_document_parser
     /**
      * Extract party information from Invoice object
      * 
-     * @param Invoice $invoice The Invoice object
+     * @param Invoice $document The Invoice object
      * @param string $party_type Either 'buyer' or 'seller'
      * 
      * @return array Complete party information structure
      * 
      * @since 1.0.0
      */
-    private function _parse_invoice_party_info($invoice, $party_type)
+    private function _parse_invoice_party_info($document, $party_type)
     {
         if ($party_type === 'buyer') {
-            $party = $invoice->getBuyer();
+            $party = $document->getBuyer();
         } else {
-            $party = $invoice->getSeller();
+            $party = $document->getSeller();
         }
 
         return [
@@ -321,16 +323,16 @@ class Peppol_ubl_document_parser
     /**
      * Extract detailed billing references from Invoice object
      * 
-     * @param Invoice $invoice The Invoice object
+     * @param Invoice $document The Invoice object
      * 
      * @return array Array of detailed billing reference information
      * 
      * @since 1.0.0
      */
-    private function _get_billing_references($invoice)
+    private function _get_billing_references($document)
     {
         $references = [];
-        $precedingRefs = $invoice->getPrecedingInvoiceReferences();
+        $precedingRefs = $document->getPrecedingInvoiceReferences();
 
         if ($precedingRefs && is_array($precedingRefs)) {
             foreach ($precedingRefs as $ref) {
@@ -351,16 +353,16 @@ class Peppol_ubl_document_parser
     /**
      * Extract payment information from Invoice object
      * 
-     * @param Invoice $invoice The Invoice object
+     * @param Invoice $document The Invoice object
      * 
      * @return array Array of payment information
      * 
      * @since 1.0.0
      */
-    private function _parse_invoice_payments($invoice)
+    private function _parse_invoice_payments($document)
     {
         $payments = [];
-        $_payments = $invoice->getPayments();
+        $_payments = $document->getPayments();
 
         if (!empty($_payments)) {
             foreach ($_payments as $payment) {
@@ -389,5 +391,39 @@ class Peppol_ubl_document_parser
         }
 
         return $payments;
+    }
+
+    /**
+     * Extract attachments from Invoice object
+     * 
+     * @param Invoice $document The invoice object
+     * @return array Array of attachment data
+     */
+    private function _parse_attachments($document)
+    {
+        $attachments = [];
+
+
+        // Get attachments from the UBL document
+        $ublAttachments = $document->getAttachments();
+
+        if (!empty($ublAttachments)) {
+            foreach ($ublAttachments as $attachment) {
+                $attachmentData = [
+                    'file_name' => $attachment->getFilename() ?: 'Unknown File',
+                    'description' => $attachment->getDescription() ?: $attachment->getFilename(),
+                    'mime_type' => $attachment->getMimeCode(),
+                    'file_size' => null, // UBL doesn't typically include file size
+                    'external_link' => $attachment->getExternalUrl()
+                ];
+
+                // Only add if we have useful data
+                if (!empty($attachmentData['file_name']) || !empty($attachmentData['external_link'])) {
+                    $attachments[] = $attachmentData;
+                }
+            }
+        }
+
+        return $attachments;
     }
 }

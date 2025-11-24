@@ -247,7 +247,7 @@ class Peppol_service
      */
     public function generate_invoice_ubl($invoice, $sender_info, $receiver_info)
     {
-        $invoice = $this->prepare_attachments($invoice, 'invoice');
+        $invoice->attachements = $this->prepare_attachments($invoice, 'invoice');
         return $this->CI->peppol_ubl_generator->generate_invoice_ubl($invoice, $sender_info, $receiver_info);
     }
 
@@ -256,7 +256,7 @@ class Peppol_service
      */
     public function generate_credit_note_ubl($credit_note, $sender_info, $receiver_info)
     {
-        $credit_note = $this->prepare_attachments($credit_note, 'credit_note');
+        $credit_note->attachements = $this->prepare_attachments($credit_note, 'credit_note');
         return $this->CI->peppol_ubl_generator->generate_credit_note_ubl($credit_note, $sender_info, $receiver_info);
     }
 
@@ -285,6 +285,37 @@ class Peppol_service
             'paid' => _l('peppol_payment_terms_paid'),
             'refund' => _l('peppol_payment_terms_refund')
         ];
+    }
+
+    /**
+     * Prepare attachment for ubl
+     *
+     * @param object $document
+     * @param string $document_type
+     * @return array The list of attachments.
+     */
+    public function prepare_attachments($document, $document_type)
+    {
+        if (!isset($document->attachments)) return $document;
+
+        $attachments = [];
+        foreach ($document->attachments as $key => $attachment) {
+            if ($attachment['visible_to_customer'] == 1) {
+                $link = base_url('download/file/sales_attachment/' . $attachment['attachment_key']);
+                $attachment['external_link'] = empty($attachment['external_link']) ? $link : $attachment['external_link'];
+                $attachments[] = $attachment;
+            }
+        }
+
+        // Add link to the where pdf can be downloaded i.e view as customer.
+        $document_number = $document_type == 'invoice' ? format_invoice_number($document->id) : format_credit_note_number($document->id);
+        $attachments[] = [
+            'description' => $document_number . ' PDF',
+            'file_name' => $document_number . ' PDF',
+            'external_link' => base_url('invoice/' . $document->id . '/' . $document->hash),
+        ];
+
+        return $attachments;
     }
 
     /**
@@ -368,27 +399,39 @@ class Peppol_service
         }
     }
 
-    public function prepare_attachments($document, $document_type)
+    public function get_document($document_id)
     {
-        if (!isset($document->attachments)) return $document;
 
-        $attachments = [];
-        foreach ($document->attachments as $key => $attachment) {
-            if ($attachment['visible_to_customer'] == 1) {
-                $link = base_url('download/file/sales_attachment/' . $attachment['attachment_key']);
-                $attachment['external_link'] = empty($attachment['external_link']) ? $link : $attachment['external_link'];
-                $attachments[] = $attachment;
+        $response = $this->get_provider_ubl($document_id);
+        $document = $response['document'] ?? null;
+        if (empty($document)) {
+            return $response;
+        }
+
+        if (!empty($document->local_reference_id)) {
+            // Fetch related data only if needed and document has local reference
+
+            $doc_data = $document->document_type === 'credit_note' ?
+                $this->CI->credit_notes_model->get($document->local_reference_id)  :
+                $this->CI->invoices_model->get($document->local_reference_id);
+
+            if ($doc_data) {
+                $client_id = $doc_data->clientid;
+            }
+
+            // Get client name if we have client_id
+            if (isset($client_id) && $client_id) {
+                $client = $this->CI->clients_model->get($client_id);
+                if ($client) {
+                    $document->client = $client;
+                }
             }
         }
 
-        // Add link to the where pdf can be downloaded i.e view as customer.
-        $document_number = $document_type == 'invoice' ? format_invoice_number($document->id) : format_credit_note_number($document->id);
-        $attachments[] = [
-            'description' => $document_number . ' PDF',
-            'file_name' => $document_number . ' PDF',
-            'external_link' => base_url('invoice/' . $document->id . '/' . $document->hash),
-        ];
+        $document->ubl_content = $response['ubl_content'];
+        $document->ubl_document = new Peppol_ubl_document_parser($document->ubl_content);
+        $document->ubl_file_name = $response['filename'];
 
-        return $attachments;
+        return $document;
     }
 }

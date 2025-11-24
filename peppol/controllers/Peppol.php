@@ -616,56 +616,11 @@ class Peppol extends AdminController
             return;
         }
 
-        // Get document data without JOINs for better performance
-        $this->db->select('*');
-        $this->db->from(db_prefix() . 'peppol_documents');
-        $this->db->where('id', $id);
-        $document = $this->db->get()->row();
-
-        if ($document && $document->local_reference_id) {
-            // Fetch related data only if needed and document has local reference
-            if ($document->document_type === 'invoice') {
-                $this->db->select('number, clientid');
-                $this->db->from(db_prefix() . 'invoices');
-                $this->db->where('id', $document->local_reference_id);
-                $doc_data = $this->db->get()->row();
-
-                if ($doc_data) {
-                    $document->document_number = $doc_data->number;
-                    $client_id = $doc_data->clientid;
-                }
-            } elseif ($document->document_type === 'credit_note') {
-                $this->db->select('number, clientid');
-                $this->db->from(db_prefix() . 'creditnotes');
-                $this->db->where('id', $document->local_reference_id);
-                $doc_data = $this->db->get()->row();
-
-                if ($doc_data) {
-                    $document->document_number = $doc_data->number;
-                    $client_id = $doc_data->clientid;
-                }
-            }
-
-            // Get client name if we have client_id
-            if (isset($client_id) && $client_id) {
-                $this->db->select('company');
-                $this->db->from(db_prefix() . 'clients');
-                $this->db->where('userid', $client_id);
-                $client = $this->db->get()->row();
-
-                if ($client) {
-                    $document->client_name = $client->company;
-                }
-            }
-        }
-
-        if (!$document) {
+        $document = $this->peppol_service->get_document($id);
+        if (empty($document->id)) {
             echo json_encode(['success' => false, 'message' => _l('peppol_document_not_found')]);
             return;
         }
-
-        // Parse metadata
-        $metadata = json_decode($document->provider_metadata, true) ?: [];
 
         $response = [
             'success' => true,
@@ -675,14 +630,15 @@ class Peppol extends AdminController
                 'type_formatted' => ucfirst(str_replace('_', ' ', $document->document_type)),
                 'local_reference_id' => $document->local_reference_id,
                 'document_number' => $document->document_number,
-                'client_name' => $document->client_name,
+                'client_name' => $document->client->company ?? '',
                 'status' => ucfirst($document->status),
                 'provider' => ucfirst($document->provider),
                 'provider_document_id' => $document->provider_document_id,
                 'sent_at' => $document->sent_at ? _dt($document->sent_at) : null,
                 'received_at' => $document->received_at ? _dt($document->received_at) : null,
                 'created_at' => _dt($document->created_at),
-                'metadata' => $metadata
+                'metadata' => $document->metadata,
+                'attachments' => $document->ubl_document['attachments'] ?? []
             ]
         ];
 
@@ -712,26 +668,5 @@ class Peppol extends AdminController
         header('Content-Length: ' . strlen($result['ubl_content']));
 
         echo $result['ubl_content'];
-    }
-
-    /**
-     * Get status badge CSS class
-     */
-    private function _get_status_badge_class($status)
-    {
-        switch ($status) {
-            case 'sent':
-            case 'delivered':
-                return 'label-success';
-            case 'pending':
-            case 'queued':
-                return 'label-warning';
-            case 'failed':
-                return 'label-danger';
-            case 'received':
-                return 'label-info';
-            default:
-                return 'label-default';
-        }
     }
 }

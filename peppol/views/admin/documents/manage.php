@@ -279,6 +279,8 @@ function viewPeppolDocument(documentId) {
                         '<span class="tw-text-sm">' + docData.received_at + '</span>' :
                         '<span class="text-muted">-</span>',
                     createdAt: docData.created_at,
+                    hasAttachments: docData.attachments && docData.attachments.length > 0,
+                    attachmentsList: formatAttachmentsList(docData.attachments),
                     hasMetadata: docData.metadata && Object.keys(docData.metadata).length > 0,
                     metadata: docData.metadata ? JSON.stringify(docData.metadata, null, 2) : ''
                 };
@@ -316,6 +318,11 @@ function renderTemplate(templateId, data) {
     template = template.replace(/\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g, function(match, condition, content) {
         return data[condition] ? content : '';
     });
+    
+    // Handle negative conditionals {{#unless condition}}...{{/unless}}
+    template = template.replace(/\{\{#unless\s+(\w+)\}\}([\s\S]*?)\{\{\/unless\}\}/g, function(match, condition, content) {
+        return !data[condition] ? content : '';
+    });
 
     return template;
 }
@@ -325,6 +332,58 @@ function renderTemplate(templateId, data) {
  */
 function getTypeClass(type) {
     return type.toLowerCase().includes('invoice') ? 'label-primary' : 'label-info';
+}
+
+/**
+ * Format attachments list for display
+ */
+function formatAttachmentsList(attachments) {
+    if (!attachments || attachments.length === 0) {
+        return '';
+    }
+    
+    var html = '';
+    for (var i = 0; i < attachments.length; i++) {
+        var attachment = attachments[i];
+        var fileName = attachment.file_name || attachment.filename || 'Unknown File';
+        var fileSize = attachment.file_size ? ' (' + formatFileSize(attachment.file_size) + ')' : '';
+        var description = attachment.description || fileName;
+        
+        html += '<div class="list-group-item tw-flex tw-items-center tw-justify-between">';
+        html += '<div>';
+        html += '<i class="fa fa-file-o fa-fw text-muted"></i> ';
+        
+        if (attachment.external_link) {
+            html += '<a href="' + attachment.external_link + '" target="_blank" class="text-primary">';
+            html += '<strong>' + fileName + '</strong>' + fileSize;
+            html += ' <i class="fa fa-external-link fa-xs"></i>';
+            html += '</a>';
+        } else {
+            html += '<strong>' + fileName + '</strong>' + fileSize;
+        }
+        
+        if (description !== fileName) {
+            html += '<br><small class="text-muted">' + description + '</small>';
+        }
+        
+        html += '</div>';
+        html += '</div>';
+    }
+    
+    return html;
+}
+
+/**
+ * Format file size in human readable format
+ */
+function formatFileSize(bytes) {
+    if (!bytes || bytes === 0) return '0 B';
+    
+    var k = 1024;
+    var sizes = ['B', 'KB', 'MB', 'GB'];
+    var i = Math.floor(Math.log(bytes) / Math.log(k));
+    
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
 
 /**

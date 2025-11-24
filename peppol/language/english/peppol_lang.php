@@ -171,6 +171,8 @@ $lang['peppol_sent_at'] = 'Sent At';
 $lang['peppol_received_at'] = 'Received At';
 $lang['peppol_created_at'] = 'Created At';
 $lang['peppol_metadata'] = 'Metadata';
+$lang['peppol_attachments'] = 'Attachments';
+$lang['peppol_no_attachments_found'] = 'No attachments found for this document.';
 $lang['peppol_document_not_found'] = 'Document not found';
 $lang['peppol_loading_document_details'] = 'Loading document details';
 

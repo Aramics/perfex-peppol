@@ -64,6 +64,23 @@
         </div>
     </div>
 
+    <!-- Attachments Section -->
+    <div class="row tw-mt-6">
+        <div class="col-md-12">
+            <h5 class="tw-text-lg tw-font-semibold tw-mb-4"><?php echo _l('peppol_attachments'); ?></h5>
+            {{#if hasAttachments}}
+            <div class="tw-bg-neutral-50 tw-border tw-rounded tw-p-4">
+                <div class="list-group">
+                    {{attachmentsList}}
+                </div>
+            </div>
+            {{/if}}
+            {{#unless hasAttachments}}
+            <p class="text-muted tw-text-sm"><?php echo _l('peppol_no_attachments_found'); ?></p>
+            {{/unless}}
+        </div>
+    </div>
+
     {{#if hasMetadata}}
     <div class="row tw-mt-6">
         <div class="col-md-12">

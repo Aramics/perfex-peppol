@@ -62,6 +62,13 @@
                         ?>
                         <span
                             class="label <?php echo $status_class; ?>"><?php echo ucfirst($document->status); ?></span>
+
+                        <?php if (!empty($document->received_at) && !empty($document->provider_document_id)) : ?>
+                        <button type="button" id="show-update-status-form" class="btn btn-xs btn-primary tw-ml-2"
+                            data-toggle="tooltip" title="<?php echo _l('peppol_update_document_status'); ?>">
+                            <i class="fa fa-edit"></i>
+                        </button>
+                        <?php endif; ?>
                     </td>
                 </tr>
                 <tr>
@@ -166,78 +173,86 @@
 </div>
 <?php endif; ?>
 
-<?php if (!empty($document->received_at) && !empty($document->provider_document_id)): ?>
-<!-- Response Section for Received Documents -->
+<?php if (!empty($document->received_at) && !empty($document->provider_document_id)) : ?>
+<!-- Status Update Form (Initially Hidden) -->
 <div class="row tw-mt-6">
     <div class="col-md-12">
-        <div class="panel panel-primary">
-            <div class="panel-heading">
-                <h5 class="panel-title">
-                    <i class="fa fa-reply"></i>
-                    <?php echo _l('peppol_mark_document_status'); ?>
-                </h5>
-            </div>
-            <div class="panel-body">
-                <p class="text-muted tw-mb-4"><?php echo _l('peppol_mark_status_help'); ?></p>
-                
-                <form id="mark-status-form">
-                    <div class="row">
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label><?php echo _l('peppol_response_status'); ?></label>
-                                <select name="status" id="response-status" class="form-control" required>
-                                    <option value=""><?php echo _l('peppol_select_status'); ?></option>
-                                    <option value="AB"><?php echo _l('peppol_status_acknowledged'); ?></option>
-                                    <option value="IP"><?php echo _l('peppol_status_in_process'); ?></option>
-                                    <option value="AP"><?php echo _l('peppol_status_accepted'); ?></option>
-                                    <option value="RE"><?php echo _l('peppol_status_rejected'); ?></option>
-                                    <option value="PD"><?php echo _l('peppol_status_paid'); ?></option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-5">
-                            <div class="form-group">
-                                <label><?php echo _l('peppol_response_note'); ?></label>
-                                <input type="text" name="note" class="form-control" 
-                                       placeholder="<?php echo _l('peppol_response_note_placeholder'); ?>">
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="form-group">
-                                <label><?php echo _l('peppol_effective_date'); ?></label>
-                                <input type="datetime-local" name="effective_date" class="form-control">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Clarifications Section -->
-                    <div class="row tw-mt-4">
-                        <div class="col-md-12">
-                            <div class="form-group">
-                                <label>
-                                    <?php echo _l('peppol_clarifications'); ?>
-                                    <small class="text-muted">(<?php echo _l('peppol_clarifications_optional'); ?>)</small>
-                                </label>
-                                <div id="clarifications-container">
-                                    <!-- Clarifications will be added here dynamically -->
+        <div id="update-status-form-container" style="display: none;">
+            <div class="panel panel-primary">
+                <div class="panel-heading">
+                    <h5 class="panel-title">
+                        <i class="fa fa-reply"></i>
+                        <?php echo _l('peppol_mark_document_status'); ?>
+                    </h5>
+                </div>
+                <div class="panel-body">
+                    <p class="text-muted tw-mb-4"><?php echo _l('peppol_mark_status_help'); ?></p>
+
+                    <form id="mark-status-form">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label><?php echo _l('peppol_response_status'); ?></label>
+                                    <select name="status" id="response-status" class="form-control" required>
+                                        <option value=""><?php echo _l('peppol_select_status'); ?></option>
+                                        <option value="AB"><?php echo _l('peppol_status_acknowledged'); ?></option>
+                                        <option value="IP"><?php echo _l('peppol_status_in_process'); ?></option>
+                                        <option value="AP"><?php echo _l('peppol_status_accepted'); ?></option>
+                                        <option value="RE"><?php echo _l('peppol_status_rejected'); ?></option>
+                                        <option value="PD"><?php echo _l('peppol_status_paid'); ?></option>
+                                    </select>
                                 </div>
-                                <button type="button" id="add-clarification" class="btn btn-sm btn-default tw-mt-2">
-                                    <i class="fa fa-plus"></i> <?php echo _l('peppol_add_clarification'); ?>
+                            </div>
+                            <div class="col-md-5">
+                                <div class="form-group">
+                                    <label><?php echo _l('peppol_response_note'); ?></label>
+                                    <input type="text" name="note" class="form-control"
+                                        placeholder="<?php echo _l('peppol_response_note_placeholder'); ?>">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label><?php echo _l('peppol_effective_date'); ?></label>
+                                    <input type="datetime-local" name="effective_date" class="form-control">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Clarifications Section -->
+                        <div class="row tw-mt-4">
+                            <div class="col-md-12">
+                                <div class="form-group">
+                                    <label>
+                                        <?php echo _l('peppol_clarifications'); ?>
+                                        <small
+                                            class="text-muted">(<?php echo _l('peppol_clarifications_optional'); ?>)</small>
+                                    </label>
+                                    <div id="clarifications-container">
+                                        <!-- Clarifications will be added here dynamically -->
+                                    </div>
+                                    <button type="button" id="add-clarification" class="btn btn-sm btn-default tw-mt-2">
+                                        <i class="fa fa-plus"></i> <?php echo _l('peppol_add_clarification'); ?>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row tw-mt-4">
+                            <div class="col-md-6">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fa fa-paper-plane"></i> <?php echo _l('peppol_send_response'); ?>
+                                </button>
+                            </div>
+                            <div class="col-md-6 text-right">
+                                <button type="button" id="cancel-update-status" class="btn btn-default">
+                                    <i class="fa fa-times"></i> <?php echo _l('cancel'); ?>
                                 </button>
                             </div>
                         </div>
-                    </div>
-                    
-                    <div class="row tw-mt-4">
-                        <div class="col-md-12">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fa fa-paper-plane"></i> <?php echo _l('peppol_send_response'); ?>
-                            </button>
-                        </div>
-                    </div>
-                </form>
+                    </form>
+                </div>
             </div>
-        </div>
+        </div> <!-- End update-status-form-container -->
     </div>
 </div>
 
@@ -245,7 +260,7 @@
 $(function() {
     var clarificationOptions = {};
     var clarificationCounter = 0;
-    
+
     // Use passed clarifications data or cached data, fallback to AJAX if neither available
     if (typeof peppolClarificationsCache !== 'undefined' && peppolClarificationsCache) {
         clarificationOptions = peppolClarificationsCache;
@@ -257,22 +272,43 @@ $(function() {
         // Fallback to AJAX request (should rarely happen)
         console.log('Fetching clarifications data via AJAX');
         $.get(admin_url + 'peppol/get_clarifications')
-        .done(function(response) {
-            if (response.success) {
-                clarificationOptions = response.data;
-                // Cache it globally for future use
-                if (typeof window.peppolClarificationsCache === 'undefined') {
-                    window.peppolClarificationsCache = response.data;
+            .done(function(response) {
+                if (response.success) {
+                    clarificationOptions = response.data;
+                    // Cache it globally for future use
+                    if (typeof window.peppolClarificationsCache === 'undefined') {
+                        window.peppolClarificationsCache = response.data;
+                    }
                 }
-            }
-        });
+            });
     }
-    
+
+    // Show/Hide Status Update Form
+    $('#show-update-status-form').on('click', function() {
+        $(this).prop('disabled', true).addClass('disabled');
+
+        $('#update-status-form-container').slideDown(400, function() {
+            document.querySelector('#update-status-form-container').scrollIntoView();
+        });
+    });
+
+    $('#cancel-update-status').on('click', function() {
+        $('#update-status-form-container').slideUp(400, function() {
+            // Reset form
+            $('#mark-status-form')[0].reset();
+            // Clear all clarifications
+            $('#clarifications-container').empty();
+            clarificationCounter = 0;
+            // Re-enable the trigger button
+            $('#show-update-status-form').prop('disabled', false).removeClass('disabled');
+        });
+    });
+
     // Add clarification button
     $('#add-clarification').on('click', function() {
         addClarificationRow();
     });
-    
+
     function addClarificationRow() {
         var index = clarificationCounter++;
         var row = $(`
@@ -312,7 +348,7 @@ $(function() {
                 </div>
             </div>
         `);
-        
+
         // Populate type options
         if (clarificationOptions.types) {
             var typeSelect = row.find('.clarification-type');
@@ -320,36 +356,37 @@ $(function() {
                 typeSelect.append('<option value="' + key + '">' + value + '</option>');
             });
         }
-        
+
         $('#clarifications-container').append(row);
-        
+
         // Handle type change to update code options
         row.find('.clarification-type').on('change', function() {
             var type = $(this).val();
             var codeSelect = row.find('.clarification-code');
             codeSelect.html('<option value=""><?php echo _l('peppol_select_code'); ?></option>');
-            
-            var codes = type === 'OPStatusReason' ? clarificationOptions.reason_codes : clarificationOptions.action_codes;
+
+            var codes = type === 'OPStatusReason' ? clarificationOptions.reason_codes :
+                clarificationOptions.action_codes;
             if (codes) {
                 $.each(codes, function(key, value) {
                     codeSelect.append('<option value="' + key + '">' + value + '</option>');
                 });
             }
         });
-        
+
         // Remove clarification
         row.find('.remove-clarification').on('click', function() {
             row.remove();
         });
     }
-    
+
     $('#mark-status-form').on('submit', function(e) {
         e.preventDefault();
-        
+
         var $form = $(this);
         var $btn = $form.find('button[type="submit"]');
         var originalText = $btn.html();
-        
+
         // Collect form data
         var formData = {
             document_id: <?php echo $document->id; ?>,
@@ -358,7 +395,7 @@ $(function() {
             effective_date: $form.find('[name="effective_date"]').val(),
             clarifications: []
         };
-        
+
         // Collect clarifications
         $('.clarification-row').each(function() {
             var $row = $(this);
@@ -367,36 +404,43 @@ $(function() {
                 clarificationCode: $row.find('[name$="[clarificationCode]"]').val(),
                 clarification: $row.find('[name$="[clarification]"]').val()
             };
-            
-            if (clarification.clarificationType && clarification.clarificationCode && clarification.clarification) {
+
+            if (clarification.clarificationType && clarification.clarificationCode &&
+                clarification.clarification) {
                 formData.clarifications.push(clarification);
             }
         });
-        
+
         if (!formData.status) {
             alert_float('danger', '<?php echo _l("peppol_select_status"); ?>');
             return;
         }
-        
-        $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> <?php echo _l("processing"); ?>');
-        
+
+        $btn.prop('disabled', true).html(
+            '<i class="fa fa-spinner fa-spin"></i> <?php echo _l("processing"); ?>');
+
         $.post(admin_url + 'peppol/mark_document_status', formData)
-        .done(function(response) {
-            if (response.success) {
-                alert_float('success', response.message);
-                setTimeout(function() {
-                    window.location.reload();
-                }, 2000);
-            } else {
-                alert_float('danger', response.message);
-            }
-        })
-        .fail(function() {
-            alert_float('danger', '<?php echo _l("something_went_wrong"); ?>');
-        })
-        .always(function() {
-            $btn.prop('disabled', false).html(originalText);
-        });
+            .done(function(response) {
+                if (response.success) {
+                    alert_float('success', response.message);
+                    // Hide form and reset trigger button
+                    $('#update-status-form-container').slideUp(400, function() {
+                        $('#show-update-status-form').prop('disabled', false).removeClass(
+                            'disabled');
+                    });
+                    setTimeout(function() {
+                        window.location.reload();
+                    }, 2000);
+                } else {
+                    alert_float('danger', response.message);
+                }
+            })
+            .fail(function() {
+                alert_float('danger', '<?php echo _l("something_went_wrong"); ?>');
+            })
+            .always(function() {
+                $btn.prop('disabled', false).html(originalText);
+            });
     });
 });
 </script>

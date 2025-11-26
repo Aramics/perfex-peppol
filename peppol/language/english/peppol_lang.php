@@ -475,6 +475,10 @@ $lang['peppol_invalid_response_code'] = 'Invalid response code. Must be one of: 
 $lang['peppol_document_response_sent_success'] = 'Document response sent successfully';
 $lang['peppol_connection_failed'] = 'Connection failed: %s';
 
+// UX Improvement Messages
+$lang['peppol_update_document_status'] = 'Update Document Status';
+$lang['peppol_click_to_send_response'] = 'Click to send a response to the seller';
+
 // Validation Messages
 $lang['peppol_response_code_required'] = 'Response code is required.';
 $lang['peppol_response_code_invalid'] = 'Invalid response code selected.';

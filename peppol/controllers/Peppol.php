@@ -632,11 +632,15 @@ class Peppol extends AdminController
             $attachments = $document->ubl_document['data']['attachments'];
         }
 
+        // Get clarifications data for forms
+        $clarifications = $this->peppol_service->get_available_clarifications();
+
         // Prepare simplified view data - pass document directly with minimal processing
         $view_data = [
             'document' => $document,
             'metadata' => $metadata,
-            'attachments' => $attachments
+            'attachments' => $attachments,
+            'clarifications' => $clarifications
         ];
 
         // Render the view content
@@ -644,7 +648,8 @@ class Peppol extends AdminController
 
         echo json_encode([
             'success' => true,
-            'content' => $content
+            'content' => $content,
+            'clarifications' => $clarifications
         ]);
     }
 
@@ -686,15 +691,63 @@ class Peppol extends AdminController
         $document_id = $this->input->post('document_id');
         $status = $this->input->post('status');
         $note = $this->input->post('note', true);
+        $effective_date = $this->input->post('effective_date', true);
+        $clarifications = $this->input->post('clarifications');
 
         if (!$document_id || !$status) {
             echo json_encode(['success' => false, 'message' => _l('peppol_invalid_request_data')]);
             return;
         }
 
+        // Process clarifications if provided
+        $processed_clarifications = [];
+        if (!empty($clarifications) && is_array($clarifications)) {
+            foreach ($clarifications as $clarification) {
+                if (!empty($clarification['clarificationType']) && 
+                    !empty($clarification['clarificationCode']) && 
+                    !empty($clarification['clarification'])) {
+                    $processed_clarifications[] = [
+                        'clarificationType' => $clarification['clarificationType'],
+                        'clarificationCode' => $clarification['clarificationCode'],
+                        'clarification' => $clarification['clarification']
+                    ];
+                }
+            }
+        }
+
         try {
-            $result = $this->peppol_service->mark_document_status($document_id, $status, $note);
+            $result = $this->peppol_service->mark_document_status(
+                $document_id, 
+                $status, 
+                $note, 
+                $processed_clarifications,
+                $effective_date
+            );
             echo json_encode($result);
+        } catch (Exception $e) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Get available clarifications (AJAX) - Fallback endpoint, rarely used due to caching
+     */
+    public function get_clarifications()
+    {
+        if (!staff_can('view', 'peppol')) {
+            echo json_encode(['success' => false, 'message' => _l('access_denied')]);
+            return;
+        }
+
+        try {
+            $clarifications = $this->peppol_service->get_available_clarifications();
+            echo json_encode([
+                'success' => true,
+                'data' => $clarifications
+            ]);
         } catch (Exception $e) {
             echo json_encode([
                 'success' => false,

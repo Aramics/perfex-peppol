@@ -500,9 +500,11 @@ class Peppol_service
      * @param int $document_id PEPPOL document ID
      * @param string $status Response status
      * @param string $note Optional note
+     * @param array $clarifications Optional clarifications array
+     * @param string $effective_date Optional effective date
      * @return array Response with success flag and message
      */
-    public function mark_document_status($document_id, $status, $note = '')
+    public function mark_document_status($document_id, $status, $note = '', $clarifications = [], $effective_date = '')
     {
         $document = $this->CI->peppol_model->get_peppol_document_by_id($document_id);
 
@@ -535,27 +537,41 @@ class Peppol_service
         $response_data = [
             'invoiceTransmissionId' => $document->provider_document_id,
             'responseCode' => $status,
-            'effectiveDate' => date('c'),
+            'effectiveDate' => !empty($effective_date) ? $effective_date : date('c'),
             'note' => $note
         ];
 
+        // Add clarifications if provided
+        if (!empty($clarifications) && is_array($clarifications)) {
+            $response_data['invoiceClarifications'] = $clarifications;
+        }
+
         // Send response via provider
         try {
-            $result = $provider->send_document_response($response_data);
+            $result = $provider->send_document_response($response_data, $document->document_type);
 
             if ($result['success']) {
-                // Update document status locally only after successful provider response
-                $this->CI->db->where('id', $document_id);
-                $this->CI->db->update(db_prefix() . 'peppol_documents', [
+                // Prepare data to store locally
+                $update_data = [
                     'response_status' => $status,
                     'response_note' => $note,
                     'responded_at' => date('Y-m-d H:i:s'),
                     'responded_by' => get_staff_user_id()
-                ]);
+                ];
+
+                // Store clarifications if provided
+                if (!empty($clarifications)) {
+                    $update_data['response_clarifications'] = json_encode($clarifications);
+                }
+
+                // Update document status locally only after successful provider response
+                $this->CI->db->where('id', $document_id);
+                $this->CI->db->update(db_prefix() . 'peppol_documents', $update_data);
 
                 return [
                     'success' => true,
-                    'message' => _l('peppol_response_sent_successfully')
+                    'message' => _l('peppol_response_sent_successfully'),
+                    'response_data' => $result
                 ];
             } else {
                 return [
@@ -569,5 +585,45 @@ class Peppol_service
                 'message' => 'Error sending response: ' . $e->getMessage()
             ];
         }
+    }
+
+    /**
+     * Get available clarification types and codes
+     * 
+     * @return array Available clarifications structure
+     */
+    public function get_available_clarifications()
+    {
+        return [
+            'types' => [
+                'OPStatusReason' => _l('peppol_clarification_type_status_reason'),
+                'OPStatusAction' => _l('peppol_clarification_type_status_action')
+            ],
+            'reason_codes' => [
+                'NON' => _l('peppol_clarification_reason_non'),
+                'REF' => _l('peppol_clarification_reason_ref'),
+                'LEG' => _l('peppol_clarification_reason_leg'),
+                'REC' => _l('peppol_clarification_reason_rec'),
+                'QUA' => _l('peppol_clarification_reason_qua'),
+                'DEL' => _l('peppol_clarification_reason_del'),
+                'PRI' => _l('peppol_clarification_reason_pri'),
+                'QTY' => _l('peppol_clarification_reason_qty'),
+                'ITM' => _l('peppol_clarification_reason_itm'),
+                'PAY' => _l('peppol_clarification_reason_pay'),
+                'UNR' => _l('peppol_clarification_reason_unr'),
+                'FIN' => _l('peppol_clarification_reason_fin'),
+                'PPD' => _l('peppol_clarification_reason_ppd'),
+                'OTH' => _l('peppol_clarification_reason_oth')
+            ],
+            'action_codes' => [
+                'NOA' => _l('peppol_clarification_action_noa'),
+                'PIN' => _l('peppol_clarification_action_pin'),
+                'NIN' => _l('peppol_clarification_action_nin'),
+                'CNF' => _l('peppol_clarification_action_cnf'),
+                'CNP' => _l('peppol_clarification_action_cnp'),
+                'CNA' => _l('peppol_clarification_action_cna'),
+                'OTH' => _l('peppol_clarification_action_oth')
+            ]
+        ];
     }
 }

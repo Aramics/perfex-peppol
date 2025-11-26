@@ -459,6 +459,22 @@ $lang['peppol_clarification_action_cnp'] = 'Credit partially';
 $lang['peppol_clarification_action_cna'] = 'Credit the amount';
 $lang['peppol_clarification_action_oth'] = 'Other';
 
+// Clarification Types
+$lang['peppol_clarification_type_status_reason'] = 'Status Reason';
+$lang['peppol_clarification_type_status_action'] = 'Status Action';
+
+// UI Labels for Clarifications
+$lang['peppol_select_type'] = 'Select type...';
+$lang['peppol_select_code'] = 'Select code...';
+$lang['peppol_clarification_message'] = 'Message';
+$lang['peppol_clarification_message_placeholder'] = 'Enter clarification message...';
+
+// Missing Required Field Messages
+$lang['peppol_missing_required_field'] = 'Missing required field: %s';
+$lang['peppol_invalid_response_code'] = 'Invalid response code. Must be one of: %s';
+$lang['peppol_document_response_sent_success'] = 'Document response sent successfully';
+$lang['peppol_connection_failed'] = 'Connection failed: %s';
+
 // Validation Messages
 $lang['peppol_response_code_required'] = 'Response code is required.';
 $lang['peppol_response_code_invalid'] = 'Invalid response code selected.';

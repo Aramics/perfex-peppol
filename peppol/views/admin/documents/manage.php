@@ -238,6 +238,9 @@ $(function() {
     });
 });
 
+// Global clarifications cache
+var peppolClarificationsCache = null;
+
 /**
  * View PEPPOL document details
  */
@@ -257,6 +260,11 @@ function viewPeppolDocument(documentId) {
         dataType: 'json',
         success: function(response) {
             if (response.success) {
+                // Cache clarifications data globally for reuse
+                if (response.clarifications && !peppolClarificationsCache) {
+                    peppolClarificationsCache = response.clarifications;
+                }
+                
                 // Simply load the pre-rendered content from backend
                 $('#document-details-content').html(response.content);
             } else {

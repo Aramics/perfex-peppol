@@ -66,6 +66,17 @@ abstract class Abstract_peppol_provider implements Peppol_provider_interface
     }
 
     /**
+     * Default document response handler (override in subclasses if document response is supported)
+     */
+    public function send_document_response($payload, $document_type = 'invoice')
+    {
+        return [
+            'success' => false,
+            'message' => 'Document response not supported by this provider'
+        ];
+    }
+
+    /**
      * Default implementation for getting settings
      */
     public function get_settings()

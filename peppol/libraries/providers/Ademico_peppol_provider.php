@@ -20,6 +20,7 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
     const ENDPOINT_LEGAL_ENTITIES = 'legal_entities';
     const ENDPOINT_NOTIFICATIONS = 'notifications';
     const ENDPOINT_GET_UBL = 'get_ubl';
+    const ENDPOINT_INVOICE_RESPONSES = 'invoice_responses';
 
     public function get_provider_info()
     {
@@ -227,7 +228,8 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                 self::ENDPOINT_SEND_CREDIT_NOTE => $prod_api_base . '/invoices/ubl-submissions',
                 self::ENDPOINT_LEGAL_ENTITIES => $prod_api_base . '/legal-entities',
                 self::ENDPOINT_NOTIFICATIONS => $prod_api_base . '/notifications',
-                self::ENDPOINT_GET_UBL => $prod_api_base . '/invoices'
+                self::ENDPOINT_GET_UBL => $prod_api_base . '/invoices',
+                self::ENDPOINT_INVOICE_RESPONSES => $prod_api_base . '/invoice-responses'
             ],
             'sandbox' => [
                 self::ENDPOINT_OAUTH => $sandbox_oauth_base . '/oauth2/token',
@@ -237,7 +239,8 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                 self::ENDPOINT_SEND_CREDIT_NOTE => $sandbox_api_base . '/invoices/ubl-submissions',
                 self::ENDPOINT_LEGAL_ENTITIES => $sandbox_api_base . '/legal-entities',
                 self::ENDPOINT_NOTIFICATIONS => $sandbox_api_base . '/notifications',
-                self::ENDPOINT_GET_UBL => $sandbox_api_base . '/invoices'
+                self::ENDPOINT_GET_UBL => $sandbox_api_base . '/invoices',
+                self::ENDPOINT_INVOICE_RESPONSES => $sandbox_api_base . '/invoice-responses'
             ]
         ];
     }
@@ -1434,6 +1437,136 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
             return [
                 'success' => false,
                 'message' => 'Failed to consume notification: ' . $e->getMessage()
+            ];
+        }
+    }
+
+    /**
+     * Send document response back to the seller
+     * 
+     * @param array $payload Response payload containing all necessary data
+     * @param string $document_type Document type ('invoice' or 'credit_note')
+     * @return array Array with 'success', 'message', and optional response data
+     */
+    public function send_document_response($payload, $document_type = 'invoice')
+    {
+        $settings = $this->get_settings();
+
+        try {
+            $token = $this->get_access_token($settings);
+            if (!$token) {
+                return [
+                    'success' => false,
+                    'message' => _l('peppol_ademico_token_failed')
+                ];
+            }
+
+            $endpoint = $this->get_endpoint(self::ENDPOINT_INVOICE_RESPONSES);
+
+            // Validate required fields in payload
+            if (empty($payload['invoiceTransmissionId'])) {
+                return [
+                    'success' => false,
+                    'message' => _l('peppol_missing_required_field', 'invoiceTransmissionId')
+                ];
+            }
+
+            if (empty($payload['responseCode'])) {
+                return [
+                    'success' => false,
+                    'message' => _l('peppol_missing_required_field', 'responseCode')
+                ];
+            }
+
+            // Validate response code
+            $valid_response_codes = ['AB', 'IP', 'UQ', 'CA', 'RE', 'AP', 'PD'];
+            if (!in_array($payload['responseCode'], $valid_response_codes)) {
+                return [
+                    'success' => false,
+                    'message' => _l('peppol_invalid_response_code', implode(', ', $valid_response_codes))
+                ];
+            }
+
+            // Prepare the request payload according to Ademico API specification
+            $api_payload = [
+                'invoiceTransmissionId' => $payload['invoiceTransmissionId'],
+                'responseCode' => $payload['responseCode']
+            ];
+
+            // Add optional fields if provided
+            if (!empty($payload['note'])) {
+                $api_payload['note'] = $payload['note'];
+            }
+
+            if (!empty($payload['effectiveDate'])) {
+                // Ensure effective date is in ISO 8601 format
+                $effective_date = $payload['effectiveDate'];
+                if (is_string($effective_date) && !preg_match('/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/', $effective_date)) {
+                    // Try to convert to ISO 8601 if it's a different format
+                    $timestamp = strtotime($effective_date);
+                    if ($timestamp !== false) {
+                        $api_payload['effectiveDate'] = date('c', $timestamp);
+                    }
+                } else {
+                    $api_payload['effectiveDate'] = $effective_date;
+                }
+            }
+
+            // Add clarifications if provided
+            if (!empty($payload['invoiceClarifications']) && is_array($payload['invoiceClarifications'])) {
+                $formatted_clarifications = [];
+                
+                foreach ($payload['invoiceClarifications'] as $clarification) {
+                    $formatted_clarification = [];
+                    
+                    // Required fields for clarification
+                    if (isset($clarification['clarificationType'])) {
+                        $formatted_clarification['clarificationType'] = $clarification['clarificationType'];
+                    }
+                    
+                    if (isset($clarification['clarificationCode'])) {
+                        $formatted_clarification['clarificationCode'] = $clarification['clarificationCode'];
+                    }
+                    
+                    if (isset($clarification['clarification'])) {
+                        $formatted_clarification['clarification'] = $clarification['clarification'];
+                    }
+                    
+                    $formatted_clarifications[] = $formatted_clarification;
+                }
+                
+                if (!empty($formatted_clarifications)) {
+                    $api_payload['invoiceClarifications'] = $formatted_clarifications;
+                }
+            }
+
+            $headers = [
+                'Authorization: ' . $token,
+                'Content-Type: application/json'
+            ];
+
+            $response = $this->call_api($endpoint, $api_payload, $headers, [], 'POST');
+
+            if ($response['success']) {
+                return [
+                    'success' => true,
+                    'message' => _l('peppol_document_response_sent_success'),
+                    'transmission_id' => $response['data']['transmissionId'] ?? null,
+                    'document_id' => $response['data']['documentId'] ?? null,
+                    'document_type' => $response['data']['documentTypeEnum'] ?? $document_type,
+                    'status' => $response['data']['c5SubmissionResult']['status'] ?? 'SCHEDULED',
+                    'response_data' => $response['data']
+                ];
+            } else {
+                return [
+                    'success' => false,
+                    'message' => _l('peppol_ademico_api_error', ($response['error'] ?? _l('peppol_ademico_unknown_error')))
+                ];
+            }
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => _l('peppol_connection_failed', $e->getMessage())
             ];
         }
     }

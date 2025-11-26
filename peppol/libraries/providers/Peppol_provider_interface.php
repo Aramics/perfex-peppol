@@ -90,4 +90,13 @@ interface Peppol_provider_interface
      * @return array Array with 'success', 'message', and 'ubl_xml'/'ubl_content' keys
      */
     public function get_document_ubl($identifier, $metadata = []);
+
+    /**
+     * Send document response back to the seller
+     * 
+     * @param array $payload Response payload containing all necessary data
+     * @param string $document_type Document type ('invoice' or 'credit_note')
+     * @return array Array with 'success', 'message', and optional response data
+     */
+    public function send_document_response($payload, $document_type = 'invoice');
 }

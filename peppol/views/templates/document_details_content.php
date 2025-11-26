@@ -165,3 +165,98 @@
     </div>
 </div>
 <?php endif; ?>
+
+<?php if (!empty($document->received_at) && !empty($document->provider_document_id)): ?>
+<!-- Response Section for Received Documents -->
+<div class="row tw-mt-6">
+    <div class="col-md-12">
+        <div class="panel panel-primary">
+            <div class="panel-heading">
+                <h5 class="panel-title">
+                    <i class="fa fa-reply"></i>
+                    <?php echo _l('peppol_mark_document_status'); ?>
+                </h5>
+            </div>
+            <div class="panel-body">
+                <p class="text-muted tw-mb-4"><?php echo _l('peppol_mark_status_help'); ?></p>
+                
+                <form id="mark-status-form">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label><?php echo _l('peppol_response_status'); ?></label>
+                                <select name="status" id="response-status" class="form-control" required>
+                                    <option value=""><?php echo _l('peppol_select_status'); ?></option>
+                                    <option value="AB"><?php echo _l('peppol_status_acknowledged'); ?></option>
+                                    <option value="IP"><?php echo _l('peppol_status_in_process'); ?></option>
+                                    <option value="AP"><?php echo _l('peppol_status_accepted'); ?></option>
+                                    <option value="RE"><?php echo _l('peppol_status_rejected'); ?></option>
+                                    <option value="PD"><?php echo _l('peppol_status_paid'); ?></option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-5">
+                            <div class="form-group">
+                                <label><?php echo _l('peppol_response_note'); ?></label>
+                                <input type="text" name="note" class="form-control" 
+                                       placeholder="<?php echo _l('peppol_response_note_placeholder'); ?>">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>&nbsp;</label>
+                                <button type="submit" class="btn btn-primary form-control">
+                                    <i class="fa fa-paper-plane"></i> <?php echo _l('peppol_send_response'); ?>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+$(function() {
+    $('#mark-status-form').on('submit', function(e) {
+        e.preventDefault();
+        
+        var $form = $(this);
+        var $btn = $form.find('button[type="submit"]');
+        var originalText = $btn.html();
+        
+        var formData = {
+            document_id: <?php echo $document->id; ?>,
+            status: $form.find('[name="status"]').val(),
+            note: $form.find('[name="note"]').val()
+        };
+        
+        if (!formData.status) {
+            alert_float('danger', '<?php echo _l("peppol_select_status"); ?>');
+            return;
+        }
+        
+        $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> <?php echo _l("processing"); ?>');
+        
+        $.post(admin_url + 'peppol/mark_document_status', formData)
+        .done(function(response) {
+            if (response.success) {
+                alert_float('success', response.message);
+                setTimeout(function() {
+                    window.location.reload();
+                }, 2000);
+            } else {
+                alert_float('danger', response.message);
+            }
+        })
+        .fail(function() {
+            alert_float('danger', '<?php echo _l("something_went_wrong"); ?>');
+        })
+        .always(function() {
+            $btn.prop('disabled', false).html(originalText);
+        });
+    });
+});
+</script>
+<?php endif; ?>

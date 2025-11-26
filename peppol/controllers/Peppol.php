@@ -673,4 +673,34 @@ class Peppol extends AdminController
         echo $result['ubl_content'];
     }
 
+    /**
+     * Mark document response status (AJAX)
+     */
+    public function mark_document_status()
+    {
+        if (!staff_can('create', 'peppol') || !$this->input->post()) {
+            echo json_encode(['success' => false, 'message' => _l('access_denied')]);
+            return;
+        }
+
+        $document_id = $this->input->post('document_id');
+        $status = $this->input->post('status');
+        $note = $this->input->post('note', true);
+
+        if (!$document_id || !$status) {
+            echo json_encode(['success' => false, 'message' => _l('peppol_invalid_request_data')]);
+            return;
+        }
+
+        try {
+            $result = $this->peppol_service->mark_document_status($document_id, $status, $note);
+            echo json_encode($result);
+        } catch (Exception $e) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ]);
+        }
+    }
+
 }

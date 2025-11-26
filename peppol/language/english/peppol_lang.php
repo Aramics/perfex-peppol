@@ -378,3 +378,92 @@ $lang['peppol_invalid_identifier_type'] = 'Invalid identifier type. Expected str
 $lang['peppol_no_transmission_id'] = 'No transmission ID available for UBL retrieval';
 $lang['peppol_ubl_retrieve_error'] = 'Error retrieving UBL from provider: %s';
 $lang['peppol_no_local_reference'] = 'No Reference';
+
+// Invoice Response
+$lang['peppol_mark_document_status'] = 'Mark Document Status';
+$lang['peppol_mark_status_help'] = 'Mark the status of this received document and optionally send a response to the seller.';
+$lang['peppol_select_status'] = 'Select status...';
+$lang['peppol_status_acknowledged'] = 'Acknowledged';
+$lang['peppol_status_in_process'] = 'In Process';
+$lang['peppol_status_accepted'] = 'Accepted';
+$lang['peppol_status_rejected'] = 'Rejected';
+$lang['peppol_status_paid'] = 'Paid';
+$lang['peppol_status_updated_successfully'] = 'Document status updated successfully.';
+$lang['peppol_send_response'] = 'Send Response';
+$lang['peppol_response_info_text'] = 'You can send a response back to the seller to inform them about the status of this received document.';
+$lang['peppol_response_status'] = 'Response Status';
+$lang['peppol_select_response_status'] = 'Select response status...';
+$lang['peppol_response_status_help'] = 'Choose the appropriate status code to inform the seller.';
+$lang['peppol_effective_date'] = 'Effective Date';
+$lang['peppol_effective_date_help'] = 'The date when this status became effective.';
+$lang['peppol_response_note'] = 'Note';
+$lang['peppol_response_note_placeholder'] = 'Optional note providing more details for the response...';
+$lang['peppol_response_note_help'] = 'Additional information about this response.';
+$lang['peppol_clarifications'] = 'Clarifications';
+$lang['peppol_clarifications_optional'] = '(Optional)';
+$lang['peppol_add_clarifications'] = 'Add Clarifications';
+$lang['peppol_hide_clarifications'] = 'Hide Clarifications';
+$lang['peppol_add_clarification'] = 'Add Clarification';
+$lang['peppol_clarification_type'] = 'Type';
+$lang['peppol_clarification_code'] = 'Code';
+$lang['peppol_clarification_text'] = 'Description';
+$lang['peppol_clarification_text_placeholder'] = 'Optional description...';
+$lang['peppol_status_reason'] = 'Status Reason';
+$lang['peppol_status_action'] = 'Status Action';
+$lang['peppol_response_preview'] = 'Response Preview';
+$lang['peppol_response_sent_successfully'] = 'Response sent successfully to the seller.';
+$lang['peppol_response_send_failed'] = 'Failed to send response: %s';
+$lang['peppol_response_error'] = 'Error processing response: %s';
+$lang['peppol_cannot_respond_to_document'] = 'Cannot respond to this document.';
+$lang['peppol_invalid_request_data'] = 'Invalid request data.';
+$lang['peppol_provider_no_response_support'] = 'Provider %s does not support invoice responses.';
+
+// Response Status Codes
+$lang['peppol_response_status_ab'] = 'Acknowledged';
+$lang['peppol_response_status_ab_desc'] = 'Buyer has received a readable invoice message';
+$lang['peppol_response_status_ip'] = 'In Process';
+$lang['peppol_response_status_ip_desc'] = 'Processing of the invoice has started';
+$lang['peppol_response_status_uq'] = 'Under Query';
+$lang['peppol_response_status_uq_desc'] = 'Additional information needed from seller';
+$lang['peppol_response_status_ca'] = 'Conditionally Accepted';
+$lang['peppol_response_status_ca_desc'] = 'Accepting under stated conditions';
+$lang['peppol_response_status_re'] = 'Rejected';
+$lang['peppol_response_status_re_desc'] = 'Invoice rejected, will not be processed';
+$lang['peppol_response_status_ap'] = 'Accepted';
+$lang['peppol_response_status_ap_desc'] = 'Final approval given, next step is payment';
+$lang['peppol_response_status_pd'] = 'Paid';
+$lang['peppol_response_status_pd_desc'] = 'Payment has been initiated';
+
+// Clarification Reason Codes
+$lang['peppol_clarification_reason_non'] = 'No issue';
+$lang['peppol_clarification_reason_ref'] = 'References incorrect';
+$lang['peppol_clarification_reason_leg'] = 'Legal information incorrect';
+$lang['peppol_clarification_reason_rec'] = 'Receiver unknown';
+$lang['peppol_clarification_reason_qua'] = 'Item quality insufficient';
+$lang['peppol_clarification_reason_del'] = 'Delivery not acceptable';
+$lang['peppol_clarification_reason_pri'] = 'Prices incorrect';
+$lang['peppol_clarification_reason_qty'] = 'Quantity incorrect';
+$lang['peppol_clarification_reason_itm'] = 'Items incorrect';
+$lang['peppol_clarification_reason_pay'] = 'Payment terms incorrect';
+$lang['peppol_clarification_reason_unr'] = 'Not recognized';
+$lang['peppol_clarification_reason_fin'] = 'Finance incorrect';
+$lang['peppol_clarification_reason_ppd'] = 'Partially paid';
+$lang['peppol_clarification_reason_oth'] = 'Other';
+
+// Clarification Action Codes
+$lang['peppol_clarification_action_noa'] = 'No action required';
+$lang['peppol_clarification_action_pin'] = 'Provide information';
+$lang['peppol_clarification_action_nin'] = 'Issue new invoice';
+$lang['peppol_clarification_action_cnf'] = 'Credit fully';
+$lang['peppol_clarification_action_cnp'] = 'Credit partially';
+$lang['peppol_clarification_action_cna'] = 'Credit the amount';
+$lang['peppol_clarification_action_oth'] = 'Other';
+
+// Validation Messages
+$lang['peppol_response_code_required'] = 'Response code is required.';
+$lang['peppol_response_code_invalid'] = 'Invalid response code selected.';
+$lang['peppol_effective_date_invalid'] = 'Invalid effective date format.';
+$lang['peppol_clarification_type_required'] = 'Clarification %d: Type is required.';
+$lang['peppol_clarification_type_invalid'] = 'Clarification %d: Invalid type selected.';
+$lang['peppol_clarification_reason_invalid'] = 'Clarification %d: Invalid reason code.';
+$lang['peppol_clarification_action_invalid'] = 'Clarification %d: Invalid action code.';

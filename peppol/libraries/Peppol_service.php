@@ -493,4 +493,81 @@ class Peppol_service
 
         return $document;
     }
+
+    /**
+     * Mark document response status
+     * 
+     * @param int $document_id PEPPOL document ID
+     * @param string $status Response status
+     * @param string $note Optional note
+     * @return array Response with success flag and message
+     */
+    public function mark_document_status($document_id, $status, $note = '')
+    {
+        $document = $this->CI->peppol_model->get_peppol_document_by_id($document_id);
+
+        if (!$document) {
+            return ['success' => false, 'message' => _l('peppol_document_not_found')];
+        }
+
+        // Only allow responses for received documents (those with received_at timestamp)
+        if (empty($document->received_at)) {
+            return ['success' => false, 'message' => _l('peppol_cannot_respond_to_document')];
+        }
+
+        // Get provider for response sending
+        $providers = peppol_get_registered_providers();
+        if (!isset($providers[$document->provider])) {
+            return ['success' => false, 'message' => _l('peppol_provider_not_found')];
+        }
+
+        $provider = $providers[$document->provider];
+
+        // Require provider to support invoice responses
+        if (!method_exists($provider, 'send_document_response')) {
+            return [
+                'success' => false,
+                'message' => sprintf(_l('peppol_provider_no_response_support'), $document->provider)
+            ];
+        }
+
+        // Prepare response payload
+        $response_data = [
+            'invoiceTransmissionId' => $document->provider_document_id,
+            'responseCode' => $status,
+            'effectiveDate' => date('c'),
+            'note' => $note
+        ];
+
+        // Send response via provider
+        try {
+            $result = $provider->send_document_response($response_data);
+
+            if ($result['success']) {
+                // Update document status locally only after successful provider response
+                $this->CI->db->where('id', $document_id);
+                $this->CI->db->update(db_prefix() . 'peppol_documents', [
+                    'response_status' => $status,
+                    'response_note' => $note,
+                    'responded_at' => date('Y-m-d H:i:s'),
+                    'responded_by' => get_staff_user_id()
+                ]);
+
+                return [
+                    'success' => true,
+                    'message' => _l('peppol_response_sent_successfully')
+                ];
+            } else {
+                return [
+                    'success' => false,
+                    'message' => _l('peppol_response_send_failed') . ': ' . ($result['message'] ?? 'Unknown error')
+                ];
+            }
+        } catch (Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Error sending response: ' . $e->getMessage()
+            ];
+        }
+    }
 }

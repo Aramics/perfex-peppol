@@ -432,6 +432,39 @@ class Peppol_model extends App_Model
     }
 
     /**
+     * Get PEPPOL documents that have associated expenses
+     * 
+     * @param int|null $limit Limit number of results
+     * @param int $offset Offset for pagination
+     * @return array Array of documents with expense information
+     */
+    public function get_documents_with_expenses($limit = null, $offset = 0)
+    {
+        $this->db->select('pd.*, e.expense_name, e.amount as expense_amount, e.date as expense_date');
+        $this->db->from(db_prefix() . 'peppol_documents pd');
+        $this->db->join(db_prefix() . 'expenses e', 'e.id = pd.expense_id', 'inner');
+        $this->db->where('pd.expense_id IS NOT NULL');
+        $this->db->order_by('pd.created_at', 'DESC');
+
+        if ($limit !== null) {
+            $this->db->limit($limit, $offset);
+        }
+
+        return $this->db->get()->result();
+    }
+
+    /**
+     * Get count of PEPPOL documents that have been converted to expenses
+     * 
+     * @return int Count of documents with expenses
+     */
+    public function count_documents_with_expenses()
+    {
+        $this->db->where('expense_id IS NOT NULL');
+        return $this->db->count_all_results(db_prefix() . 'peppol_documents');
+    }
+
+    /**
      * Get error summary for failed documents in bulk operations
      */
     public function get_bulk_operation_errors($document_type, $document_ids)

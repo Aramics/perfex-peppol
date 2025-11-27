@@ -38,13 +38,23 @@ trait Peppol_expense_trait
                 return ['success' => false, 'message' => $status_validation['message']];
             }
 
-            // Check if expense already created
-            $metadata = $document->metadata;
-            if (!empty($metadata['expense_id'])) {
-                return [
-                    'success' => false,
-                    'message' => _l('peppol_expense_already_created')
-                ];
+            // Check if expense already created and still exists
+            if (!empty($document->expense_id)) {
+                $this->CI->load->model('expenses_model');
+                $existing_expense = $this->CI->expenses_model->get($document->expense_id);
+
+                if ($existing_expense) {
+                    // Expense record still exists, prevent creation
+                    return [
+                        'success' => false,
+                        'message' => _l('peppol_expense_already_created')
+                    ];
+                } else {
+                    // Expense record was deleted, clear the expense_id and allow creation
+                    $this->CI->peppol_model->update_peppol_document($document_id, [
+                        'expense_id' => null
+                    ]);
+                }
             }
 
             // Get enriched document with UBL data
@@ -116,15 +126,9 @@ trait Peppol_expense_trait
             $expense_id = $this->CI->expenses_model->add($expense_data);
 
             if ($expense_id) {
-                // Update PEPPOL document metadata with expense ID
-                $updated_metadata = array_merge($metadata, [
-                    'expense_id' => $expense_id,
-                    'expense_created_at' => date('Y-m-d H:i:s'),
-                    'expense_amount' => $amount
-                ]);
-
+                // Update PEPPOL document with expense ID
                 $this->CI->peppol_model->update_peppol_document($document_id, [
-                    'provider_metadata' => json_encode($updated_metadata)
+                    'expense_id' => $expense_id
                 ]);
 
                 return [
@@ -250,8 +254,7 @@ trait Peppol_expense_trait
      */
     protected function get_document_expense_id($document)
     {
-        $metadata = $document->provider_metadata ?? [];
-        return $metadata['expense_id'] ?? null;
+        return $document->expense_id ?? null;
     }
 
     /**
@@ -513,13 +516,23 @@ trait Peppol_expense_trait
                 // return ['success' => false, 'message' => $status_validation['message']];
             }
 
-            // Check if expense already exists
-            $metadata = $document->provider_metadata;
-            if (!empty($metadata['expense_id'])) {
-                return [
-                    'success' => false,
-                    'message' => _l('peppol_expense_already_created')
-                ];
+            // Check if expense already exists and still exists in database
+            if (!empty($document->expense_id)) {
+                $this->CI->load->model('expenses_model');
+                $existing_expense = $this->CI->expenses_model->get($document->expense_id);
+
+                if ($existing_expense) {
+                    // Expense record still exists, prevent creation
+                    return [
+                        'success' => false,
+                        'message' => _l('peppol_expense_already_created')
+                    ];
+                } else {
+                    // Expense record was deleted, clear the expense_id and allow creation
+                    $this->CI->peppol_model->update_peppol_document($document_id, [
+                        'expense_id' => null
+                    ]);
+                }
             }
 
             // Get enriched document with UBL data

@@ -18,13 +18,15 @@ if (!$CI->db->table_exists($peppol_docs_table)) {
             `provider` varchar(100) DEFAULT NULL,
             `provider_document_id` varchar(150) DEFAULT NULL,
             `provider_metadata` text DEFAULT NULL,
+            `expense_id` int(11) DEFAULT NULL,
             `sent_at` datetime DEFAULT NULL,
             `received_at` datetime DEFAULT NULL,
             `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
             `updated_at` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY (`id`),
             KEY `document_type` (`document_type`),
-            KEY `local_reference_id` (`local_reference_id`)
+            KEY `local_reference_id` (`local_reference_id`),
+            KEY `expense_id` (`expense_id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
     ');
 }
@@ -44,6 +46,9 @@ if (!$CI->db->table_exists(db_prefix() . 'peppol_logs')) {
             PRIMARY KEY (`id`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
     ');
+} else {
+    // Table exists, check if we need to run migrations
+    peppol_run_migrations();
 }
 
 // Create PEPPOL custom fields for clients (preferred approach)
@@ -88,5 +93,28 @@ function peppol_create_custom_fields()
         $CI->db->query("INSERT INTO `" . db_prefix() . "customfields` 
         (`fieldto`,`name`, `type`, `options`, `default_value`, `field_order`, `bs_column`, `slug`, `show_on_table`, `show_on_client_portal`) VALUES 
         ('credit_note', 'PEPPOL Status', 'input','','Not Sent','2','12','credit_notes_peppol_status','1','1');");
+    }
+}
+
+/**
+ * Run PEPPOL migrations for existing installations
+ */
+function peppol_run_migrations()
+{
+    $CI = &get_instance();
+    
+    // Check if expense_id column exists, if not run migration
+    if (!$CI->db->field_exists('expense_id', db_prefix() . 'peppol_documents')) {
+        // Load the migration class
+        require_once __DIR__ . '/migrations/001_add_expense_id_to_peppol_documents.php';
+        
+        $migration = new Migration_Add_expense_id_to_peppol_documents();
+        
+        try {
+            $migration->up();
+            log_activity('PEPPOL: Successfully ran migration to add expense_id column');
+        } catch (Exception $e) {
+            log_activity('PEPPOL: Migration failed - ' . $e->getMessage());
+        }
     }
 }

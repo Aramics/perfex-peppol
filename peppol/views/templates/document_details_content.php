@@ -71,10 +71,7 @@
 
                         <?php
                             // Check if already converted to expense
-                            $expense_id = null;
-                            if (!empty($metadata['expense_id'])) {
-                                $expense_id = $metadata['expense_id'];
-                            }
+                            $expense_id = $document->expense_id ?? null;
                             ?>
 
                         <?php if ($expense_id) : ?>

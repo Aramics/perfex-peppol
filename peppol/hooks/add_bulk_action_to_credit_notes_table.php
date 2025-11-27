@@ -46,7 +46,7 @@ hooks()->add_action('before_credit_note_preview_more_menu_button', function ($cr
     $CI->load->model('peppol/peppol_model');
 
     $client = $CI->clients_model->get($credit_note->clientid);
-    $peppol_credit_note = $CI->peppol_model->get_peppol_document('credit_note', $credit_note->id);
+    $peppol_credit_note = $CI->peppol_model->get_peppol_document_by_local_ref_id('credit_note', $credit_note->id);
 
     // Only show if client has PEPPOL identifier
     if (!$client || empty($client->peppol_identifier)) {

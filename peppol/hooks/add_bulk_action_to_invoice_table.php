@@ -29,7 +29,7 @@ hooks()->add_filter('invoices_table_row_data', function ($row, $aRow = []) {
     $CI = &get_instance();
     $CI->load->model('peppol/peppol_model');
 
-    $peppol_invoice = $CI->peppol_model->get_peppol_document('invoice', $aRow['id']);
+    $peppol_invoice = $CI->peppol_model->get_peppol_document_by_local_ref_id('invoice', $aRow['id']);
 
     if ($peppol_invoice) {
         $status = $peppol_invoice->status;
@@ -81,7 +81,7 @@ hooks()->add_action('before_invoice_preview_more_menu_button', function ($invoic
     $CI->load->model('peppol/peppol_model');
 
     $client = $CI->clients_model->get($invoice->clientid);
-    $peppol_invoice = $CI->peppol_model->get_peppol_document('invoice', $invoice->id);
+    $peppol_invoice = $CI->peppol_model->get_peppol_document_by_local_ref_id('invoice', $invoice->id);
 
     // Only show if client has PEPPOL identifier
     if (!$client || empty($client->peppol_identifier)) {

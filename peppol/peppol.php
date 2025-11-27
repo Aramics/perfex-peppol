@@ -61,4 +61,6 @@ foreach ($hook_files as $hook_file) {
     }
 }
 
+//$CI->load->model(PEPPOL_MODULE_NAME . '/peppol_model');
+//dd($CI->peppol_model->sync_credit_note_status_cf('10', ['status' => 'SENT']));
 //dd(peppol_get_active_provider()->webhook([]));

@@ -75,7 +75,6 @@ function peppol_create_custom_fields()
     }
 
     // Credit Note PEPPOL Status field (for display only)
-    $CI->db->where('fieldto', 'credit_notes');
     $CI->db->where('slug', 'credit_notes_peppol_status');
     $existing_status = $CI->db->get(db_prefix() . 'customfields')->row();
 

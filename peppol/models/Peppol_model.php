@@ -53,28 +53,14 @@ class Peppol_model extends App_Model
     }
 
     /**
-     * Get PEPPOL document by type and document ID
+     * Get PEPPOL document by type and local ref document ID
      */
-    public function get_peppol_document($document_type, $document_id)
+    public function get_peppol_document_by_local_ref_id($document_type, $document_id)
     {
         return $this->db->where('document_type', $document_type)
             ->where('local_reference_id', $document_id)
             ->get(db_prefix() . 'peppol_documents')
             ->row();
-    }
-
-    /**
-     * Get PEPPOL document by provider document ID
-     */
-    public function get_peppol_document_by_provider_id($provider_document_id, $provider = null)
-    {
-        $this->db->where('provider_document_id', $provider_document_id);
-
-        if ($provider !== null) {
-            $this->db->where('provider', $provider);
-        }
-
-        return $this->db->get(db_prefix() . 'peppol_documents')->row();
     }
 
     /**
@@ -92,26 +78,6 @@ class Peppol_model extends App_Model
         return $this->db->get(db_prefix() . 'peppol_documents')->row();
     }
 
-    /**
-     * Find PEPPOL document by searching in metadata
-     * 
-     * @param string $key The metadata key to search for
-     * @param mixed $value The value to search for
-     * @param string $provider Optional provider filter
-     * @return object|null The first matching document or null
-     */
-    public function get_peppol_document_by_metadata($key, $value, $provider = null)
-    {
-        // Use JSON_EXTRACT to search in the metadata
-        $this->db->where("JSON_UNQUOTE(JSON_EXTRACT(provider_metadata, '$.$key')) =", $value);
-
-        if ($provider !== null) {
-            $this->db->where('provider', $provider);
-        }
-
-        return $this->db->get(db_prefix() . 'peppol_documents')->row();
-    }
-
 
     /**
      * Create PEPPOL document record
@@ -119,7 +85,13 @@ class Peppol_model extends App_Model
     public function create_peppol_document($data)
     {
         $this->db->insert(db_prefix() . 'peppol_documents', $data);
-        return $this->db->insert_id();
+
+        $id = $this->db->insert_id();
+        if ($id) {
+            $this->sync_credit_note_status_cf($id, $data);
+        }
+
+        return $id;
     }
 
 
@@ -129,8 +101,68 @@ class Peppol_model extends App_Model
     public function update_peppol_document($id, $data)
     {
         $this->db->where('id', $id);
-        return $this->db->update(db_prefix() . 'peppol_documents', $data);
+        $updated = $this->db->update(db_prefix() . 'peppol_documents', $data);
+        if ($updated) {
+            $this->sync_credit_note_status_cf($id, $data);
+        }
+        return $updated;
     }
+
+    /**
+     * Sync the PEPPOL credit note status into its corresponding custom field.
+     *
+     * This method updates the custom field "credit_notes_peppol_status" on the
+     * related Perfex credit note record whenever a PEPPOL credit note status changes.
+     *
+     * @param int   $id   The PEPPOL document ID.
+     * @param array $data The PEPPOL payload containing document_type, status, and local_reference_id.
+     *
+     * @return void
+     */
+    public function sync_credit_note_status_cf($id, $data)
+    {
+        try {
+
+            // Early return if status is not provided
+            if (!isset($data['status'])) {
+                return;
+            }
+
+            $status = $data['status'];
+
+            $document = $this->get_peppol_document_by_id((int)$id);
+            if (!$document) return;
+
+            if ($document->document_type !== 'credit_note') return;
+
+            $credit_note_id = $document->local_reference_id ?? null;
+
+            if (empty($credit_note_id)) {
+                return;
+            }
+
+            // Fetch custom field
+            $custom_fields = get_custom_fields('credit_note', ['slug' => 'credit_notes_peppol_status']);
+            $custom_field = $custom_fields[0] ?? null;
+
+            if (empty($custom_field) || empty($custom_field['id'])) {
+                return; // Custom field missing, nothing to update
+            }
+
+            // Prepare CF update data
+            $cf_post = [
+                'credit_note' => [
+                    $custom_field['id'] => $status
+                ]
+            ];
+
+            // Perform update
+            handle_custom_fields_post($credit_note_id, $cf_post);
+        } catch (\Throwable $th) {
+            log_message('error', $th->getMessage());
+        }
+    }
+
 
     /**
      * Log PEPPOL activity

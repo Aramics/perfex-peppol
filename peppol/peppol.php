@@ -4,10 +4,11 @@ defined('BASEPATH') or exit('No direct script access allowed');
 
 /*
 Module Name: PEPPOL Integration
-Description: Simple PEPPOL integration for sending invoices and credit notes via PEPPOL network
-Version: 1.3.0
-Requires at least: 3.4.*
+Description: Streamlined PEPPOL integration for sending and receiving invoices and credit notes through the PEPPOL network.
+Version: 1.0.0
+Requires at least: 3.1.*
 Author: ulutfa
+Author URI: https://codecanyon.net/user/ulutfa
 */
 
 define('PEPPOL_MODULE_NAME', 'peppol');

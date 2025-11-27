@@ -8,7 +8,8 @@ $lang['peppol_status'] = 'PEPPOL Status';
 $lang['peppol_not_sent'] = 'Not sent';
 $lang['peppol_invoices'] = 'PEPPOL Invoices';
 $lang['peppol_documents'] = 'PEPPOL Documents';
-$lang['peppol_settings'] = 'PEPPOL Settings';
+$lang['peppol_documents_menu'] = 'Documents';
+$lang['peppol_settings_menu'] = 'Settings';
 
 // Status labels
 $lang['peppol_status_pending'] = 'Pending';

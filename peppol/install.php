@@ -14,7 +14,7 @@ if (!$CI->db->table_exists($peppol_docs_table)) {
             `id` int(11) NOT NULL AUTO_INCREMENT,
             `document_type` varchar(20) NOT NULL DEFAULT "invoice",
             `local_reference_id` int(11) DEFAULT NULL,
-            `status` varchar(50) NOT NULL DEFAULT "pending" COMMENT "Status: transmission(pending,sent,delivered,failed,received) + business(paid,accepted,acknowledged,rejected). Direction: local_reference_id NULL=inbound, NOT NULL=outbound",
+            `status` varchar(50) NOT NULL DEFAULT "QUEUED" COMMENT "API status codes: QUEUED,SENT,SEND_FAILED,TECHNICAL_ACCEPTANCE,FULLY_PAID,ACCEPTED,REJECTED,received. Direction: local_reference_id NULL=inbound, NOT NULL=outbound",
             `provider` varchar(100) DEFAULT NULL,
             `provider_document_id` varchar(150) DEFAULT NULL,
             `provider_document_transmission_id` varchar(150) DEFAULT NULL COMMENT "Transmission ID from notification for easy lookup",

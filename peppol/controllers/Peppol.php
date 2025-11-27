@@ -598,7 +598,7 @@ class Peppol extends AdminController
         // Get statistics for different document types
         $data['invoice_stats'] = $this->peppol_model->get_document_statistics('invoice');
         $data['credit_note_stats'] = $this->peppol_model->get_document_statistics('credit_note');
-        
+
         // Get expense statistics
         $data['expense_stats'] = $this->peppol_model->get_expense_statistics();
         $data['invoice_expense_eligible'] = $this->peppol_model->get_expense_eligible_statistics('invoice');
@@ -629,7 +629,7 @@ class Peppol extends AdminController
         }
 
         // Parse metadata
-        $metadata = json_decode($document->provider_metadata ?? '{}', true) ?: [];
+        $metadata = $document->metadata;
 
         // Get attachments from UBL document
         $attachments = [];
@@ -708,9 +708,11 @@ class Peppol extends AdminController
         $processed_clarifications = [];
         if (!empty($clarifications) && is_array($clarifications)) {
             foreach ($clarifications as $clarification) {
-                if (!empty($clarification['clarificationType']) && 
-                    !empty($clarification['clarificationCode']) && 
-                    !empty($clarification['clarification'])) {
+                if (
+                    !empty($clarification['clarificationType']) &&
+                    !empty($clarification['clarificationCode']) &&
+                    !empty($clarification['clarification'])
+                ) {
                     $processed_clarifications[] = [
                         'clarificationType' => $clarification['clarificationType'],
                         'clarificationCode' => $clarification['clarificationCode'],
@@ -722,9 +724,9 @@ class Peppol extends AdminController
 
         try {
             $result = $this->peppol_service->mark_document_status(
-                $document_id, 
-                $status, 
-                $note, 
+                $document_id,
+                $status,
+                $note,
                 $processed_clarifications,
                 $effective_date
             );
@@ -793,7 +795,7 @@ class Peppol extends AdminController
                 ];
 
                 $form_html = $this->load->view('peppol/templates/expense_creation_form', $view_data, true);
-                
+
                 echo json_encode([
                     'success' => true,
                     'show_form' => true,
@@ -826,5 +828,4 @@ class Peppol extends AdminController
             ]);
         }
     }
-
 }

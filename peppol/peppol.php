@@ -27,20 +27,17 @@ function peppol_module_activation_hook()
 {
     $CI = &get_instance();
     require_once(__DIR__ . '/install.php');
-
-    // Set initial module version if not set
-    if (!get_option('peppol_module_version')) {
-        add_option('peppol_module_version', '1.3.0');
-    }
-
-    // Run upgrade script if needed
-    require_once(__DIR__ . '/upgrade.php');
 }
 
 /**
  * Register language files
  */
 register_language_files(PEPPOL_MODULE_NAME, [PEPPOL_MODULE_NAME]);
+
+/**
+ * Process notifications
+ */
+register_cron_task('peppol_process_notifications');
 
 /**
  * Load hook files
@@ -53,6 +50,7 @@ $hook_files = [
     'provider_registration.php',
     'add_admin_menu.php',
     'expense_deletion_cleanup.php',
+    'cron_job.php'
 ];
 
 foreach ($hook_files as $hook_file) {

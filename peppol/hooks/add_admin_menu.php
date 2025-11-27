@@ -11,7 +11,7 @@ function peppol_add_admin_menu()
 {
     $CI = &get_instance();
 
-    if (has_permission('peppol', '', 'view')) {
+    if (staff_can('view', 'peppol')) {
         $CI->app_menu->add_sidebar_menu_item('peppol-menu', [
             'collapse' => true,
             'name'     => _l('peppol'),
@@ -27,7 +27,7 @@ function peppol_add_admin_menu()
             'position' => 1,
         ]);
 
-        if (has_permission('settings', '', 'view')) {
+        if (staff_can('view', 'settings')) {
             $CI->app_menu->add_sidebar_children_item('peppol-menu', [
                 'slug'     => 'peppol-settings',
                 'name'     => _l('peppol_settings'),

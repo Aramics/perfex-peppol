@@ -397,46 +397,38 @@ class Peppol_model extends App_Model
         $this->db->group_by('status');
         $status_counts = $this->db->get()->result();
 
-        // Count total unsent (documents not in peppol_documents)
-        $table_map = [
-            'invoice' => 'invoices',
-            'credit_note' => 'creditnotes'
-        ];
 
-        $table = $table_map[$document_type];
-        $this->db->select("COUNT(d.id) as count");
-        $this->db->from(db_prefix() . $table . ' d');
-        $this->db->where("d.id NOT IN (
-            SELECT COALESCE(local_reference_id, 0) 
-            FROM " . db_prefix() . "peppol_documents 
-            WHERE document_type = " . $this->db->escape($document_type) . " 
-            AND local_reference_id IS NOT NULL
-        )");
-
-        if ($document_type === 'invoice') {
-            $this->db->where_in('d.status', [Invoices_model::STATUS_UNPAID, Invoices_model::STATUS_PAID, Invoices_model::STATUS_OVERDUE]);
-        } else {
-            $this->db->where('d.status >=', 1);
-        }
-
-        $unsent_count = $this->db->get()->row()->count;
-
-        // Format results
+        // Initialize stats with API status codes only
         $stats = [
-            'unsent' => $unsent_count,
-            'pending' => 0,
-            'sent' => 0,
-            'delivered' => 0,
-            'failed' => 0,
-            'received' => 0,
-            'rejected' => 0,
-            'rejected_inbound' => 0,
+            'QUEUED' => 0,
+            'SENT' => 0,
+            'SEND_FAILED' => 0,
+            'TECHNICAL_ACCEPTANCE' => 0,
+            'BUYER_ACKNOWLEDGE' => 0,
+            'IN_PROCESS' => 0,
+            'UNDER_QUERY' => 0,
+            'CONDITIONALLY_ACCEPTED' => 0,
+            'ACCEPTED' => 0,
+            'PARTIALLY_PAID' => 0,
+            'FULLY_PAID' => 0,
+            'REJECTED' => 0,
+            'RECEIVED' => 0,
             'total_processed' => 0
         ];
 
         foreach ($status_counts as $row) {
-            $stats[$row->status] = $row->count;
-            $stats['total_processed'] += $row->count;
+            $status = $row->status;
+            $count = $row->count;
+
+            // Use status directly - all should be API codes
+            if (isset($stats[$status])) {
+                $stats[$status] = $count;
+            } else {
+                // For any unknown statuses, add them dynamically
+                $stats[$status] = $count;
+            }
+
+            $stats['total_processed'] += $count;
         }
 
         // Calculate total as only PEPPOL documents (not including unsent)
@@ -459,15 +451,6 @@ class Peppol_model extends App_Model
         $this->db->limit($limit);
 
         return $this->db->get()->result();
-    }
-
-    /**
-     * Get latest error for a specific document (one liner)
-     */
-    public function get_latest_document_error($document_type, $document_id)
-    {
-        $errors = $this->get_document_errors($document_type, $document_id, 1);
-        return !empty($errors) ? $errors[0] : null;
     }
 
     /**
@@ -546,7 +529,7 @@ class Peppol_model extends App_Model
         $this->db->from(db_prefix() . 'peppol_documents pd');
         $this->db->join(db_prefix() . 'expenses e', 'e.id = pd.expense_id', 'left');
         $this->db->where('pd.expense_id IS NOT NULL');
-        
+
         $result = $this->db->get()->row();
         if ($result) {
             $stats['total_expenses'] = (int)$result->total_expenses;
@@ -562,7 +545,7 @@ class Peppol_model extends App_Model
         $this->db->join(db_prefix() . 'expenses e', 'e.id = pd.expense_id', 'left');
         $this->db->where('pd.document_type', 'invoice');
         $this->db->where('pd.expense_id IS NOT NULL');
-        
+
         $result = $this->db->get()->row();
         if ($result) {
             $stats['invoice_expenses'] = (int)$result->invoice_expenses;
@@ -578,7 +561,7 @@ class Peppol_model extends App_Model
         $this->db->join(db_prefix() . 'expenses e', 'e.id = pd.expense_id', 'left');
         $this->db->where('pd.document_type', 'credit_note');
         $this->db->where('pd.expense_id IS NOT NULL');
-        
+
         $result = $this->db->get()->row();
         if ($result) {
             $stats['credit_note_expenses'] = (int)$result->credit_note_expenses;
@@ -646,16 +629,15 @@ class Peppol_model extends App_Model
      * Get formatted display information for PEPPOL document status
      * 
      * @param string $status API status code
-     * @param bool $is_outbound Whether document is outbound (true) or inbound (false)
      * @return array Display information with label, color class, and description
      */
-    public function get_status_display($status, $is_outbound = null)
+    public function get_status_display($status)
     {
         // Outbound statuses (our documents sent to others)
         $outbound_statuses = [
             'QUEUED' => [
                 'label' => 'Queued',
-                'color' => 'label-warning', 
+                'color' => 'label-warning',
                 'description' => 'Waiting to be sent to the Buyer'
             ],
             'SENT' => [

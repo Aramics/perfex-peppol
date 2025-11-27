@@ -7,7 +7,7 @@ require_once __DIR__ . '/traits/Peppol_expense_trait.php';
 class Peppol_service
 {
     use Peppol_expense_trait;
-    
+
     protected $CI;
 
     public function __construct()
@@ -75,6 +75,17 @@ class Peppol_service
     }
 
     /**
+     * Process the active provider wehook  method to run 
+     * notification processing
+     *
+     * @return void
+     */
+    public function process_notifications()
+    {
+        peppol_get_active_provider()->webhook([]);
+    }
+
+    /**
      * Prepare document data for sending
      */
     private function _prepare_document_data($document_type, $document_id)
@@ -118,17 +129,8 @@ class Peppol_service
         $receiver_info = $this->prepare_receiver_info($client);
 
         // Get active provider
-        $active_provider = get_option('peppol_active_provider');
+        $active_provider = peppol_get_active_provider();
         if (!$active_provider) {
-            return [
-                'success' => false,
-                'message' => 'No PEPPOL provider configured'
-            ];
-        }
-
-        // Get provider instance
-        $providers = peppol_get_registered_providers();
-        if (!isset($providers[$active_provider])) {
             return [
                 'success' => false,
                 'message' => 'Active provider not found: ' . $active_provider
@@ -141,7 +143,7 @@ class Peppol_service
             'client' => $client,
             'sender_info' => $sender_info,
             'receiver_info' => $receiver_info,
-            'provider' => $providers[$active_provider],
+            'provider' => $$active_provider,
             'document_data' => $document
         ];
     }
@@ -630,5 +632,4 @@ class Peppol_service
             ]
         ];
     }
-
 }

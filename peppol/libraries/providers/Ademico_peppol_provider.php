@@ -1066,52 +1066,77 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
         try {
             $transmission_id = $notification['transmissionId'];
 
-            // Check if this notification has already been processed
+            // Check if this transmission has already been processed
+            $existing_document = $CI->peppol_model->get_peppol_document_by_transmission_id($transmission_id, $this->get_id());
             $notification_id = $notification['notificationId'] ?? null;
-            $existing_document = null;
-
-            if ($notification_id) {
-                $existing_document = $CI->peppol_model->get_peppol_document_by_metadata('notificationId', $notification_id, $this->get_id());
-            }
 
             if ($existing_document) {
                 return [
                     'success' => false,
                     'already_processed' => true,
-                    'message' => 'Notification ' . $notification_id . ' has already been processed',
+                    'message' => 'Document with transmission ID ' . $transmission_id . ' has already been processed',
                     'data' => [
                         'notification_id' => $notification_id,
                         'transmission_id' => $transmission_id,
-                        'existing_document_id' => $existing_document->local_reference_id,
+                        'existing_document_id' => $existing_document->id,
                         'existing_document_type' => $existing_document->document_type,
                         'processed_at' => $existing_document->created_at
                     ]
                 ];
             }
 
-            // Store only notification metadata - no document creation
-            $document_data = [
-                'notification_id' => $notification_id,
-                'transmission_id' => $transmission_id,
-                'document_type' => $notification['peppolDocumentType'] ?? 'unknown',
-                'sender' => $notification['sender'] ?? null,
-                'receiver' => $notification['receiver'] ?? null,
-                'notification_date' => $notification['notificationDate'] ?? null,
-                'processed_at' => date('Y-m-d H:i:s'),
-                'metadata' => $notification
+            // Create PEPPOL document entry to track received document
+            $peppol_document_data = [
+                'document_type' => $this->_map_peppol_document_type($notification['peppolDocumentType'] ?? 'unknown'),
+                'local_reference_id' => null, // Inbound document (no local reference)
+                'status' => 'RECEIVED',
+                'provider' => $this->get_id(),
+                'provider_document_id' => null, // Will be set when UBL is fetched
+                'provider_document_transmission_id' => $transmission_id,
+                'provider_metadata' => json_encode($notification),
+                'expense_id' => null,
+                'sent_at' => null, // Inbound document
+                'received_at' => !empty($notification['notificationDate']) ?
+                    date('Y-m-d H:i:s', strtotime($notification['notificationDate'])) :
+                    date('Y-m-d H:i:s'),
+                'created_at' => date('Y-m-d H:i:s')
             ];
 
-            return [
-                'success' => true,
-                'data' => $document_data,
-                'message' => 'Incoming document notification processed successfully'
-            ];
+            $document_id = $CI->peppol_model->create_peppol_document($peppol_document_data);
+
+            if ($document_id) {
+                return [
+                    'success' => true,
+                    'data' => array_merge($peppol_document_data, ['id' => $document_id]),
+                    'message' => 'Incoming document tracked successfully'
+                ];
+            } else {
+                return [
+                    'success' => false,
+                    'message' => 'Failed to create PEPPOL document record'
+                ];
+            }
         } catch (Exception $e) {
             return [
                 'success' => false,
                 'message' => 'Failed to process incoming document: ' . $e->getMessage()
             ];
         }
+    }
+
+    /**
+     * Map PEPPOL document type to internal document type
+     */
+    private function _map_peppol_document_type($peppol_type)
+    {
+        $mapping = [
+            'Invoice' => 'invoice',
+            'INVOICE' => 'invoice',
+            'CreditNote' => 'credit_note',
+            'CREDIT_NOTE' => 'credit_note'
+        ];
+
+        return $mapping[$peppol_type] ?? 'invoice'; // Default to invoice
     }
 
     /**

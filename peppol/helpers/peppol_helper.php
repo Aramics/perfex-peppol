@@ -3,22 +3,6 @@
 defined('BASEPATH') or exit('No direct script access allowed');
 
 /**
- * PEPPOL Helper Functions
- */
-
-/**
- * Check if PEPPOL is configured
- */
-if (!function_exists('is_peppol_configured')) {
-    function is_peppol_configured()
-    {
-        $company_identifier = get_option('peppol_company_identifier');
-
-        return !empty($company_identifier);
-    }
-}
-
-/**
  * Render PEPPOL status column for tables
  */
 if (!function_exists('render_peppol_status_column')) {
@@ -38,5 +22,36 @@ if (!function_exists('render_peppol_status_column')) {
         return '<span class="label ' . $badge_class . ' peppol-status-badge" 
                 data-item-id="' . $item_id . '" data-status="' . $status . '">'
             . $status_text . '</span>';
+    }
+}
+
+if (!function_exists('peppol_process_notifications')) {
+    /**
+     * Run every 15 minutes via cron
+     */
+    function peppol_process_notifications()
+    {
+        $CI = &get_instance();
+
+        // Option key to store last execution timestamp
+        $option_key = 'peppol_cron_last_run';
+        $last_run = (int)get_option($option_key);
+
+        // Current timestamp
+        $now = time();
+
+        // Only run if 15 minutes have passed since last run
+        if ($last_run && ($now - $last_run) < 15 * 60) {
+            return;
+        }
+
+        // Update last run timestamp immediately to avoid duplicate execution
+        update_option($option_key, $now);
+
+        try {
+            $CI->peppol_service->process_notifications();
+        } catch (\Throwable $th) {
+            log_message('error', 'Error in my_custom_cron_job: ' . $th->getMessage());
+        }
     }
 }

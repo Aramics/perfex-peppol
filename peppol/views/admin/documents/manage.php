@@ -29,16 +29,13 @@
                                                 <i class="fa fa-file-text-o tw-text-2xl text-muted"></i>
                                             </div>
                                             <div class="tw-text-xs tw-text-neutral-500 tw-mt-2">
-                                                <?php echo _l('peppol_sent'); ?>:
-                                                <?php echo $invoice_stats['sent'] ?? 0; ?> |
-                                                <?php echo _l('peppol_failed'); ?>:
-                                                <?php echo $invoice_stats['failed'] ?? 0; ?> |
-                                                <?php echo _l('peppol_status_received'); ?>:
-                                                <?php echo $invoice_stats['received'] ?? 0; ?> |
-                                                <?php echo _l('peppol_status_rejected'); ?>:
-                                                <?php echo $invoice_stats['rejected'] ?? 0; ?> |
-                                                <?php echo _l('peppol_status_rejected_inbound'); ?>:
-                                                <?php echo $invoice_stats['rejected_inbound'] ?? 0; ?>
+                                                Sent:
+                                                <?php echo ($invoice_stats['SENT'] ?? 0) + ($invoice_stats['TECHNICAL_ACCEPTANCE'] ?? 0); ?>
+                                                |
+                                                Failed: <?php echo $invoice_stats['SEND_FAILED'] ?? 0; ?> |
+                                                Received: <?php echo $invoice_stats['RECEIVED'] ?? 0; ?> |
+                                                Paid: <?php echo $invoice_stats['FULLY_PAID'] ?? 0; ?> |
+                                                Rejected: <?php echo $invoice_stats['REJECTED'] ?? 0; ?>
                                             </div>
                                         </div>
                                     </div>
@@ -57,16 +54,13 @@
                                                 <i class="fa fa-file-o tw-text-2xl text-muted"></i>
                                             </div>
                                             <div class="tw-text-xs tw-text-neutral-500 tw-mt-2">
-                                                <?php echo _l('peppol_sent'); ?>:
-                                                <?php echo $credit_note_stats['sent'] ?? 0; ?> |
-                                                <?php echo _l('peppol_failed'); ?>:
-                                                <?php echo $credit_note_stats['failed'] ?? 0; ?> |
-                                                <?php echo _l('peppol_status_received'); ?>:
-                                                <?php echo $credit_note_stats['received'] ?? 0; ?> |
-                                                <?php echo _l('peppol_status_rejected'); ?>:
-                                                <?php echo $credit_note_stats['rejected'] ?? 0; ?> |
-                                                <?php echo _l('peppol_status_rejected_inbound'); ?>:
-                                                <?php echo $credit_note_stats['rejected_inbound'] ?? 0; ?>
+                                                Sent:
+                                                <?php echo ($credit_note_stats['SENT'] ?? 0) + ($credit_note_stats['TECHNICAL_ACCEPTANCE'] ?? 0); ?>
+                                                |
+                                                Failed: <?php echo $credit_note_stats['SEND_FAILED'] ?? 0; ?> |
+                                                Received: <?php echo $credit_note_stats['received'] ?? 0; ?> |
+                                                Accepted: <?php echo $credit_note_stats['ACCEPTED'] ?? 0; ?> |
+                                                Rejected: <?php echo $credit_note_stats['REJECTED'] ?? 0; ?>
                                             </div>
                                         </div>
                                     </div>
@@ -107,23 +101,13 @@
                                             <h4 class="tw-mt-0"><?php echo _l('peppol_invoice_expenses'); ?></h4>
                                             <div class="tw-flex tw-items-center tw-justify-between">
                                                 <span class="tw-font-semibold tw-text-lg text-primary">
-                                                    <?php echo $expense_stats['invoice_expenses'] ?? 0; ?>
+                                                    <?php echo app_format_money($expense_stats['invoice_amount'] ?? 0, get_base_currency()); ?>
                                                 </span>
                                                 <i class="fa fa-file-text-o tw-text-2xl text-muted"></i>
                                             </div>
                                             <div class="tw-text-xs tw-text-neutral-500 tw-mt-2">
-                                                <div><?php echo _l('peppol_invoice_expenses_subtitle'); ?></div>
-                                                <div class="tw-mt-1">
-                                                    <?php echo _l('amount'); ?>: 
-                                                    <span class="tw-font-medium">
-                                                        <?php echo app_format_money($expense_stats['invoice_amount'] ?? 0, get_base_currency()); ?>
-                                                    </span>
-                                                </div>
-                                                <div class="tw-mt-1">
-                                                    <?php echo _l('peppol_eligible'); ?>: <?php echo $invoice_expense_eligible['eligible_count'] ?? 0; ?> |
-                                                    <?php echo _l('peppol_converted'); ?>: <?php echo $invoice_expense_eligible['already_converted'] ?? 0; ?> |
-                                                    <?php echo _l('peppol_not_eligible'); ?>: <?php echo $invoice_expense_eligible['not_eligible'] ?? 0; ?>
-                                                </div>
+                                                <?php echo $expense_stats['invoice_expenses'] ?? 0; ?>
+                                                <?php echo _l('peppol_invoice_expenses_subtitle'); ?>
                                             </div>
                                         </div>
                                     </div>
@@ -138,23 +122,13 @@
                                             <h4 class="tw-mt-0"><?php echo _l('peppol_credit_note_expenses'); ?></h4>
                                             <div class="tw-flex tw-items-center tw-justify-between">
                                                 <span class="tw-font-semibold tw-text-lg text-warning">
-                                                    <?php echo $expense_stats['credit_note_expenses'] ?? 0; ?>
+                                                    <?php echo app_format_money($expense_stats['credit_note_amount'] ?? 0, get_base_currency()); ?>
                                                 </span>
                                                 <i class="fa fa-file-o tw-text-2xl text-muted"></i>
                                             </div>
                                             <div class="tw-text-xs tw-text-neutral-500 tw-mt-2">
-                                                <div><?php echo _l('peppol_credit_note_expenses_subtitle'); ?></div>
-                                                <div class="tw-mt-1">
-                                                    <?php echo _l('amount'); ?>: 
-                                                    <span class="tw-font-medium">
-                                                        <?php echo app_format_money($expense_stats['credit_note_amount'] ?? 0, get_base_currency()); ?>
-                                                    </span>
-                                                </div>
-                                                <div class="tw-mt-1">
-                                                    <?php echo _l('peppol_eligible'); ?>: <?php echo $credit_note_expense_eligible['eligible_count'] ?? 0; ?> |
-                                                    <?php echo _l('peppol_converted'); ?>: <?php echo $credit_note_expense_eligible['already_converted'] ?? 0; ?> |
-                                                    <?php echo _l('peppol_not_eligible'); ?>: <?php echo $credit_note_expense_eligible['not_eligible'] ?? 0; ?>
-                                                </div>
+                                                <?php echo $expense_stats['credit_note_expenses'] ?? 0; ?>
+                                                <?php echo _l('peppol_credit_note_expenses_subtitle'); ?>
                                             </div>
                                         </div>
                                     </div>
@@ -353,7 +327,7 @@ function viewPeppolDocument(documentId) {
                 if (response.clarifications && !peppolClarificationsCache) {
                     peppolClarificationsCache = response.clarifications;
                 }
-                
+
                 // Simply load the pre-rendered content from backend
                 $('#document-details-content').html(response.content);
             } else {

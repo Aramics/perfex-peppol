@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PEPPOL Module - User Guide</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #34495e;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            padding-left: 10px;
+            border-left: 4px solid #3498db;
+        }
+        h3 {
+            color: #2c3e50;
+            margin-top: 30px;
+        }
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .feature-box {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .step {
+            background: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 15px 0;
+            border-left: 4px solid #28a745;
+        }
+        .step h4 {
+            margin-top: 0;
+            color: #28a745;
+        }
+        .image-placeholder {
+            background: #e9ecef;
+            border: 2px dashed #6c757d;
+            border-radius: 6px;
+            padding: 40px;
+            text-align: center;
+            color: #6c757d;
+            margin: 20px 0;
+            font-style: italic;
+        }
+        .code {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            margin: 10px 0;
+        }
+        .toc {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 30px 0;
+        }
+        .toc ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .toc li {
+            margin: 5px 0;
+        }
+        .toc a {
+            text-decoration: none;
+            color: #007bff;
+        }
+        .toc a:hover {
+            text-decoration: underline;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #dee2e6;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+        .status-sent { background: #d1ecf1; color: #0c5460; }
+        .status-paid { background: #d4edda; color: #155724; }
+        .status-failed { background: #f8d7da; color: #721c24; }
+        .status-received { background: #fff3cd; color: #856404; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌐 PEPPOL Module - User Guide</h1>
+        
+        <div class="info">
+            <strong>About PEPPOL:</strong> PEPPOL (Pan-European Public Procurement On-Line) is a standardized electronic document exchange network that enables businesses and government entities to send and receive invoices and credit notes electronically across borders.
+        </div>
+
+        <div class="toc">
+            <h3>📋 Table of Contents</h3>
+            <ul>
+                <li><a href="#overview">1. Overview & Benefits</a></li>
+                <li><a href="#setup">2. Initial Setup</a></li>
+                <li><a href="#customer-setup">3. Customer Configuration</a></li>
+                <li><a href="#sending-documents">4. Sending Documents</a></li>
+                <li><a href="#receiving-documents">5. Receiving Documents</a></li>
+                <li><a href="#expense-management">6. Expense Management</a></li>
+                <li><a href="#document-tracking">7. Document Tracking</a></li>
+                <li><a href="#troubleshooting">8. Troubleshooting</a></li>
+            </ul>
+        </div>
+
+        <section id="overview">
+            <h2>1. 📖 Overview & Benefits</h2>
+            
+            <div class="feature-box">
+                <h3>🎯 Key Features</h3>
+                <ul>
+                    <li><strong>Automated Invoice & Credit Note Sending:</strong> Send documents electronically to customers worldwide</li>
+                    <li><strong>Intelligent Document Reception:</strong> Automatically receive and process incoming documents</li>
+                    <li><strong>Smart Expense Creation:</strong> Convert received invoices to expenses with tax and payment detection</li>
+                    <li><strong>Real-time Status Tracking:</strong> Monitor document status from sent to paid</li>
+                    <li><strong>UBL Standard Compliance:</strong> Full compliance with European e-invoicing standards</li>
+                    <li><strong>Multi-provider Support:</strong> Works with multiple PEPPOL access point providers</li>
+                </ul>
+            </div>
+
+            <div class="success">
+                <strong>Benefits:</strong>
+                <ul>
+                    <li>Faster payment processing and improved cash flow</li>
+                    <li>Reduced manual work and human errors</li>
+                    <li>Environmental benefits through paperless transactions</li>
+                    <li>Legal compliance with EU e-invoicing mandates</li>
+                    <li>Better tracking and audit trails</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="setup">
+            <h2>2. ⚙️ Initial Setup</h2>
+
+            <div class="step">
+                <h4>Step 1: Access PEPPOL Settings</h4>
+                <p>Navigate to <strong>Settings → PEPPOL Settings</strong> in your admin panel.</p>
+                <div class="image-placeholder">
+                    [Screenshot: Admin menu showing Settings → PEPPOL Settings]
+                </div>
+            </div>
+
+            <div class="step">
+                <h4>Step 2: Configure Your Company Information</h4>
+                <p>Enter your company's PEPPOL identifier and scheme:</p>
+                <ul>
+                    <li><strong>PEPPOL Identifier:</strong> Your unique business identifier (e.g., VAT number, company registration number)</li>
+                    <li><strong>PEPPOL Scheme:</strong> The identifier scheme (e.g., 0208 for Norwegian organization number, 0007 for Swedish organization number)</li>
+                </ul>
+                <div class="image-placeholder">
+                    [Screenshot: Company PEPPOL configuration form]
+                </div>
+            </div>
+
+            <div class="step">
+                <h4>Step 3: Choose and Configure Provider</h4>
+                <p>Select your PEPPOL access point provider and enter connection details:</p>
+                <div class="image-placeholder">
+                    [Screenshot: Provider selection dropdown and configuration fields]
+                </div>
+                <div class="warning">
+                    <strong>Note:</strong> You need an account with a PEPPOL access point provider. Contact your provider for API credentials and configuration details.
+                </div>
+            </div>
+
+            <div class="step">
+                <h4>Step 4: Test Connection</h4>
+                <p>Use the "Test Connection" button to verify your provider settings are correct.</p>
+                <div class="image-placeholder">
+                    [Screenshot: Test connection button and success/error message]
+                </div>
+            </div>
+        </section>
+
+        <section id="customer-setup">
+            <h2>3. 👥 Customer Configuration</h2>
+
+            <div class="step">
+                <h4>Step 1: Add PEPPOL Information to Customers</h4>
+                <p>For each customer that supports PEPPOL, edit their profile and add:</p>
+                <ul>
+                    <li><strong>PEPPOL Identifier:</strong> The customer's business identifier</li>
+                    <li><strong>PEPPOL Scheme:</strong> The identifier scheme used by the customer</li>
+                </ul>
+                <div class="image-placeholder">
+                    [Screenshot: Customer edit form showing PEPPOL Identifier and PEPPOL Scheme fields]
+                </div>
+            </div>
+
+            <div class="info">
+                <strong>Finding Customer PEPPOL Information:</strong>
+                <ul>
+                    <li>Ask your customer directly for their PEPPOL ID and scheme</li>
+                    <li>Check the customer's website or official documents</li>
+                    <li>Use PEPPOL directory services to search for registered participants</li>
+                </ul>
+            </div>
+
+            <div class="step">
+                <h4>Step 2: Verify Customer PEPPOL Status</h4>
+                <p>The system will show a PEPPOL indicator next to customers who have valid PEPPOL information configured.</p>
+                <div class="image-placeholder">
+                    [Screenshot: Customer list with PEPPOL status indicators]
+                </div>
+            </div>
+        </section>
+
+        <section id="sending-documents">
+            <h2>4. 📤 Sending Documents</h2>
+
+            <h3>Sending Individual Invoices</h3>
+            <div class="step">
+                <h4>Step 1: Create Invoice</h4>
+                <p>Create an invoice as usual. If the customer has PEPPOL information, you'll see a PEPPOL send option.</p>
+                <div class="image-placeholder">
+                    [Screenshot: Invoice view with PEPPOL send button]
+                </div>
+            </div>
+
+            <div class="step">
+                <h4>Step 2: Send via PEPPOL</h4>
+                <p>Click the "Send via PEPPOL" button. The system will:</p>
+                <ul>
+                    <li>Generate UBL (Universal Business Language) format</li>
+                    <li>Send to your PEPPOL access point provider</li>
+                    <li>Update status to track delivery</li>
+                </ul>
+                <div class="image-placeholder">
+                    [Screenshot: PEPPOL send confirmation dialog]
+                </div>
+            </div>
+
+            <h3>Bulk Sending</h3>
+            <div class="step">
+                <h4>Bulk Operations</h4>
+                <p>Send multiple invoices at once:</p>
+                <ol>
+                    <li>Go to <strong>PEPPOL → Documents</strong></li>
+                    <li>Use bulk action options to send unsent invoices</li>
+                    <li>Monitor progress in real-time</li>
+                </ol>
+                <div class="image-placeholder">
+                    [Screenshot: Bulk send interface with progress indicators]
+                </div>
+            </div>
+
+            <h3>Document Status Tracking</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Status</th>
+                        <th>Description</th>
+                        <th>Next Step</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="status-badge" style="background: #fff3cd; color: #856404;">QUEUED</span></td>
+                        <td>Document waiting to be sent</td>
+                        <td>Automatic processing</td>
+                    </tr>
+                    <tr>
+                        <td><span class="status-badge status-sent">SENT</span></td>
+                        <td>Successfully sent to customer's access point</td>
+                        <td>Wait for customer response</td>
+                    </tr>
+                    <tr>
+                        <td><span class="status-badge status-paid">FULLY_PAID</span></td>
+                        <td>Customer has paid the invoice</td>
+                        <td>Complete - update your records</td>
+                    </tr>
+                    <tr>
+                        <td><span class="status-badge status-failed">SEND_FAILED</span></td>
+                        <td>Failed to send</td>
+                        <td>Check errors and retry</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section id="receiving-documents">
+            <h2>5. 📥 Receiving Documents</h2>
+
+            <div class="step">
+                <h4>Step 1: Automatic Reception</h4>
+                <p>When someone sends you a PEPPOL document, the system automatically:</p>
+                <ul>
+                    <li>Receives the document from your access point provider</li>
+                    <li>Parses the UBL content</li>
+                    <li>Creates a record in the PEPPOL Documents list</li>
+                    <li>Shows notification of new received documents</li>
+                </ul>
+                <div class="image-placeholder">
+                    [Screenshot: Notification of received PEPPOL document]
+                </div>
+            </div>
+
+            <div class="step">
+                <h4>Step 2: Review Received Documents</h4>
+                <p>Go to <strong>PEPPOL → Documents</strong> to see all received documents. Filter by "Received" status to see incoming documents.</p>
+                <div class="image-placeholder">
+                    [Screenshot: Documents list filtered by received status]
+                </div>
+            </div>
+
+            <div class="step">
+                <h4>Step 3: Respond to Documents</h4>
+                <p>For received documents, you can:</p>
+                <ul>
+                    <li><strong>Accept:</strong> Confirm you will process the invoice</li>
+                    <li><strong>Reject:</strong> Decline the invoice with reasons</li>
+                    <li><strong>Mark as Paid:</strong> Confirm payment has been made</li>
+                </ul>
+                <div class="image-placeholder">
+                    [Screenshot: Document response options in document details modal]
+                </div>
+            </div>
+        </section>
+
+        <section id="expense-management">
+            <h2>6. 💰 Expense Management</h2>
+
+            <div class="info">
+                The PEPPOL module can automatically create expenses from received invoices, making your accounts payable process much more efficient.
+            </div>
+
+            <div class="step">
+                <h4>Step 1: Eligible Documents</h4>
+                <p>Only certain received documents can be converted to expenses:</p>
+                <ul>
+                    <li><strong>Invoices:</strong> Must have "FULLY_PAID" status (you've paid them)</li>
+                    <li><strong>Credit Notes:</strong> Must have "ACCEPTED" status (you've accepted them)</li>
+                </ul>
+            </div>
+
+            <div class="step">
+                <h4>Step 2: Smart Expense Creation</h4>
+                <p>Click "Create Expense" on an eligible document. The system automatically:</p>
+                <ul>
+                    <li><strong>Extracts tax rates</strong> from UBL line items</li>
+                    <li><strong>Detects payment mode</strong> from PEPPOL payment means codes</li>
+                    <li><strong>Pre-fills expense details</strong> from vendor and invoice data</li>
+                    <li><strong>Shows vendor scheme identifier</strong> and notes for reference</li>
+                </ul>
+                <div class="image-placeholder">
+                    [Screenshot: Expense creation form with pre-filled data]
+                </div>
+            </div>
+
+            <div class="step">
+                <h4>Step 3: Review and Confirm</h4>
+                <p>The expense creation form shows:</p>
+                <ul>
+                    <li>Detected tax rates (you can modify if needed)</li>
+                    <li>Suggested payment mode (bank transfer, etc.)</li>
+                    <li>Expense category selection</li>
+                    <li>Vendor information and notes</li>
+                </ul>
+                <div class="image-placeholder">
+                    [Screenshot: Expense creation form with tax and payment mode options]
+                </div>
+            </div>
+
+            <h3>Expense Statistics</h3>
+            <div class="step">
+                <h4>Track Your PEPPOL Expenses</h4>
+                <p>The Documents page shows expense statistics including:</p>
+                <ul>
+                    <li>Total expenses created from PEPPOL documents</li>
+                    <li>Amount breakdown by invoice vs credit note expenses</li>
+                    <li>Count of expenses by document type</li>
+                </ul>
+                <div class="image-placeholder">
+                    [Screenshot: Expense statistics cards on Documents page]
+                </div>
+            </div>
+        </section>
+
+        <section id="document-tracking">
+            <h2>7. 📊 Document Tracking</h2>
+
+            <h3>Documents Dashboard</h3>
+            <div class="step">
+                <h4>Overview Statistics</h4>
+                <p>The main PEPPOL Documents page provides comprehensive statistics:</p>
+                <ul>
+                    <li><strong>Invoice Documents:</strong> Sent, failed, received, paid, rejected counts</li>
+                    <li><strong>Credit Note Documents:</strong> Status breakdown for credit notes</li>
+                    <li><strong>Expense Statistics:</strong> Total expenses and amounts created</li>
+                </ul>
+                <div class="image-placeholder">
+                    [Screenshot: Documents dashboard with all statistics cards]
+                </div>
+            </div>
+
+            <h3>Document Details</h3>
+            <div class="step">
+                <h4>Detailed Document View</h4>
+                <p>Click on any document to view detailed information:</p>
+                <ul>
+                    <li>Document metadata and UBL content</li>
+                    <li>Status history and timestamps</li>
+                    <li>Provider information and transmission details</li>
+                    <li>Associated expense records (if created)</li>
+                    <li>Download options for original UBL files</li>
+                </ul>
+                <div class="image-placeholder">
+                    [Screenshot: Document details modal with all information sections]
+                </div>
+            </div>
+
+            <h3>Filtering and Search</h3>
+            <div class="step">
+                <h4>Find Documents Quickly</h4>
+                <p>Use the filtering options to find specific documents:</p>
+                <ul>
+                    <li><strong>Document Type:</strong> Filter by Invoice or Credit Note</li>
+                    <li><strong>Status:</strong> Filter by document status (sent, received, paid, etc.)</li>
+                    <li><strong>Provider:</strong> Filter by PEPPOL access point provider</li>
+                </ul>
+                <div class="image-placeholder">
+                    [Screenshot: Document filtering interface]
+                </div>
+            </div>
+        </section>
+
+        <section id="troubleshooting">
+            <h2>8. 🔧 Troubleshooting</h2>
+
+            <h3>Common Issues</h3>
+            
+            <div class="warning">
+                <h4>🚫 Send Failed Status</h4>
+                <p><strong>Problem:</strong> Documents showing "SEND_FAILED" status</p>
+                <p><strong>Solutions:</strong></p>
+                <ul>
+                    <li>Check customer PEPPOL information is correct</li>
+                    <li>Verify your provider connection settings</li>
+                    <li>Check provider account status and credits</li>
+                    <li>Review error logs in the document details</li>
+                </ul>
+            </div>
+
+            <div class="warning">
+                <h4>❌ Cannot Create Expense</h4>
+                <p><strong>Problem:</strong> "Create Expense" option not available</p>
+                <p><strong>Solutions:</strong></p>
+                <ul>
+                    <li>Ensure document status is correct (FULLY_PAID for invoices, ACCEPTED for credit notes)</li>
+                    <li>Verify the document is inbound (received from external party)</li>
+                    <li>Check if expense was already created</li>
+                </ul>
+            </div>
+
+            <div class="warning">
+                <h4>🔌 Provider Connection Issues</h4>
+                <p><strong>Problem:</strong> Cannot connect to PEPPOL provider</p>
+                <p><strong>Solutions:</strong></p>
+                <ul>
+                    <li>Verify API credentials are correct</li>
+                    <li>Check provider service status</li>
+                    <li>Ensure firewall/network allows outbound connections</li>
+                    <li>Contact provider support for assistance</li>
+                </ul>
+            </div>
+
+            <h3>Getting Help</h3>
+            
+            <div class="step">
+                <h4>Error Logs</h4>
+                <p>Check the PEPPOL logs for detailed error information:</p>
+                <ol>
+                    <li>Go to <strong>PEPPOL → Documents</strong></li>
+                    <li>Click on the failed document</li>
+                    <li>Review error messages in the document details</li>
+                    <li>Use error codes to troubleshoot with your provider</li>
+                </ol>
+            </div>
+
+            <div class="info">
+                <h4>📞 Support Resources</h4>
+                <ul>
+                    <li><strong>Provider Support:</strong> Contact your PEPPOL access point provider for network-related issues</li>
+                    <li><strong>PEPPOL Directory:</strong> Use official PEPPOL participant directories to verify customer information</li>
+                    <li><strong>System Logs:</strong> Check application logs for technical errors</li>
+                    <li><strong>Documentation:</strong> Refer to your provider's API documentation</li>
+                </ul>
+            </div>
+
+            <h3>Best Practices</h3>
+            
+            <div class="success">
+                <h4>✅ Recommended Practices</h4>
+                <ul>
+                    <li><strong>Test with Known Partners:</strong> Start with customers you know support PEPPOL</li>
+                    <li><strong>Verify Customer Data:</strong> Always confirm PEPPOL identifiers before first use</li>
+                    <li><strong>Monitor Status:</strong> Regularly check document status and respond to customer requests</li>
+                    <li><strong>Keep Records:</strong> Maintain backup records of important documents</li>
+                    <li><strong>Update Information:</strong> Keep customer PEPPOL information current</li>
+                    <li><strong>Train Staff:</strong> Ensure team members understand the PEPPOL workflow</li>
+                </ul>
+            </div>
+        </section>
+
+        <hr style="margin: 40px 0;">
+        
+        <div class="info">
+            <h4>📝 Need More Help?</h4>
+            <p>This user guide covers the main features of the PEPPOL module. For technical support, advanced configuration, or integration questions, please contact your system administrator or PEPPOL provider.</p>
+        </div>
+        
+        <footer style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #dee2e6; color: #6c757d;">
+            <p><em>PEPPOL Module User Guide - Version 1.0</em></p>
+        </footer>
+    </div>
+</body>
+</html>

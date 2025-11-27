@@ -187,7 +187,7 @@ class Peppol_model extends App_Model
                 $this->db->select('COUNT(*) as count');
                 $this->db->from(db_prefix() . 'peppol_documents pd');
                 $this->db->where('pd.document_type', $document_type);
-                $this->db->where('pd.status', 'failed');
+                $this->db->where_in('pd.status', ['SEND_FAILED']);
 
                 if ($client_id) {
                     $this->db->where("pd.local_reference_id IN (
@@ -278,7 +278,7 @@ class Peppol_model extends App_Model
                 $this->db->select('pd.local_reference_id');
                 $this->db->from(db_prefix() . 'peppol_documents pd');
                 $this->db->where('pd.document_type', $document_type);
-                $this->db->where('pd.status', 'failed');
+                $this->db->where_in('pd.status', ['SEND_FAILED']);
 
                 if ($client_id) {
                     $this->db->join(db_prefix() . $table . ' d', 'd.id = pd.local_reference_id');

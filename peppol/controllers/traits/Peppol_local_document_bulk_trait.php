@@ -153,8 +153,8 @@ trait Peppol_local_document_bulk_trait
             foreach ($documents as $document) {
                 try {
                     $ubl_content = $this->_generate_ubl_content($document_type, $document['id']);
-                    $number = $document_type == 'invoice' 
-                        ? format_invoice_number($document['id']) 
+                    $number = $document_type == 'invoice'
+                        ? format_invoice_number($document['id'])
                         : format_credit_note_number($document['id']);
                     $filename = $number . '_ubl.xml';
                     $zip->addFromString($filename, $ubl_content);
@@ -278,7 +278,7 @@ trait Peppol_local_document_bulk_trait
                     $peppol_docs = $this->peppol_model->get_documents_by_statuses($document_type, ['SENT', 'TECHNICAL_ACCEPTANCE']);
                     $doc_ids = array_column($peppol_docs, 'local_reference_id');
                     if (empty($doc_ids)) return [];
-                    $this->db->where_in('id', $doc_ids);
+                    $this->db->where_in(db_prefix() . 'creditnotes.id', $doc_ids);
                     if ($client_id) {
                         $this->db->where('clientid', $client_id);
                     }

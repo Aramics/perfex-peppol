@@ -424,8 +424,8 @@ class Peppol_model extends App_Model
         $this->db->where('id', $id);
         $document = $this->db->get(db_prefix() . 'peppol_documents')->row();
 
-        if ($document && $decode_metadata && !empty($document->provider_metadata)) {
-            $document->metadata = json_decode($document->provider_metadata, true) ?: [];
+        if ($document && $decode_metadata) {
+            $document->metadata = (array)json_decode($document->provider_metadata ?? '', true);
         }
 
         return $document;

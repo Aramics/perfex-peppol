@@ -756,4 +756,30 @@ class Peppol extends AdminController
         }
     }
 
+    /**
+     * Create expense from PEPPOL document (AJAX)
+     */
+    public function create_expense($document_id)
+    {
+        if (!staff_can('create', 'expenses') || !$this->input->post()) {
+            echo json_encode(['success' => false, 'message' => _l('access_denied')]);
+            return;
+        }
+
+        if (!$document_id) {
+            echo json_encode(['success' => false, 'message' => _l('peppol_invalid_request_data')]);
+            return;
+        }
+
+        try {
+            $result = $this->peppol_service->create_expense_from_document($document_id);
+            echo json_encode($result);
+        } catch (Exception $e) {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ]);
+        }
+    }
+
 }

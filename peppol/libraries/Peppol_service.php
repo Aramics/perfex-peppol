@@ -2,8 +2,12 @@
 
 defined('BASEPATH') or exit('No direct script access allowed');
 
+require_once __DIR__ . '/traits/Peppol_expense_trait.php';
+
 class Peppol_service
 {
+    use Peppol_expense_trait;
+    
     protected $CI;
 
     public function __construct()
@@ -626,4 +630,5 @@ class Peppol_service
             ]
         ];
     }
+
 }

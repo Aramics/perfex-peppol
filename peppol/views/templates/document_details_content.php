@@ -68,6 +68,28 @@
                             data-toggle="tooltip" title="<?php echo _l('peppol_update_document_status'); ?>">
                             <i class="fa fa-edit"></i>
                         </button>
+                        
+                        <?php 
+                        // Check if already converted to expense
+                        $expense_id = null;
+                        if (!empty($metadata['expense_id'])) {
+                            $expense_id = $metadata['expense_id'];
+                        }
+                        ?>
+                        
+                        <?php if ($expense_id): ?>
+                        <a href="<?php echo admin_url('expenses/expense/' . $expense_id); ?>" target="_blank" 
+                           class="btn btn-xs btn-success tw-ml-2" data-toggle="tooltip" 
+                           title="<?php echo _l('peppol_view_expense_record'); ?>">
+                            <i class="fa fa-external-link"></i>
+                        </a>
+                        <?php else: ?>
+                        <button type="button" id="create-expense-btn" class="btn btn-xs btn-warning tw-ml-2"
+                            data-toggle="tooltip" title="<?php echo _l('peppol_create_expense'); ?>"
+                            data-document-id="<?php echo $document->id; ?>">
+                            <i class="fa fa-plus"></i>
+                        </button>
+                        <?php endif; ?>
                         <?php endif; ?>
                     </td>
                 </tr>
@@ -307,6 +329,43 @@ $(function() {
     // Add clarification button
     $('#add-clarification').on('click', function() {
         addClarificationRow();
+    });
+    
+    // Create expense from PEPPOL document
+    $('#create-expense-btn').on('click', function() {
+        var $btn = $(this);
+        var documentId = $btn.data('document-id');
+        var documentType = '<?php echo $document->document_type; ?>';
+        
+        // Confirmation dialog
+        var message = documentType === 'credit_note' ? 
+            '<?php echo _l("peppol_confirm_create_expense_credit"); ?>' :
+            '<?php echo _l("peppol_confirm_create_expense"); ?>';
+            
+        if (!confirm(message)) {
+            return;
+        }
+        
+        var originalHtml = $btn.html();
+        $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i>');
+        
+        $.post(admin_url + 'peppol/create_expense/' + documentId)
+        .done(function(response) {
+            if (response.success) {
+                alert_float('success', response.message);
+                setTimeout(function() {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                alert_float('danger', response.message);
+            }
+        })
+        .fail(function() {
+            alert_float('danger', '<?php echo _l("something_went_wrong"); ?>');
+        })
+        .always(function() {
+            $btn.prop('disabled', false).html(originalHtml);
+        });
     });
 
     function addClarificationRow() {

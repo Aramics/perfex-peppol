@@ -479,6 +479,17 @@ $lang['peppol_connection_failed'] = 'Connection failed: %s';
 $lang['peppol_update_document_status'] = 'Update Document Status';
 $lang['peppol_click_to_send_response'] = 'Click to send a response to the seller';
 
+// Expense Creation Messages
+$lang['peppol_create_expense'] = 'Create Expense';
+$lang['peppol_view_expense_record'] = 'View Expense Record';
+$lang['peppol_confirm_create_expense'] = 'Create an expense record from this received invoice?';
+$lang['peppol_confirm_create_expense_credit'] = 'Create an expense record from this received credit note? (Amount will be negative)';
+$lang['peppol_expense_created_successfully'] = 'Expense record created successfully';
+$lang['peppol_expense_already_created'] = 'Expense record already exists for this document';
+$lang['peppol_expense_only_received_documents'] = 'Expenses can only be created from received documents';
+$lang['peppol_failed_to_parse_document'] = 'Failed to parse document data';
+$lang['peppol_failed_to_create_expense'] = 'Failed to create expense record';
+
 // Validation Messages
 $lang['peppol_response_code_required'] = 'Response code is required.';
 $lang['peppol_response_code_invalid'] = 'Invalid response code selected.';

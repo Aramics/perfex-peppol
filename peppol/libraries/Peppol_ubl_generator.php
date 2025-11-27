@@ -404,7 +404,11 @@ class Peppol_ubl_generator
     {
         foreach ($document->attachments as $attachment) {
 
+            if (!isset($attachment['attachment_key'])) continue;
+
             $ublAttachment = new Attachment();
+
+            $ublAttachment->setId(new Identifier(($attachment['attachment_key'])));
 
             $ublAttachment->setFilename($attachment['file_name'] ?? '');
             $ublAttachment->setExternalUrl($attachment['external_link'] ?? '');

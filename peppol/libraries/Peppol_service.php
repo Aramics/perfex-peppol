@@ -262,7 +262,7 @@ class Peppol_service
         foreach ($document->attachments as $key => $attachment) {
 
             if ($attachment['visible_to_customer'] == 1) {
-                $link = base_url('download/file/sales_attachment/' . $attachment['attachment_key']);
+                $link = base_url('download/file/sales_attachment/' . ($attachment['attachment_key'] ?: random_string()));
                 $attachment['external_link'] = empty($attachment['external_link']) ? $link : $attachment['external_link'];
                 $attachments[] = $attachment;
             }
@@ -272,6 +272,7 @@ class Peppol_service
         if ($document_type == self::TYPE_INVOICE) { // public view of the invoice on the system
             $document_number =  format_invoice_number($document->id);
             $attachments[] = [
+                'attachment_key' => $document->hash,
                 'description' => $document_number,
                 'file_name' => $document_number,
                 'external_link' => base_url('invoice/' . $document->id . '/' . $document->hash),

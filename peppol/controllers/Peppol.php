@@ -761,7 +761,7 @@ class Peppol extends AdminController
      */
     public function create_expense($document_id)
     {
-        if (!staff_can('create', 'expenses') || !$this->input->post()) {
+        if (!staff_can('create', 'expenses')) {
             echo json_encode(['success' => false, 'message' => _l('access_denied')]);
             return;
         }
@@ -771,8 +771,48 @@ class Peppol extends AdminController
             return;
         }
 
+        // If it's a GET request, return the expense creation form
+        if (!$this->input->post()) {
+            try {
+                $form_data = $this->peppol_service->prepare_expense_form_data($document_id);
+                if (!$form_data['success']) {
+                    echo json_encode($form_data);
+                    return;
+                }
+
+                $view_data = [
+                    'document' => $form_data['document'],
+                    'expense_data' => $form_data['expense_data'],
+                    'payment_modes' => $form_data['payment_modes'],
+                    'expense_categories' => $form_data['expense_categories']
+                ];
+
+                $form_html = $this->load->view('peppol/templates/expense_creation_form', $view_data, true);
+                
+                echo json_encode([
+                    'success' => true,
+                    'show_form' => true,
+                    'form_html' => $form_html
+                ]);
+            } catch (Exception $e) {
+                echo json_encode([
+                    'success' => false,
+                    'message' => 'Error: ' . $e->getMessage()
+                ]);
+            }
+            return;
+        }
+
+        // Handle POST request for creating the expense
         try {
-            $result = $this->peppol_service->create_expense_from_document($document_id);
+            $override_data = [
+                'category' => $this->input->post('category'),
+                'paymentmode' => $this->input->post('paymentmode'),
+                'tax_rate' => $this->input->post('tax_rate'),
+                'tax2_rate' => $this->input->post('tax2_rate', true)
+            ];
+
+            $result = $this->peppol_service->create_expense_from_document($document_id, $override_data);
             echo json_encode($result);
         } catch (Exception $e) {
             echo json_encode([

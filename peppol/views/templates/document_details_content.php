@@ -68,22 +68,22 @@
                             data-toggle="tooltip" title="<?php echo _l('peppol_update_document_status'); ?>">
                             <i class="fa fa-edit"></i>
                         </button>
-                        
-                        <?php 
-                        // Check if already converted to expense
-                        $expense_id = null;
-                        if (!empty($metadata['expense_id'])) {
-                            $expense_id = $metadata['expense_id'];
-                        }
-                        ?>
-                        
-                        <?php if ($expense_id): ?>
-                        <a href="<?php echo admin_url('expenses/expense/' . $expense_id); ?>" target="_blank" 
-                           class="btn btn-xs btn-success tw-ml-2" data-toggle="tooltip" 
-                           title="<?php echo _l('peppol_view_expense_record'); ?>">
+
+                        <?php
+                            // Check if already converted to expense
+                            $expense_id = null;
+                            if (!empty($metadata['expense_id'])) {
+                                $expense_id = $metadata['expense_id'];
+                            }
+                            ?>
+
+                        <?php if ($expense_id) : ?>
+                        <a href="<?php echo admin_url('expenses/expense/' . $expense_id); ?>" target="_blank"
+                            class="btn btn-xs btn-success tw-ml-2" data-toggle="tooltip"
+                            title="<?php echo _l('peppol_view_expense_record'); ?>">
                             <i class="fa fa-external-link"></i>
                         </a>
-                        <?php else: ?>
+                        <?php else : ?>
                         <button type="button" id="create-expense-btn" class="btn btn-xs btn-warning tw-ml-2"
                             data-toggle="tooltip" title="<?php echo _l('peppol_create_expense'); ?>"
                             data-document-id="<?php echo $document->id; ?>">
@@ -330,42 +330,49 @@ $(function() {
     $('#add-clarification').on('click', function() {
         addClarificationRow();
     });
-    
+
     // Create expense from PEPPOL document
     $('#create-expense-btn').on('click', function() {
         var $btn = $(this);
         var documentId = $btn.data('document-id');
-        var documentType = '<?php echo $document->document_type; ?>';
-        
-        // Confirmation dialog
-        var message = documentType === 'credit_note' ? 
-            '<?php echo _l("peppol_confirm_create_expense_credit"); ?>' :
-            '<?php echo _l("peppol_confirm_create_expense"); ?>';
-            
-        if (!confirm(message)) {
-            return;
-        }
-        
+
         var originalHtml = $btn.html();
         $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i>');
-        
-        $.post(admin_url + 'peppol/create_expense/' + documentId)
-        .done(function(response) {
-            if (response.success) {
-                alert_float('success', response.message);
-                setTimeout(function() {
-                    window.location.reload();
-                }, 1500);
-            } else {
-                alert_float('danger', response.message);
-            }
-        })
-        .fail(function() {
-            alert_float('danger', '<?php echo _l("something_went_wrong"); ?>');
-        })
-        .always(function() {
-            $btn.prop('disabled', false).html(originalHtml);
-        });
+
+        // First, get the form data to check if user input is needed
+        $.getJSON(admin_url + 'peppol/create_expense/' + documentId)
+            .done(function(response) {
+                if (response.success) {
+                    if (response.show_form) {
+                        // Show form modal for user to review/modify auto-detected data
+                        var modal = $('<div class="modal fade" tabindex="-1">');
+                        modal.html(
+                            '<div class="modal-dialog modal-lg"><div class="modal-content">' +
+                            response.form_html + '</div></div>');
+                        $('body').append(modal);
+                        modal.modal('show');
+
+                        // Clean up modal when closed
+                        modal.on('hidden.bs.modal', function() {
+                            modal.remove();
+                        });
+                    } else {
+                        // Direct creation (shouldn't happen with new flow, but kept for safety)
+                        alert_float('success', response.message);
+                        setTimeout(function() {
+                            window.location.reload();
+                        }, 1500);
+                    }
+                } else {
+                    alert_float('danger', response.message);
+                }
+            })
+            .fail(function() {
+                alert_float('danger', '<?php echo _l("something_went_wrong"); ?>');
+            })
+            .always(function() {
+                $btn.prop('disabled', false).html(originalHtml);
+            });
     });
 
     function addClarificationRow() {

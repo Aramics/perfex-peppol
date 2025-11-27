@@ -487,8 +487,22 @@ $lang['peppol_confirm_create_expense_credit'] = 'Create an expense record from t
 $lang['peppol_expense_created_successfully'] = 'Expense record created successfully';
 $lang['peppol_expense_already_created'] = 'Expense record already exists for this document';
 $lang['peppol_expense_only_received_documents'] = 'Expenses can only be created from received documents';
+$lang['peppol_expense_invoice_not_paid'] = 'Cannot create expense: Invoice must be marked as paid first';
+$lang['peppol_expense_credit_note_not_accepted'] = 'Cannot create expense: Credit note must be accepted or acknowledged first';
 $lang['peppol_failed_to_parse_document'] = 'Failed to parse document data';
 $lang['peppol_failed_to_create_expense'] = 'Failed to create expense record';
+
+// Enhanced Expense Creation
+$lang['auto_detected'] = 'Auto-detected';
+$lang['auto_detected_information'] = 'Auto-detected Information';
+$lang['peppol_auto_detected_help'] = 'These values were automatically detected from the PEPPOL document. You can modify them if needed.';
+$lang['negative_amount_for_credit_note'] = 'negative amount for credit note';
+$lang['negative_for_credit_note'] = 'negative for credit note';
+$lang['expense_details'] = 'Expense Details';
+$lang['tax_2'] = 'Tax 2';
+$lang['expense_date'] = 'Date';
+$lang['processing'] = 'Processing...';
+$lang['vendor_identifier'] = 'Vendor Identifier';
 
 // Validation Messages
 $lang['peppol_response_code_required'] = 'Response code is required.';

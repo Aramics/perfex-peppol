@@ -402,7 +402,6 @@ class Peppol_ubl_generator
      */
     private function _add_attachments($ublDocument, $document)
     {
-        dd($document->attachments);
         foreach ($document->attachments as $attachment) {
 
             if (!isset($attachment['attachment_key'])) continue;

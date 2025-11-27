@@ -49,7 +49,7 @@ $hook_files = [
     'add_settings_tab.php',
     'client_form_enhancement.php',
     'provider_registration.php',
-    'add_admin_menu.php',
+    'add_admin_menu_permissions.php',
     'expense_deletion_cleanup.php',
     'cron_job.php'
 ];

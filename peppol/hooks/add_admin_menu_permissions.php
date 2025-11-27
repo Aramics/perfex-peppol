@@ -11,6 +11,18 @@ function peppol_add_admin_menu()
 {
     $CI = &get_instance();
 
+    // Register permissions
+    $capabilities = [];
+    $capabilities['capabilities'] = [
+        'view'   => _l('permission_view') . '(' . _l('permission_global') . ')',
+        'create' => _l('permission_create'),
+        'edit'   => _l('permission_edit'),
+        'delete' => _l('permission_delete'),
+    ];
+    register_staff_capabilities(PEPPOL_MODULE_NAME, $capabilities, _l(PEPPOL_MODULE_NAME));
+
+
+    // Add the menu
     if (staff_can('view', 'peppol')) {
         $CI->app_menu->add_sidebar_menu_item('peppol-menu', [
             'collapse' => true,

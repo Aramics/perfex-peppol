@@ -133,61 +133,6 @@ class Peppol_model extends App_Model
     }
 
     /**
-     * Get documents by provider
-     */
-    public function get_documents_by_provider($provider_id, $limit = null, $offset = null)
-    {
-        $this->db->where('provider', $provider_id);
-        $this->db->order_by('created_at', 'DESC');
-
-        if ($limit !== null) {
-            $this->db->limit($limit, $offset);
-        }
-
-        return $this->db->get(db_prefix() . 'peppol_documents')->result();
-    }
-
-    /**
-     * Get provider metadata for a document
-     */
-    public function get_provider_metadata($document_type, $document_id)
-    {
-        $this->db->select('provider_metadata');
-        $this->db->where('document_type', $document_type);
-        $this->db->where('local_reference_id', $document_id);
-        $result = $this->db->get(db_prefix() . 'peppol_documents')->row();
-
-        if ($result && !empty($result->provider_metadata)) {
-            return json_decode($result->provider_metadata, true);
-        }
-
-        return null;
-    }
-
-    /**
-     * Update provider metadata for a document
-     */
-    public function update_provider_metadata($document_type, $document_id, $metadata)
-    {
-        $existing = $this->get_peppol_document($document_type, $document_id);
-        if ($existing) {
-            // Merge with existing metadata
-            $current_metadata = json_decode($existing->provider_metadata ?? '{}', true);
-            $updated_metadata = array_merge($current_metadata, $metadata);
-
-            $this->db->where('document_type', $document_type);
-            $this->db->where('local_reference_id', $document_id);
-            return $this->db->update(db_prefix() . 'peppol_documents', [
-                'provider_metadata' => json_encode($updated_metadata),
-                'updated_at' => date('Y-m-d H:i:s')
-            ]);
-        }
-
-        return false;
-    }
-
-
-    /**
      * Log PEPPOL activity
      */
     public function log_activity($data)
@@ -371,21 +316,6 @@ class Peppol_model extends App_Model
     }
 
     /**
-     * Get all PEPPOL documents for a document type
-     */
-    public function get_all_documents($document_type, $limit = null, $offset = 0)
-    {
-        $this->db->where('document_type', $document_type);
-        $this->db->order_by('created_at', 'DESC');
-
-        if ($limit) {
-            $this->db->limit($limit, $offset);
-        }
-
-        return $this->db->get(db_prefix() . 'peppol_documents')->result();
-    }
-
-    /**
      * Get statistics for a document type
      */
     public function get_document_statistics($document_type)
@@ -435,22 +365,6 @@ class Peppol_model extends App_Model
         $stats['total'] = $stats['total_processed'];
 
         return $stats;
-    }
-
-    /**
-     * Get latest error logs for a specific document
-     */
-    public function get_document_errors($document_type, $document_id, $limit = 5)
-    {
-        $this->db->select('message, data, created_at');
-        $this->db->from(db_prefix() . 'peppol_logs');
-        $this->db->where('document_type', $document_type);
-        $this->db->where('local_reference_id', $document_id);
-        $this->db->where('type', 'error');
-        $this->db->order_by('created_at', 'DESC');
-        $this->db->limit($limit);
-
-        return $this->db->get()->result();
     }
 
     /**
@@ -751,56 +665,5 @@ class Peppol_model extends App_Model
         ];
 
         return $mapping[$legacy_code] ?? $legacy_code;
-    }
-
-    /**
-     * Check if document is inbound (received from external party)
-     * 
-     * @param object $document PEPPOL document
-     * @return bool True if inbound, false if outbound
-     */
-    public function is_inbound_document($document)
-    {
-        return empty($document->local_reference_id);
-    }
-
-    /**
-     * Check if document is outbound (sent to external party)
-     * 
-     * @param object $document PEPPOL document
-     * @return bool True if outbound, false if inbound
-     */
-    public function is_outbound_document($document)
-    {
-        return !empty($document->local_reference_id);
-    }
-
-    /**
-     * Get error summary for failed documents in bulk operations
-     */
-    public function get_bulk_operation_errors($document_type, $document_ids)
-    {
-        if (empty($document_ids)) {
-            return [];
-        }
-
-        $this->db->select('local_reference_id, message, data, created_at');
-        $this->db->from(db_prefix() . 'peppol_logs');
-        $this->db->where('document_type', $document_type);
-        $this->db->where_in('local_reference_id', $document_ids);
-        $this->db->where('type', 'error');
-        $this->db->order_by('local_reference_id, created_at DESC');
-
-        $results = $this->db->get()->result();
-
-        // Group by local_reference_id and return latest error for each
-        $errors = [];
-        foreach ($results as $log) {
-            if (!isset($errors[$log->local_reference_id])) {
-                $errors[$log->local_reference_id] = $log;
-            }
-        }
-
-        return $errors;
     }
 }

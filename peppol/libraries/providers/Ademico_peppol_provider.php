@@ -1163,7 +1163,7 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
             // Find the PEPPOL document record
             $peppol_document = null;
             if ($transmission_id) {
-                $peppol_document = $CI->peppol_model->get_peppol_document_by_metadata('transmissionId', $transmission_id, $this->get_id());
+                $peppol_document = $CI->peppol_model->get_peppol_document_by_transmission_id($transmission_id, $this->get_id());
             }
 
             if (!$peppol_document && $document_id) {

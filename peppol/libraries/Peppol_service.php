@@ -257,7 +257,7 @@ class Peppol_service
     public function prepare_attachments($document, $document_type)
     {
         if (!isset($document->attachments)) return $document;
-
+        dd($document->attachments);
         $attachments = [];
         foreach ($document->attachments as $key => $attachment) {
 

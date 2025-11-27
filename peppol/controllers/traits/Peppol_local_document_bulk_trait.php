@@ -248,7 +248,7 @@ trait Peppol_local_document_bulk_trait
                     $peppol_docs = $this->peppol_model->get_documents_by_statuses($document_type, ['SENT', 'TECHNICAL_ACCEPTANCE']);
                     $doc_ids = array_column($peppol_docs, 'local_reference_id');
                     if (empty($doc_ids)) return [];
-                    $this->db->where_in('id', $doc_ids);
+                    $this->db->where_in(db_prefix() . 'invoices' . '.id', $doc_ids);
                     if ($client_id) {
                         $this->db->where('clientid', $client_id);
                     }

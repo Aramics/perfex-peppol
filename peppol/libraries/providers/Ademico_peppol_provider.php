@@ -680,7 +680,15 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                     $error_message .= ' - ' . substr($response, 0, 200);
                 }
 
-                return ['success' => false, 'error' => $error_message];
+                $error_code  = $decoded_response['message']['code'] ?? '';
+                $is_duplicate = $error_code == 'DUPLICATE_DOCUMENT';
+
+                return [
+                    'success' => false,
+                    'error' => $error_message,
+                    'error_code' => $error_code,
+                    'is_duplicate' => $is_duplicate
+                ];
             }
         } catch (Exception $e) {
             // Clean up temporary file in case of exception
@@ -941,6 +949,7 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
 
                     // Process incoming documents
                     if ($event_type === 'DOCUMENT_RECEIVED' && !empty($transmission_id)) {
+
                         $incoming_result = $this->_process_incoming_document($notification);
 
                         if ($incoming_result['success']) {
@@ -968,13 +977,13 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                     }
 
                     // Consume (delete) notification if it was successfully processed
-                    if ($notification_processed && $notification_id) {
+                    /*if ($notification_processed && $notification_id) {
                         $consume_result = $this->consume_notification($notification_id);
                         if (!$consume_result['success']) {
                             // Log consumption error but don't fail the whole webhook
                             $results['errors'][] = 'Warning: Failed to consume notification ' . $notification_id . ': ' . $consume_result['message'];
                         }
-                    }
+                    }*/
                 } catch (Exception $e) {
                     $results['errors'][] = 'Error processing notification: ' . $e->getMessage();
                 }
@@ -1091,7 +1100,7 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                 'local_reference_id' => null, // Inbound document (no local reference)
                 'status' => 'RECEIVED',
                 'provider' => $this->get_id(),
-                'provider_document_id' => null, // Will be set when UBL is fetched
+                'provider_document_id' => $notification['documentId'] ?? null,
                 'provider_document_transmission_id' => $transmission_id,
                 'provider_metadata' => json_encode($notification),
                 'expense_id' => null,
@@ -1146,6 +1155,8 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
     {
         $CI = &get_instance();
         $CI->load->model('peppol/peppol_model');
+        $CI->load->model('invoices_model');
+        $CI->load->model('credit_notes_model');
 
         try {
             $document_id = $notification['documentId'] ?? null;
@@ -1170,7 +1181,39 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                 $peppol_document = $CI->peppol_model->get_peppol_document_by_provider_id($document_id, $this->get_id());
             }
 
+            // Attempt to create the record is is DOCUMENT_SENT event incase local db entry was removed or notifation missed somehow
+            if (!$peppol_document && $document_id && $event_type == 'DOCUMENT_SENT') {
+                $local_references = $CI->credit_notes_model->get('', ['formatted_number' => $document_id]);
+                if (empty($local_references))
+                    $local_references = $CI->invoices_model->get('', ['formatted_number' => $document_id]);
+
+                if (!empty($local_references)) {
+                    $local_ref = $local_references[0];
+
+                    // Create PEPPOL document entry to track received document
+                    $peppol_document_data = [
+                        'document_type' => $this->_map_peppol_document_type($notification['peppolDocumentType'] ?? 'unknown'),
+                        'local_reference_id' => $local_ref['id'],
+                        'status' => $status,
+                        'provider' => $this->get_id(),
+                        'provider_document_id' => $document_id, // Will be set when UBL is fetched
+                        'provider_document_transmission_id' => $transmission_id,
+                        'provider_metadata' => json_encode($notification),
+                        'expense_id' => null,
+                        'sent_at' => !empty($notification['notificationDate']) ?
+                            date('Y-m-d H:i:s', strtotime($notification['notificationDate'])) :
+                            date('Y-m-d H:i:s'), // Inbound document
+                        'received_at' => null,
+                        'created_at' => date('Y-m-d H:i:s')
+                    ];
+                    $_document_id = $CI->peppol_model->create_peppol_document($peppol_document_data);
+                    if ($_document_id)
+                        $peppol_document = $CI->peppol_model->get_peppol_document_by_transmission_id($transmission_id, $this->get_id());
+                }
+            }
+
             if (!$peppol_document) {
+
                 return [
                     'success' => false,
                     'message' => 'PEPPOL document not found for update'
@@ -1217,6 +1260,7 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                 ];
             }
         } catch (Exception $e) {
+
             return [
                 'success' => false,
                 'message' => 'Failed to update document status: ' . $e->getMessage()

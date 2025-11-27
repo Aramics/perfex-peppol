@@ -512,3 +512,20 @@ $lang['peppol_clarification_type_required'] = 'Clarification %d: Type is require
 $lang['peppol_clarification_type_invalid'] = 'Clarification %d: Invalid type selected.';
 $lang['peppol_clarification_reason_invalid'] = 'Clarification %d: Invalid reason code.';
 $lang['peppol_clarification_action_invalid'] = 'Clarification %d: Invalid action code.';
+
+// Expense Statistics
+$lang['peppol_expense_statistics'] = 'Expense Statistics';
+$lang['peppol_total_expenses_created'] = 'Total Expenses Created';
+$lang['peppol_invoice_expenses'] = 'Invoice Expenses';
+$lang['peppol_credit_note_expenses'] = 'Credit Note Expenses';
+$lang['peppol_total_expense_amount'] = 'Total Expense Amount';
+$lang['peppol_expense_conversion_eligible'] = 'Eligible for Expense Conversion';
+$lang['peppol_already_converted_to_expense'] = 'Already Converted to Expense';
+$lang['peppol_eligible_for_conversion'] = 'Eligible for Conversion';
+$lang['peppol_not_eligible_for_conversion'] = 'Not Eligible for Conversion';
+$lang['peppol_expense_conversion_stats'] = 'Expense Conversion Statistics';
+$lang['peppol_eligible'] = 'Eligible';
+$lang['peppol_converted'] = 'Converted';
+$lang['peppol_not_eligible'] = 'Not Eligible';
+$lang['peppol_invoice_expenses_subtitle'] = 'From paid invoices';
+$lang['peppol_credit_note_expenses_subtitle'] = 'From accepted credit notes';

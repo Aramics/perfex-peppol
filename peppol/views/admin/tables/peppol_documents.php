@@ -84,28 +84,7 @@ foreach ($rResult as $aRow) {
         app_format_money($aRow['document_total'], get_base_currency()) : '-';
 
     // Status with badge
-    $statusClass = '';
-    switch ($aRow['status']) {
-        case 'sent':
-        case 'delivered':
-            $statusClass = 'label-success';
-            break;
-        case 'pending':
-        case 'queued':
-            $statusClass = 'label-warning';
-            break;
-        case 'failed':
-        case 'rejected':
-        case 'rejected_inbound':
-            $statusClass = 'label-danger';
-            break;
-        case 'received':
-            $statusClass = 'label-info';
-            break;
-        default:
-            $statusClass = 'label-default';
-    }
-    $row[] = '<span class="label ' . $statusClass . '">' . ucfirst($aRow['status']) . '</span>';
+    $row[] =  render_peppol_status_column($aRow['id'], $aRow['status']);
 
     // Provider
     $row[] = ucfirst($aRow['provider']);

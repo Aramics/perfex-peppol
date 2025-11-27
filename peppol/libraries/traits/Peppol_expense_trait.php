@@ -287,20 +287,25 @@ trait Peppol_expense_trait
      */
     protected function validate_document_status_for_expense($document)
     {
+        // Only allow expense creation for inbound documents (local_reference_id IS NULL)
+        if (!empty($document->local_reference_id)) {
+            return [
+                'valid' => false,
+                'message' => _l('peppol_expense_only_received_documents')
+            ];
+        }
+
         if ($document->document_type === 'invoice') {
-            // For invoices, check if it's marked as paid in the response
-            if (empty($document->response_status) || $document->response_status !== 'PD') {
+            // For invoices, check if status is 'FULLY_PAID'
+            if ($document->status !== 'FULLY_PAID') {
                 return [
                     'valid' => false,
                     'message' => _l('peppol_expense_invoice_not_paid')
                 ];
             }
         } elseif ($document->document_type === 'credit_note') {
-            // For credit notes, check if it's accepted (AP) or acknowledged (AB)
-            if (
-                empty($document->response_status) ||
-                !in_array($document->response_status, ['AP', 'AB'])
-            ) {
+            // For credit notes, check if status is 'ACCEPTED'
+            if ($document->status !== 'ACCEPTED') {
                 return [
                     'valid' => false,
                     'message' => _l('peppol_expense_credit_note_not_accepted')

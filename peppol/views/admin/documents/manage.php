@@ -16,6 +16,7 @@
 
                         <!-- Statistics Cards -->
                         <div class="row tw-mb-6">
+                            <!-- Document Statistics -->
                             <div class="col-md-6">
                                 <div class="panel_s">
                                     <div class="panel-body padding-10-20">
@@ -66,6 +67,94 @@
                                                 <?php echo $credit_note_stats['rejected'] ?? 0; ?> |
                                                 <?php echo _l('peppol_status_rejected_inbound'); ?>:
                                                 <?php echo $credit_note_stats['rejected_inbound'] ?? 0; ?>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Expense Statistics Cards -->
+                        <div class="row tw-mb-6">
+                            <!-- Total Expenses Overview -->
+                            <div class="col-md-4">
+                                <div class="panel_s">
+                                    <div class="panel-body padding-10-20">
+                                        <div class="widget-drilldown">
+                                            <h4 class="tw-mt-0"><?php echo _l('peppol_total_expenses_created'); ?></h4>
+                                            <div class="tw-flex tw-items-center tw-justify-between">
+                                                <span class="tw-font-semibold tw-text-lg text-success">
+                                                    <?php echo $expense_stats['total_expenses'] ?? 0; ?>
+                                                </span>
+                                                <i class="fa fa-money tw-text-2xl text-muted"></i>
+                                            </div>
+                                            <div class="tw-text-xs tw-text-neutral-500 tw-mt-2">
+                                                <?php echo _l('peppol_total_expense_amount'); ?>:
+                                                <span class="tw-font-medium">
+                                                    <?php echo app_format_money($expense_stats['total_amount'] ?? 0, get_base_currency()); ?>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Invoice Expenses -->
+                            <div class="col-md-4">
+                                <div class="panel_s">
+                                    <div class="panel-body padding-10-20">
+                                        <div class="widget-drilldown">
+                                            <h4 class="tw-mt-0"><?php echo _l('peppol_invoice_expenses'); ?></h4>
+                                            <div class="tw-flex tw-items-center tw-justify-between">
+                                                <span class="tw-font-semibold tw-text-lg text-primary">
+                                                    <?php echo $expense_stats['invoice_expenses'] ?? 0; ?>
+                                                </span>
+                                                <i class="fa fa-file-text-o tw-text-2xl text-muted"></i>
+                                            </div>
+                                            <div class="tw-text-xs tw-text-neutral-500 tw-mt-2">
+                                                <div><?php echo _l('peppol_invoice_expenses_subtitle'); ?></div>
+                                                <div class="tw-mt-1">
+                                                    <?php echo _l('amount'); ?>: 
+                                                    <span class="tw-font-medium">
+                                                        <?php echo app_format_money($expense_stats['invoice_amount'] ?? 0, get_base_currency()); ?>
+                                                    </span>
+                                                </div>
+                                                <div class="tw-mt-1">
+                                                    <?php echo _l('peppol_eligible'); ?>: <?php echo $invoice_expense_eligible['eligible_count'] ?? 0; ?> |
+                                                    <?php echo _l('peppol_converted'); ?>: <?php echo $invoice_expense_eligible['already_converted'] ?? 0; ?> |
+                                                    <?php echo _l('peppol_not_eligible'); ?>: <?php echo $invoice_expense_eligible['not_eligible'] ?? 0; ?>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Credit Note Expenses -->
+                            <div class="col-md-4">
+                                <div class="panel_s">
+                                    <div class="panel-body padding-10-20">
+                                        <div class="widget-drilldown">
+                                            <h4 class="tw-mt-0"><?php echo _l('peppol_credit_note_expenses'); ?></h4>
+                                            <div class="tw-flex tw-items-center tw-justify-between">
+                                                <span class="tw-font-semibold tw-text-lg text-warning">
+                                                    <?php echo $expense_stats['credit_note_expenses'] ?? 0; ?>
+                                                </span>
+                                                <i class="fa fa-file-o tw-text-2xl text-muted"></i>
+                                            </div>
+                                            <div class="tw-text-xs tw-text-neutral-500 tw-mt-2">
+                                                <div><?php echo _l('peppol_credit_note_expenses_subtitle'); ?></div>
+                                                <div class="tw-mt-1">
+                                                    <?php echo _l('amount'); ?>: 
+                                                    <span class="tw-font-medium">
+                                                        <?php echo app_format_money($expense_stats['credit_note_amount'] ?? 0, get_base_currency()); ?>
+                                                    </span>
+                                                </div>
+                                                <div class="tw-mt-1">
+                                                    <?php echo _l('peppol_eligible'); ?>: <?php echo $credit_note_expense_eligible['eligible_count'] ?? 0; ?> |
+                                                    <?php echo _l('peppol_converted'); ?>: <?php echo $credit_note_expense_eligible['already_converted'] ?? 0; ?> |
+                                                    <?php echo _l('peppol_not_eligible'); ?>: <?php echo $credit_note_expense_eligible['not_eligible'] ?? 0; ?>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

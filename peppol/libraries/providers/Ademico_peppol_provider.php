@@ -1152,12 +1152,9 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                 ];
             }
 
-            // Map Ademico status to internal status
-            $internal_status = $this->_map_status_to_internal($status, $event_type);
-
             // Update the document status
             $update_data = [
-                'status' => $internal_status,
+                'status' => $status,
                 'provider_metadata' => json_encode(array_merge(
                     json_decode($peppol_document->provider_metadata ?? '{}', true),
                     [
@@ -1177,7 +1174,7 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                     'document_type' => $peppol_document->document_type,
                     'local_reference_id' => $peppol_document->local_reference_id,
                     'old_status' => $peppol_document->status,
-                    'new_status' => $internal_status,
+                    'new_status' => $status,
                     'provider_status' => $status,
                     'event_type' => $event_type,
                     'updated_at' => date('Y-m-d H:i:s')
@@ -1199,37 +1196,6 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                 'success' => false,
                 'message' => 'Failed to update document status: ' . $e->getMessage()
             ];
-        }
-    }
-
-
-    /**
-     * Map Ademico status to internal PEPPOL status
-     */
-    private function _map_status_to_internal($ademico_status, $event_type)
-    {
-        switch ($event_type) {
-            case 'DOCUMENT_SENT':
-                return 'sent';
-            case 'DOCUMENT_SEND_FAILED':
-                return 'failed';
-            case 'MLR_RECEIVED':
-                return ($ademico_status === 'REJECTED') ? 'rejected' : 'delivered';
-            case 'INVOICE_RESPONSE_RECEIVED':
-                switch ($ademico_status) {
-                    case 'ACCEPTED':
-                        return 'accepted';
-                    case 'REJECTED':
-                        return 'rejected';
-                    case 'FULLY_PAID':
-                        return 'paid';
-                    case 'PARTIALLY_PAID':
-                        return 'partial_paid';
-                    default:
-                        return 'processed';
-                }
-            default:
-                return 'sent';
         }
     }
 
@@ -1260,7 +1226,7 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                 } else {
                     $document_metadata = json_decode($identifier->provider_metadata ?? '{}', true);
                 }
-                
+
                 // Try to get transmission_id from metadata first, fallback to provider_document_id
                 if (isset($document_metadata['transmissionId'])) {
                     $transmission_id = $document_metadata['transmissionId'];
@@ -1515,26 +1481,26 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
             // Add clarifications if provided
             if (!empty($payload['invoiceClarifications']) && is_array($payload['invoiceClarifications'])) {
                 $formatted_clarifications = [];
-                
+
                 foreach ($payload['invoiceClarifications'] as $clarification) {
                     $formatted_clarification = [];
-                    
+
                     // Required fields for clarification
                     if (isset($clarification['clarificationType'])) {
                         $formatted_clarification['clarificationType'] = $clarification['clarificationType'];
                     }
-                    
+
                     if (isset($clarification['clarificationCode'])) {
                         $formatted_clarification['clarificationCode'] = $clarification['clarificationCode'];
                     }
-                    
+
                     if (isset($clarification['clarification'])) {
                         $formatted_clarification['clarification'] = $clarification['clarification'];
                     }
-                    
+
                     $formatted_clarifications[] = $formatted_clarification;
                 }
-                
+
                 if (!empty($formatted_clarifications)) {
                     $api_payload['invoiceClarifications'] = $formatted_clarifications;
                 }

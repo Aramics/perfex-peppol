@@ -598,6 +598,11 @@ class Peppol extends AdminController
         // Get statistics for different document types
         $data['invoice_stats'] = $this->peppol_model->get_document_statistics('invoice');
         $data['credit_note_stats'] = $this->peppol_model->get_document_statistics('credit_note');
+        
+        // Get expense statistics
+        $data['expense_stats'] = $this->peppol_model->get_expense_statistics();
+        $data['invoice_expense_eligible'] = $this->peppol_model->get_expense_eligible_statistics('invoice');
+        $data['credit_note_expense_eligible'] = $this->peppol_model->get_expense_eligible_statistics('credit_note');
 
         // Get provider information
         $data['providers'] = peppol_get_registered_providers();

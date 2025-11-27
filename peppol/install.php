@@ -14,9 +14,10 @@ if (!$CI->db->table_exists($peppol_docs_table)) {
             `id` int(11) NOT NULL AUTO_INCREMENT,
             `document_type` varchar(20) NOT NULL DEFAULT "invoice",
             `local_reference_id` int(11) DEFAULT NULL,
-            `status` varchar(50) NOT NULL DEFAULT "pending",
+            `status` varchar(50) NOT NULL DEFAULT "pending" COMMENT "Status: transmission(pending,sent,delivered,failed,received) + business(paid,accepted,acknowledged,rejected). Direction: local_reference_id NULL=inbound, NOT NULL=outbound",
             `provider` varchar(100) DEFAULT NULL,
             `provider_document_id` varchar(150) DEFAULT NULL,
+            `provider_document_transmission_id` varchar(150) DEFAULT NULL COMMENT "Transmission ID from notification for easy lookup",
             `provider_metadata` text DEFAULT NULL,
             `expense_id` int(11) DEFAULT NULL,
             `sent_at` datetime DEFAULT NULL,
@@ -26,7 +27,9 @@ if (!$CI->db->table_exists($peppol_docs_table)) {
             PRIMARY KEY (`id`),
             KEY `document_type` (`document_type`),
             KEY `local_reference_id` (`local_reference_id`),
-            KEY `expense_id` (`expense_id`)
+            KEY `expense_id` (`expense_id`),
+            KEY `status` (`status`),
+            KEY `sent_received` (`sent_at`, `received_at`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
     ');
 }
@@ -102,17 +105,32 @@ function peppol_create_custom_fields()
 function peppol_run_migrations()
 {
     $CI = &get_instance();
-    
+
     // Check if expense_id column exists, if not run migration
     if (!$CI->db->field_exists('expense_id', db_prefix() . 'peppol_documents')) {
         // Load the migration class
         require_once __DIR__ . '/migrations/001_add_expense_id_to_peppol_documents.php';
-        
+
         $migration = new Migration_Add_expense_id_to_peppol_documents();
-        
+
         try {
             $migration->up();
             log_activity('PEPPOL: Successfully ran migration to add expense_id column');
+        } catch (Exception $e) {
+            log_activity('PEPPOL: Migration failed - ' . $e->getMessage());
+        }
+    }
+
+    // Check if provider_document_transmission_id column exists, if not run migration
+    if (!$CI->db->field_exists('provider_document_transmission_id', db_prefix() . 'peppol_documents')) {
+        // Load the migration class
+        require_once __DIR__ . '/migrations/003_add_transmission_id_to_peppol_documents.php';
+
+        $migration = new Migration_Add_transmission_id_to_peppol_documents();
+
+        try {
+            $migration->up();
+            log_activity('PEPPOL: Successfully ran migration to add provider_document_transmission_id column');
         } catch (Exception $e) {
             log_activity('PEPPOL: Migration failed - ' . $e->getMessage());
         }

@@ -22,7 +22,7 @@ class Peppol_ubl_generator
     /**
      * Generate UBL Invoice XML using Josemmo/Einvoicing library
      */
-    public function generate_invoice_ubl($invoice, $invoice_items, $sender_info, $receiver_info)
+    public function generate_invoice_ubl($invoice, $sender_info, $receiver_info)
     {
         try {
             // Check if library is available
@@ -62,7 +62,7 @@ class Peppol_ubl_generator
             $ublInvoice->setBuyer($buyer);
 
             // Add invoice lines
-            foreach ($invoice_items as $item) {
+            foreach ($invoice->items as $item) {
                 $itemTax =  get_invoice_item_taxes($item['id']);
 
                 $line = new InvoiceLine();
@@ -105,7 +105,7 @@ class Peppol_ubl_generator
     /**
      * Generate UBL Credit Note XML using Josemmo/Einvoicing library
      */
-    public function generate_credit_note_ubl($credit_note, $credit_note_items, $sender_info, $receiver_info)
+    public function generate_credit_note_ubl($credit_note, $sender_info, $receiver_info)
     {
         try {
             // Check if library is available
@@ -159,7 +159,7 @@ class Peppol_ubl_generator
             }
 
             // Add credit note lines
-            foreach ($credit_note_items as $item) {
+            foreach ($credit_note->items as $item) {
                 $itemTax =  get_credit_note_item_taxes($item['id']);
 
                 $line = new InvoiceLine();
@@ -230,32 +230,31 @@ class Peppol_ubl_generator
         }
 
         // Set postal address
-        $hasAddress = !empty($party_info['address']) || !empty($party_info['city']) ||
-            !empty($party_info['postal_code']) || !empty($party_info['country_code']);
+        $hasAddress = !empty($party_info['address'] ?? []);
 
         if ($hasAddress) {
             // Set address lines (up to 3 lines)
             $addressLines = [];
-            if (!empty($party_info['address'])) {
-                $addressLines[] = $party_info['address'];
+            if (!empty($party_info['address']['street'])) {
+                $addressLines[] = $party_info['address']['street'];
+                $party->setAddress($addressLines);
             }
-            $party->setAddress($addressLines);
 
             // Set other address components separately
-            if (!empty($party_info['city'])) {
-                $party->setCity($party_info['city']);
+            if (!empty($party_info['address']['city'])) {
+                $party->setCity($party_info['address']['city']);
             }
-            if (!empty($party_info['postal_code'])) {
-                $party->setPostalCode($party_info['postal_code']);
+            if (!empty($party_info['address']['postal_code'])) {
+                $party->setPostalCode($party_info['address']['postal_code']);
             }
-            if (!empty($party_info['country_code'])) {
-                $party->setCountry($party_info['country_code']);
+            if (!empty($party_info['address']['country_code'])) {
+                $party->setCountry($party_info['address']['country_code']);
             }
         }
 
         // Set VAT identifier
-        if (!empty($party_info['vat_number'])) {
-            $party->setVatNumber($party_info['vat_number']);
+        if (!empty($party_info['vat'])) {
+            $party->setVatNumber($party_info['vat']);
         }
 
         return $party;

@@ -18,23 +18,7 @@ class Peppol extends AdminController
     /**
      * Get statistics for bulk actions (unified for invoices and credit notes)
      */
-    public function bulk_action_stats()
-    {
-        $this->_handle_bulk_action_stats('invoice');
-    }
-
-    /**
-     * Credit note bulk action stats
-     */
-    public function credit_note_bulk_action_stats()
-    {
-        $this->_handle_bulk_action_stats('credit_note');
-    }
-
-    /**
-     * Handle bulk action statistics for any document type
-     */
-    private function _handle_bulk_action_stats($document_type)
+    public function bulk_action_stats($document_type = 'invoice')
     {
         if (!staff_can('view', 'peppol') || !$this->input->post()) {
             access_denied('peppol');
@@ -42,19 +26,7 @@ class Peppol extends AdminController
 
         $action = $this->input->post('action');
         $client_id = $this->input->post('client_id');
-        $stats = $this->_get_bulk_action_stats($document_type, $action, $client_id);
 
-        echo json_encode([
-            'success' => true,
-            'stats' => $stats
-        ]);
-    }
-
-    /**
-     * Get bulk action statistics for a document type
-     */
-    private function _get_bulk_action_stats($document_type, $action, $client_id = null)
-    {
         $lang_map = [
             'invoice' => [
                 'send_unsent' => 'peppol_send_all_unsent',
@@ -73,51 +45,23 @@ class Peppol extends AdminController
         $lang_keys = $lang_map[$document_type];
         $count = $this->peppol_model->count_documents_for_action($document_type, $action, $client_id);
 
-        return [
+        $stats = [
             'action' => $action,
             'count' => $count,
             'description' => isset($lang_keys[$action]) ? _l($lang_keys[$action]) : _l('peppol_unknown_action'),
             'operation_type' => $action === 'download_sent' ? 'download' : 'send'
         ];
+
+        echo json_encode([
+            'success' => true,
+            'stats' => $stats
+        ]);
     }
 
     /**
      * Bulk send invoices via PEPPOL
      */
-    public function bulk_send()
-    {
-        $this->_handle_bulk_send('invoice');
-    }
-
-    /**
-     * Bulk send credit notes via PEPPOL
-     */
-    public function credit_note_bulk_send()
-    {
-        $this->_handle_bulk_send('credit_note');
-    }
-
-
-    /**
-     * Bulk download UBL files for invoices
-     */
-    public function bulk_download_ubl()
-    {
-        $this->_handle_bulk_download_ubl('invoice');
-    }
-
-    /**
-     * Bulk download UBL files for credit notes
-     */
-    public function credit_note_bulk_download_ubl()
-    {
-        $this->_handle_bulk_download_ubl('credit_note');
-    }
-
-    /**
-     * Handle bulk send for any document type
-     */
-    private function _handle_bulk_send($document_type)
+    public function bulk_send($document_type = 'invoice')
     {
         if (!staff_can('create', 'peppol') || !$this->input->post()) {
             access_denied('peppol');
@@ -143,11 +87,7 @@ class Peppol extends AdminController
 
         foreach ($document_ids as $document_id) {
             try {
-                if ($document_type === 'invoice') {
-                    $result = $this->peppol_service->send_invoice($document_id);
-                } else {
-                    $result = $this->peppol_service->send_credit_note($document_id);
-                }
+                $result = $this->peppol_service->send_document($document_type, $document_id);
 
                 if ($result['success']) {
                     $success++;
@@ -166,43 +106,10 @@ class Peppol extends AdminController
         echo json_encode($this->_prepare_bulk_response($total, $success, $errors, $error_messages));
     }
 
-
     /**
-     * Prepare bulk operation response
+     * Bulk download UBL files for invoices
      */
-    private function _prepare_bulk_response($total, $success, $errors, $error_messages = [])
-    {
-        $response = [
-            'success' => $success > 0,
-            'progress' => [
-                'total' => $total,
-                'completed' => $total,
-                'success' => $success,
-                'errors' => $errors
-            ]
-        ];
-
-        if ($errors === 0) {
-            $response['message'] = _l('peppol_operation_completed');
-        } elseif ($success > 0) {
-            $response['message'] = sprintf(_l('peppol_operation_partial_success'), $success, $errors);
-        } else {
-            $response['message'] = _l('peppol_operation_failed');
-            $response['success'] = false;
-        }
-
-        if (!empty($error_messages)) {
-            $response['errors'] = array_slice($error_messages, 0, 10); // Limit to 10 errors
-        }
-
-        return $response;
-    }
-
-
-    /**
-     * Handle bulk download UBL for any document type
-     */
-    private function _handle_bulk_download_ubl($document_type)
+    public function bulk_download_ubl($document_type = 'invoice')
     {
         if (!staff_can('view', 'peppol') || !$this->input->post()) {
             access_denied('peppol');
@@ -259,6 +166,38 @@ class Peppol extends AdminController
                 unlink($zip_filename);
             }
         }
+    }
+
+
+    /**
+     * Prepare bulk operation response
+     */
+    private function _prepare_bulk_response($total, $success, $errors, $error_messages = [])
+    {
+        $response = [
+            'success' => $success > 0,
+            'progress' => [
+                'total' => $total,
+                'completed' => $total,
+                'success' => $success,
+                'errors' => $errors
+            ]
+        ];
+
+        if ($errors === 0) {
+            $response['message'] = _l('peppol_operation_completed');
+        } elseif ($success > 0) {
+            $response['message'] = sprintf(_l('peppol_operation_partial_success'), $success, $errors);
+        } else {
+            $response['message'] = _l('peppol_operation_failed');
+            $response['success'] = false;
+        }
+
+        if (!empty($error_messages)) {
+            $response['errors'] = array_slice($error_messages, 0, 10); // Limit to 10 errors
+        }
+
+        return $response;
     }
 
     /**
@@ -332,17 +271,9 @@ class Peppol extends AdminController
     /**
      * Send single invoice via PEPPOL (AJAX)
      */
-    public function send_ajax($invoice_id)
+    public function send_ajax($document_id, $document_type = 'invoice')
     {
-        $this->_handle_single_send('invoice', $invoice_id);
-    }
-
-    /**
-     * Send single credit note via PEPPOL (AJAX)
-     */
-    public function send_credit_note_ajax($credit_note_id)
-    {
-        $this->_handle_single_send('credit_note', $credit_note_id);
+        $this->_handle_single_send($document_type, $document_id);
     }
 
     /**
@@ -358,11 +289,7 @@ class Peppol extends AdminController
             return;
         }
 
-        if ($document_type === 'invoice') {
-            $response = $this->peppol_service->send_invoice($document_id);
-        } else {
-            $response = $this->peppol_service->send_credit_note($document_id);
-        }
+        $response = $this->peppol_service->send_document($document_type, $document_id);
 
         echo json_encode($response);
     }
@@ -407,9 +334,10 @@ class Peppol extends AdminController
 
         try {
             $ubl_content = $this->_generate_ubl_content($document_type, $document_id);
+            $number = $document_type == 'invoice' ? format_invoice_number($document_id) : format_credit_note_number($document_id);
 
             header('Content-Type: application/xml; charset=utf-8');
-            header('Content-Disposition: attachment; filename="' . $document_type . '_' . $document_id . '_ubl.xml"');
+            header('Content-Disposition: attachment; filename="' . $number . '_ubl.xml"');
             header('Content-Length: ' . strlen($ubl_content));
             echo $ubl_content;
         } catch (Exception $e) {
@@ -422,36 +350,11 @@ class Peppol extends AdminController
      */
     private function _generate_ubl_content($document_type, $document_id)
     {
-        // Load the appropriate model
-        if ($document_type === 'invoice') {
-            $this->load->model('invoices_model');
-            $document = $this->invoices_model->get($document_id);
-        } elseif ($document_type === 'credit_note') {
-            $this->load->model('credit_notes_model');
-            $document = $this->credit_notes_model->get($document_id);
-        } else {
-            throw new Exception('Invalid document type');
+        $ubl_content = $this->peppol_service->generate_document_ubl($document_type, $document_id);
+        if (isset($ubl_content['message'])) {
+            throw new \Exception($ubl_content['message'], 1);
         }
-
-        if (!$document) {
-            throw new Exception(ucfirst($document_type) . ' not found');
-        }
-
-        // Load client data
-        $client = $this->peppol_service->get_client($document->clientid);
-
-        // Prepare sender info using service
-        $sender_info = $this->peppol_service->prepare_sender_info();
-
-        // Prepare receiver info using service
-        $receiver_info = $this->peppol_service->prepare_receiver_info($client);
-
-        // Generate UBL content with complete data
-        if ($document_type === 'invoice') {
-            return $this->peppol_service->generate_invoice_ubl($document, $sender_info, $receiver_info);
-        } else {
-            return $this->peppol_service->generate_credit_note_ubl($document, $sender_info, $receiver_info);
-        }
+        return $ubl_content;
     }
 
     // ================================

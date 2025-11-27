@@ -8,6 +8,9 @@ class Peppol_service
 {
     use Peppol_expense_trait;
 
+    const TYPE_INVOICE = 'invoice';
+    const TYPE_CREDIT_NOTE = 'credit_note';
+
     protected $CI;
 
     public function __construct()
@@ -20,52 +23,36 @@ class Peppol_service
         $this->CI->load->library('peppol/peppol_ubl_document_parser');
     }
 
-    /**
-     * Send invoice via PEPPOL
-     */
-    public function send_invoice($invoice_id)
+    public function generate_document_ubl($document_type, $document_id, $data = [])
+    {
+        // Prepare and validate data
+        $data = isset($data['document']) && isset($data['sender_info']) && isset($data['sender_info']) ? $data : $this->prepare_document_data($document_type, $document_id);
+        if (!$data['success']) {
+            return $data;
+        }
+
+        // Generate UBL content with complete data (payments read from invoice object)
+        $method = $document_type == self::TYPE_CREDIT_NOTE ? 'generate_credit_note_ubl' : 'generate_invoice_ubl';
+        $ubl_content = $this->CI->peppol_ubl_generator->{$method}($data['document'], $data['sender_info'], $data['receiver_info']);
+        return $ubl_content;
+    }
+
+    public function send_document($document_type, $document_id)
     {
         try {
             // Prepare and validate data
-            $data = $this->_prepare_document_data('invoice', $invoice_id);
+            $data = $this->prepare_document_data($document_type, $document_id);
             if (!$data['success']) {
                 return $data;
             }
 
             // Generate UBL content with complete data (payments read from invoice object)
-            $ubl_content = $this->generate_invoice_ubl($data['document'], $data['sender_info'], $data['receiver_info']);
+            $ubl_content = $this->generate_document_ubl($document_type, $document_id, $data);
 
             // Send via provider
             $result = $data['provider']->send('invoice', $ubl_content, $data['document_data'], $data['sender_info'], $data['receiver_info']);
 
-            return $this->_handle_send_result('invoice', $invoice_id, $result, $data['provider']);
-        } catch (Exception $e) {
-            return [
-                'success' => false,
-                'message' => $e->getMessage()
-            ];
-        }
-    }
-
-    /**
-     * Send credit note via PEPPOL
-     */
-    public function send_credit_note($credit_note_id)
-    {
-        try {
-            // Prepare and validate data
-            $data = $this->_prepare_document_data('credit_note', $credit_note_id);
-            if (!$data['success']) {
-                return $data;
-            }
-
-            // Generate UBL content
-            $ubl_content = $this->generate_credit_note_ubl($data['document'], $data['sender_info'], $data['receiver_info']);
-
-            // Send via provider
-            $result = $data['provider']->send('credit_note', $ubl_content, $data['document_data'], $data['sender_info'], $data['receiver_info']);
-
-            return $this->_handle_send_result('credit_note', $credit_note_id, $result, $data['provider']);
+            return $this->_handle_send_result($document_type, $document_id, $result, $data['provider']);
         } catch (Exception $e) {
             return [
                 'success' => false,
@@ -88,13 +75,13 @@ class Peppol_service
     /**
      * Prepare document data for sending
      */
-    private function _prepare_document_data($document_type, $document_id)
+    public function prepare_document_data($document_type, $document_id)
     {
         // Load appropriate model
-        if ($document_type === 'invoice') {
+        if ($document_type === self::TYPE_INVOICE) {
             $this->CI->load->model('invoices_model');
             $document = $this->CI->invoices_model->get($document_id);
-        } elseif ($document_type === 'credit_note') {
+        } elseif ($document_type === self::TYPE_CREDIT_NOTE) {
             $this->CI->load->model('credit_notes_model');
             $document = $this->CI->credit_notes_model->get($document_id);
         } else {
@@ -143,7 +130,7 @@ class Peppol_service
             'client' => $client,
             'sender_info' => $sender_info,
             'receiver_info' => $receiver_info,
-            'provider' => $$active_provider,
+            'provider' => $active_provider,
             'document_data' => $document
         ];
     }
@@ -179,11 +166,19 @@ class Peppol_service
 
     /**
      * Get client data
+     * @return object
      */
     public function get_client($client_id)
     {
         $this->CI->load->model('clients_model');
-        return $this->CI->clients_model->get($client_id);
+        // We do no want to use ->get($client_id) to ensure vat is not ever removed.
+        $clients = $this->CI->clients_model->get('', [db_prefix() . 'clients.userid' => $client_id]);
+        $client = isset($clients[0]) ? (object)$clients[0] : null;
+        if (!$client) return;
+
+        $primary_contacts = $this->CI->clients_model->get_contacts($client_id, ['active' => 1, 'is_primary' => 1]);
+        $client->primary_contact = isset($primary_contacts[0]) ? (object)$primary_contacts[0] : null;
+        return $client;
     }
 
     /**
@@ -243,28 +238,10 @@ class Peppol_service
                 'country_code' => $this->_get_country_code_from_id($client->billing_country ?: $client->country)
             ],
             'contact' => [
-                'phone' => $client->phonenumber,
-                'email' => $client->email
+                'phone' => $client->phonenumber ?: ($client->primary_contact->phonenumber ?? ''),
+                'email' => $client->primary_contact->email ?? ''
             ]
         ];
-    }
-
-    /**
-     * Generate invoice UBL
-     */
-    public function generate_invoice_ubl($invoice, $sender_info, $receiver_info)
-    {
-        $invoice->attachements = $this->prepare_attachments($invoice, 'invoice');
-        return $this->CI->peppol_ubl_generator->generate_invoice_ubl($invoice, $sender_info, $receiver_info);
-    }
-
-    /**
-     * Generate credit note UBL
-     */
-    public function generate_credit_note_ubl($credit_note, $sender_info, $receiver_info)
-    {
-        $credit_note->attachements = $this->prepare_attachments($credit_note, 'credit_note');
-        return $this->CI->peppol_ubl_generator->generate_credit_note_ubl($credit_note, $sender_info, $receiver_info);
     }
 
     /**
@@ -307,6 +284,7 @@ class Peppol_service
 
         $attachments = [];
         foreach ($document->attachments as $key => $attachment) {
+
             if ($attachment['visible_to_customer'] == 1) {
                 $link = base_url('download/file/sales_attachment/' . $attachment['attachment_key']);
                 $attachment['external_link'] = empty($attachment['external_link']) ? $link : $attachment['external_link'];
@@ -315,12 +293,14 @@ class Peppol_service
         }
 
         // Add link to the where pdf can be downloaded i.e view as customer.
-        $document_number = $document_type == 'invoice' ? format_invoice_number($document->id) : format_credit_note_number($document->id);
-        $attachments[] = [
-            'description' => $document_number . ' PDF',
-            'file_name' => $document_number . ' PDF',
-            'external_link' => base_url('invoice/' . $document->id . '/' . $document->hash),
-        ];
+        if ($document_type == self::TYPE_INVOICE) { // public view of the invoice on the system
+            $document_number =  format_invoice_number($document->id);
+            $attachments[] = [
+                'description' => $document_number,
+                'file_name' => $document_number,
+                'external_link' => base_url('invoice/' . $document->id . '/' . $document->hash),
+            ];
+        }
 
         return $attachments;
     }
@@ -480,7 +460,7 @@ class Peppol_service
             // Fetch related data only if needed and document has local reference
             $this->CI->load->model(['invoices_model', 'credit_notes_model', 'clients_model']);
 
-            $doc_data = $document->document_type === 'credit_note' ?
+            $doc_data = $document->document_type === self::TYPE_CREDIT_NOTE ?
                 $this->CI->credit_notes_model->get($document->local_reference_id)  :
                 $this->CI->invoices_model->get($document->local_reference_id);
 

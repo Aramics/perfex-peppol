@@ -33,7 +33,7 @@ $config = [
         'js_global_key' => 'peppol_single_js_added'
     ],
     'credit_note' => [
-        'send_url' => 'peppol/send_credit_note_ajax/' . $document->id,
+        'send_url' => 'peppol/send_ajax/' . $document->id . '/credit_note',
         'generate_view_ubl_url' => 'peppol/generate_view_ubl/credit_note/' . $document->id,
         'generate_download_ubl_url' => 'peppol/generate_download_ubl/credit_note/' . $document->id,
         'send_lang' => 'peppol_send_credit_note',

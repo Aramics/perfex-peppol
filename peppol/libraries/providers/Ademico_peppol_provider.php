@@ -1179,10 +1179,6 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                 $peppol_document = $CI->peppol_model->get_peppol_document_by_transmission_id($transmission_id, $this->get_id());
             }
 
-            if (!$peppol_document && $document_id) {
-                $peppol_document = $CI->peppol_model->get_peppol_document_by_provider_id($document_id, $this->get_id());
-            }
-
             // Attempt to create the record is is DOCUMENT_SENT event incase local db entry was removed or notifation missed somehow
             if (!$peppol_document && $document_id && $event_type == 'DOCUMENT_SENT') {
                 $local_references = $CI->credit_notes_model->get('', ['formatted_number' => $document_id]);
@@ -1208,6 +1204,7 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                         'received_at' => null,
                         'created_at' => date('Y-m-d H:i:s')
                     ];
+
                     $_document_id = $CI->peppol_model->create_peppol_document($peppol_document_data);
                     if ($_document_id)
                         $peppol_document = $CI->peppol_model->get_peppol_document_by_transmission_id($transmission_id, $this->get_id());

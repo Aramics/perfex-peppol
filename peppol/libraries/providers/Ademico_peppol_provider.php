@@ -11,6 +11,8 @@ require_once __DIR__ . '/Abstract_peppol_provider.php';
  */
 class Ademico_peppol_provider extends Abstract_peppol_provider
 {
+    protected $consume_notification_queue = false;
+
     // Endpoint service constants
     const ENDPOINT_OAUTH = 'oauth';
     const ENDPOINT_API_BASE = 'api_base';
@@ -977,13 +979,13 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                     }
 
                     // Consume (delete) notification if it was successfully processed
-                    /*if ($notification_processed && $notification_id) {
+                    if ($this->consume_notification_queue === true && $notification_processed && $notification_id) {
                         $consume_result = $this->consume_notification($notification_id);
                         if (!$consume_result['success']) {
                             // Log consumption error but don't fail the whole webhook
                             $results['errors'][] = 'Warning: Failed to consume notification ' . $notification_id . ': ' . $consume_result['message'];
                         }
-                    }*/
+                    }
                 } catch (Exception $e) {
                     $results['errors'][] = 'Error processing notification: ' . $e->getMessage();
                 }

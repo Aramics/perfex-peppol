@@ -167,7 +167,7 @@ trait Peppol_provider_operations_trait
             $peppol_data = [
                 'document_type' => $document_type,
                 'local_reference_id' => $document_id,
-                'status' => 'sent',
+                'status' => 'pending', // Will be updated in notification
                 'provider' => $provider->get_id(),
                 'provider_document_id' => $result['document_id'] ?? null,
                 'provider_metadata' => json_encode($result['metadata'] ?? []),

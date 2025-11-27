@@ -1236,6 +1236,10 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                 ))
             ];
 
+            if ($peppol_document->provider_document_transmission_id != $transmission_id) {
+                $update_data['provider_document_transmission_id'] = $transmission_id;
+            }
+
             $updated = $CI->peppol_model->update_peppol_document($peppol_document->id, $update_data);
 
             if ($updated) {

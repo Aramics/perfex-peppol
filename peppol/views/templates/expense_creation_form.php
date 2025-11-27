@@ -203,7 +203,9 @@ $(function() {
 
         $.post(admin_url + 'peppol/create_expense/' + documentId, formData)
             .done(function(response) {
-                response = JSON.parse(response);
+                if (typeof response === 'string') {
+                    response = JSON.parse(response);
+                }
                 if (response.success) {
                     alert_float('success', response.message);
                     $('.modal').modal('hide');

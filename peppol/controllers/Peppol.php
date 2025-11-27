@@ -23,5 +23,26 @@ class Peppol extends AdminController
         $this->load->library(PEPPOL_MODULE_NAME . '/peppol_service');
     }
 
+    /**
+     * Centralized JSON response output
+     * 
+     * Provides consistent JSON response formatting across all PEPPOL endpoints.
+     * Sets appropriate headers and handles response encoding.
+     * 
+     * @param array $data Response data to encode
+     * @param bool $exit Whether to exit after output (default: true)
+     * @return void Outputs JSON response and optionally exits
+     */
+    protected function json_output($data,  $exit = true)
+    {
+        // Set JSON headers
+        header('Content-Type: application/json; charset=utf-8');
 
+        // Output JSON
+        echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        if ($exit) {
+            exit;
+        }
+    }
 }

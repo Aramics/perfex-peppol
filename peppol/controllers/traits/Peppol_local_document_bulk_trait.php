@@ -14,7 +14,13 @@ defined('BASEPATH') or exit('No direct script access allowed');
 trait Peppol_local_document_bulk_trait
 {
     /**
-     * Get statistics for bulk actions (unified for invoices and credit notes)
+     * Get statistics for bulk actions on local documents
+     * 
+     * Returns count and description for bulk operations like sending unsent documents,
+     * retrying failed sends, or downloading UBL files.
+     * 
+     * @param string $document_type Document type ('invoice' or 'credit_note')
+     * @return void Outputs JSON response with statistics
      */
     public function bulk_action_stats($document_type = 'invoice')
     {
@@ -50,14 +56,20 @@ trait Peppol_local_document_bulk_trait
             'operation_type' => $action === 'download_sent' ? 'download' : 'send'
         ];
 
-        echo json_encode([
+        return $this->json_output([
             'success' => true,
             'stats' => $stats
         ]);
     }
 
     /**
-     * Bulk send documents via PEPPOL
+     * Bulk send local documents via PEPPOL
+     * 
+     * Processes multiple local invoices or credit notes for sending through PEPPOL network.
+     * Handles both unsent documents and retry operations for failed sends.
+     * 
+     * @param string $document_type Document type ('invoice' or 'credit_note')
+     * @return void Outputs JSON response with operation results
      */
     public function bulk_send($document_type = 'invoice')
     {
@@ -70,11 +82,10 @@ trait Peppol_local_document_bulk_trait
         $document_ids = $this->peppol_model->get_document_ids_for_action($document_type, $action, $client_id);
 
         if (empty($document_ids)) {
-            echo json_encode([
+            return $this->json_output([
                 'success' => false,
                 'message' => _l('peppol_no_invoices_found')
             ]);
-            return;
         }
 
         // Process documents
@@ -101,11 +112,17 @@ trait Peppol_local_document_bulk_trait
             }
         }
 
-        echo json_encode($this->_prepare_bulk_response($total, $success, $errors, $error_messages));
+        return $this->json_output($this->_prepare_bulk_response($total, $success, $errors, $error_messages));
     }
 
     /**
-     * Bulk download UBL files
+     * Bulk download UBL files for local documents
+     * 
+     * Generates and packages multiple UBL XML files into a ZIP archive for download.
+     * Can download UBL files for sent documents or generate UBL for any valid documents.
+     * 
+     * @param string $document_type Document type ('invoice' or 'credit_note')
+     * @return void Initiates file download or shows error
      */
     public function bulk_download_ubl($document_type = 'invoice')
     {
@@ -170,7 +187,16 @@ trait Peppol_local_document_bulk_trait
     }
 
     /**
-     * Prepare bulk operation response
+     * Prepare standardized response for bulk operations
+     * 
+     * Creates a consistent JSON response structure for all bulk operations,
+     * including progress tracking and error handling.
+     * 
+     * @param int $total Total number of documents processed
+     * @param int $success Number of successful operations
+     * @param int $errors Number of failed operations
+     * @param array $error_messages Array of error messages (limited to 10)
+     * @return array Structured response array for JSON output
      */
     private function _prepare_bulk_response($total, $success, $errors, $error_messages = [])
     {
@@ -201,7 +227,15 @@ trait Peppol_local_document_bulk_trait
     }
 
     /**
-     * Get documents for download based on action
+     * Get local documents for bulk download operations
+     * 
+     * Retrieves document lists based on the requested action type and filters.
+     * Handles both sent PEPPOL documents and all valid local documents.
+     * 
+     * @param string $document_type Document type ('invoice' or 'credit_note')
+     * @param string $action Action type ('download_sent' or 'download_all_ubl')
+     * @param int|null $client_id Optional client filter
+     * @return array Array of document objects
      */
     private function _get_documents_for_download($document_type, $action, $client_id = null)
     {

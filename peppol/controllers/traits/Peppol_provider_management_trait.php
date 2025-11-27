@@ -5,33 +5,41 @@ defined('BASEPATH') or exit('No direct script access allowed');
 /**
  * PEPPOL Provider Management Trait
  * 
- * Handles provider-related operations including:
- * - Provider connection testing
+ * Handles PEPPOL access point provider operations including:
+ * - Provider connection testing and validation
+ * - Provider configuration management
+ * 
+ * @package PEPPOL
+ * @subpackage Controllers\Traits
  */
 trait Peppol_provider_management_trait
 {
     /**
-     * Test provider connection (AJAX)
+     * Test PEPPOL provider connection (AJAX)
+     * 
+     * Validates and tests connection to a PEPPOL access point provider using
+     * the provided configuration settings. Filters settings by provider prefix
+     * and tests connectivity before saving configuration.
+     * 
+     * @return void Outputs JSON response with test results
      */
     public function test_provider_connection()
     {
         if (!staff_can('edit', 'settings') || !$this->input->post()) {
-            echo json_encode([
+            return $this->json_output([
                 'success' => false,
                 'message' => _l('peppol_access_denied')
             ]);
-            return;
         }
 
         $provider_id = $this->input->post('provider');
         $form_settings = $this->input->post('settings');
 
         if (!$provider_id) {
-            echo json_encode([
+            return $this->json_output([
                 'success' => false,
                 'message' => _l('peppol_invalid_provider')
             ]);
-            return;
         }
 
         try {
@@ -39,11 +47,10 @@ trait Peppol_provider_management_trait
             $providers = peppol_get_registered_providers();
 
             if (!isset($providers[$provider_id])) {
-                echo json_encode([
+                return $this->json_output([
                     'success' => false,
                     'message' => _l('peppol_provider_not_found')
                 ]);
-                return;
             }
 
             $provider_instance = $providers[$provider_id];
@@ -65,9 +72,9 @@ trait Peppol_provider_management_trait
             // Test the connection with cleaned settings
             $result = $provider_instance->test_connection($provider_settings);
 
-            echo json_encode($result);
+            return $this->json_output($result);
         } catch (Exception $e) {
-            echo json_encode([
+            return $this->json_output([
                 'success' => false,
                 'message' => $e->getMessage()
             ]);

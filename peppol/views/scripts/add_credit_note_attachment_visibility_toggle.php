@@ -1,22 +1,20 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
 
 <script>
-let creditNoteId = "<?= $credit_note->id; ?>";
-let creditNoteAttachments = <?= json_encode($attachments); ?>;
+let peppolCreditNoteId = "<?= $credit_note->id; ?>";
+let peppolCreditNoteAttachments = <?= json_encode($attachments); ?>;
 
 $(document).ready(function() {
     // Add visibility toggle buttons to existing attachments
-    addAttachmentVisibilityToggles();
+    peppolAddCNAttachmentVisibilityToggles();
 });
 
-function addAttachmentVisibilityToggles() {
+function peppolAddCNAttachmentVisibilityToggles() {
     // Find all attachment rows that don't have toggle buttons yet
     $('[data-attachment-id]:not([data-toggle-added])').each(function() {
         var $attachmentRow = $(this);
         var attachmentId = $attachmentRow.data('attachment-id');
-        console.log({
-            attachmentId
-        })
+
         if (!attachmentId) return;
 
         // Mark this row as processed
@@ -27,7 +25,7 @@ function addAttachmentVisibilityToggles() {
         if ($actionsCol.length) {
             // Try to determine current visibility from attachment data
             // Check if attachment row has visibility data attribute
-            var isVisible = (creditNoteAttachments[attachmentId]['visible_to_customer'] ?? '0') == '1';
+            var isVisible = (peppolCreditNoteAttachments[attachmentId]['visible_to_customer'] ?? '0') == '1';
 
             var iconClass = isVisible ? 'fa-toggle-on' : 'fa-toggle-off';
             var tooltip = isVisible ? '<?= _l('hide_from_customer'); ?>' : '<?= _l('show_to_customer'); ?>';
@@ -44,7 +42,7 @@ function addAttachmentVisibilityToggles() {
 
             toggleButton.on('click', function(e) {
                 e.preventDefault();
-                toggleAttachmentVisibility(this);
+                peppolToggleCNAttachmentVisibility(this);
             });
 
             // Add the toggle button before the delete button
@@ -56,7 +54,7 @@ function addAttachmentVisibilityToggles() {
     });
 }
 
-function toggleAttachmentVisibility(button) {
+function peppolToggleCNAttachmentVisibility(button) {
     var $button = $(button);
     var attachmentId = $button.data('attachment-id');
     var currentVisible = $button.data('visible') == '1';
@@ -74,8 +72,8 @@ function toggleAttachmentVisibility(button) {
     // Call your existing toggle_file_visibility function if it exists
     if (typeof toggle_file_visibility === 'function') {
         // Get credit note ID from URL or page context
-        if (creditNoteId) {
-            toggle_file_visibility(attachmentId, creditNoteId, button);
+        if (peppolCreditNoteId) {
+            toggle_file_visibility(attachmentId, peppolCreditNoteId, button);
         }
     }
 }

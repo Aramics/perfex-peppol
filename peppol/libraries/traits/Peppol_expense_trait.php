@@ -118,7 +118,7 @@ trait Peppol_expense_trait
                 'create_invoice_billable' => 0,
                 'send_invoice_to_customer' => 0,
                 'dateadded' => date('Y-m-d H:i:s'),
-                'addedfrom' => get_staff_user_id()
+                'addedfrom' => get_staff_user_id() ?: 0 // Use 0 if no staff user available (system creation)
             ];
 
             // Load expenses model and create expense

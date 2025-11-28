@@ -235,10 +235,10 @@
         <hr />
 
         <div class="row">
-            <div class="col-md-6">
+            <div class="col-md-12">
                 <?php echo render_yes_no_option('peppol_auto_create_invoice_expenses', _l('peppol_auto_create_invoice_expenses'), _l('peppol_auto_create_invoice_expenses_help')); ?>
             </div>
-            <div class="col-md-6">
+            <div class="col-md-12">
                 <?php echo render_yes_no_option('peppol_auto_create_credit_note_expenses', _l('peppol_auto_create_credit_note_expenses'), _l('peppol_auto_create_credit_note_expenses_help')); ?>
             </div>
         </div>

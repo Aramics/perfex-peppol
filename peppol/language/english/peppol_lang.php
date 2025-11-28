@@ -620,3 +620,4 @@ $lang['peppol_date_created'] = 'Date Created';
 $lang['peppol_filter_action'] = 'Filter by Action';
 $lang['peppol_filter_document_type'] = 'Filter by Document Type';
 $lang['peppol_filter_status'] = 'Filter by Status';
+$lang['peppol_process_notifications'] = "Process Notifications";

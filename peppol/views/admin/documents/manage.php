@@ -10,6 +10,12 @@ $card_class = 'panel_s panel-body tw-px-4 tw-py-3';
             <h4 class="tw-mt-0 tw-font-semibold tw-text-lg tw-text-neutral-700">
                 <?php echo _l('peppol_documents'); ?>
             </h4>
+            <?php if (staff_can('delete', 'peppol_logs')) { ?>
+            <a class="btn btn-secondary" href="<?= admin_url('peppol/process_notifications/manual'); ?>">
+                <i class="fa fa-reload"></i>
+                <?php echo _l('peppol_process_notifications'); ?>
+            </a>
+            <?php } ?>
         </div>
 
         <!-- Statistics Cards -->

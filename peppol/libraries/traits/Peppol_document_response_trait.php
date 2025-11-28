@@ -23,7 +23,7 @@ trait Peppol_document_response_trait
      * back through the PEPPOL network via the provider. Handles clarifications
      * and validation of response data.
      * 
-     * @param int $document_id PEPPOL document ID
+     * @param int $document_id PEPPOL document table ID
      * @param string $status Response status code (accept, reject, etc.)
      * @param string $note Optional response note
      * @param array $clarifications Optional clarifications array
@@ -61,7 +61,7 @@ trait Peppol_document_response_trait
 
         // Prepare response payload
         $response_data = [
-            'invoiceTransmissionId' => $document->provider_document_id,
+            'invoiceTransmissionId' => $document->provider_document_transmission_id,
             'responseCode' => $status,
             'effectiveDate' => !empty($effective_date) ? $effective_date : date('c'),
             'note' => $note
@@ -92,6 +92,8 @@ trait Peppol_document_response_trait
                 if (!empty($clarifications)) {
                     $update_data['provider_metadata']['response_clarifications'] = json_encode($clarifications);
                 }
+
+                $update_data['provider_metadata'] = json_encode($update_data['provider_metadata']);
 
                 // Update document metadata. The real status will be updated through the notification
                 $this->CI->peppol_model->update_peppol_document($document_id, $update_data);

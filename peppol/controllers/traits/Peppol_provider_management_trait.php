@@ -81,4 +81,25 @@ trait Peppol_provider_management_trait
         }
     }
 
+    /**
+     * Manual processing of AP notifications
+     *
+     * @param string $method
+     * @return void
+     */
+    public function process_notifications($method = 'manual')
+    {
+        if (!staff_can('edit', 'peppol')) {
+            access_denied('peppol');
+        }
+
+        try {
+            $this->peppol_service->process_notifications([]);
+            set_alert('success', _l('peppol_operation_completed'));
+        } catch (\Throwable $th) {
+            set_alert('success', $th->getMessage());
+        }
+
+        return redirect(admin_url('peppol/documents'));
+    }
 }

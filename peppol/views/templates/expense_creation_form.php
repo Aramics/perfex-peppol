@@ -186,13 +186,8 @@
 <script>
 $(function() {
     $('#create-expense-submit').on('click', function() {
-        var $btn = $(this);
         var $form = $('#expense-creation-form');
         var documentId = $form.data('document-id');
-
-        var originalHtml = $btn.html();
-        $btn.prop('disabled', true).html(
-            '<i class="fa fa-spinner fa-spin"></i> <?php echo _l("processing"); ?>');
 
         var formData = {
             category: $form.find('[name="category"]').val(),
@@ -218,9 +213,6 @@ $(function() {
             })
             .fail(function() {
                 alert_float('danger', '<?php echo _l("something_went_wrong"); ?>');
-            })
-            .always(function() {
-                $btn.prop('disabled', false).html(originalHtml);
             });
     });
 });

@@ -95,8 +95,8 @@ foreach ($rResult as $aRow) {
     // Actions
     $actions = '';
     if (staff_can('view', 'peppol')) {
-        // View document details
-        $actions .= '<a href="#" onclick="viewPeppolDocument(' . $aRow['id'] . ')" class="btn btn-default btn-icon" data-toggle="tooltip" title="' . _l('view') . '">';
+        // View document details (sidewise view)
+        $actions .= '<a href="' . admin_url('peppol/view_document/' . $aRow['id']) . '" class="btn btn-default btn-icon" data-toggle="tooltip" title="' . _l('view') . '">';
         $actions .= '<i class="fa fa-eye"></i></a>';
 
         // Download UBL from provider (only for sent/delivered documents)

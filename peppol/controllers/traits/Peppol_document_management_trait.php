@@ -56,16 +56,65 @@ trait Peppol_document_management_trait
     }
 
     /**
-     * View PEPPOL document details (AJAX)
+     * View PEPPOL document details (Sidewise view)
+     * 
+     * Displays comprehensive document information in a dedicated page view,
+     * similar to sales document views. Loads document details, attachments,
+     * and provides action buttons for status updates and expense creation.
+     * 
+     * @param int $id PEPPOL document ID
+     * @return void Loads document view page
+     */
+    public function view_document($id)
+    {
+        if (!staff_can('view', 'peppol')) {
+            access_denied('peppol');
+        }
+
+        $document = $this->peppol_service->get_enriched_document($id);
+        if (empty($document->id)) {
+            show_error($document['message'] ?? _l('peppol_document_not_found'));
+        }
+
+        // Parse metadata
+        $metadata = $document->metadata;
+
+        // Get attachments from UBL document
+        $attachments = [];
+        if (isset($document->ubl_document['data']['attachments'])) {
+            $attachments = $document->ubl_document['data']['attachments'];
+        }
+
+        // Get clarifications data for forms
+        $clarifications = $this->peppol_service->get_available_clarifications();
+
+        // Prepare view data
+        $data = [
+            'title' => sprintf(
+                '%s - %s',
+                ucfirst(str_replace('_', ' ', $document->document_type)),
+                !empty($document->local_reference_id) ? '#' . $document->local_reference_id : $document->provider_document_id
+            ),
+            'document' => $document,
+            'metadata' => $metadata,
+            'attachments' => $attachments,
+            'clarifications' => $clarifications
+        ];
+
+        $this->load->view('peppol/admin/documents/view', $data);
+    }
+
+    /**
+     * View PEPPOL document details (AJAX - Legacy for modal)
      * 
      * Loads comprehensive document information including metadata, 
      * attachments, and available response options. Returns formatted
-     * HTML content for modal display.
+     * HTML content for modal display. Kept for backward compatibility.
      * 
      * @param int $id PEPPOL document ID
      * @return void Outputs JSON response with document details
      */
-    public function view_document($id)
+    public function view_document_modal($id)
     {
         if (!staff_can('view', 'peppol')) {
             return $this->json_output(['success' => false, 'message' => _l('access_denied')]);
@@ -159,6 +208,57 @@ trait Peppol_document_management_trait
                 $effective_date
             );
             return $this->json_output($result);
+        } catch (Exception $e) {
+            return $this->json_output([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Get status update form for document (AJAX)
+     * 
+     * Returns the status update form HTML for modal display.
+     * Includes clarifications and response options for the document.
+     * 
+     * @param int $id PEPPOL document ID
+     * @return void Outputs JSON response with form HTML
+     */
+    public function get_status_update_form($id)
+    {
+        if (!staff_can('create', 'peppol')) {
+            return $this->json_output(['success' => false, 'message' => _l('access_denied')]);
+        }
+
+        $document = $this->peppol_service->get_enriched_document($id);
+
+        if (empty($document->id)) {
+            return $this->json_output(['success' => false, 'message' => _l('peppol_document_not_found')]);
+        }
+
+        // Only allow status updates for received documents
+        if (empty($document->received_at)) {
+            return $this->json_output(['success' => false, 'message' => _l('peppol_cannot_update_status_outbound')]);
+        }
+
+        try {
+            // Get clarifications data for the form
+            $clarifications = $this->peppol_service->get_available_clarifications();
+
+            // Prepare view data
+            $view_data = [
+                'document' => $document,
+                'clarifications' => $clarifications
+            ];
+
+            // Render the status update form
+            $content = $this->load->view('peppol/templates/status_update_form', $view_data, true);
+
+            return $this->json_output([
+                'success' => true,
+                'content' => $content
+            ]);
         } catch (Exception $e) {
             return $this->json_output([
                 'success' => false,

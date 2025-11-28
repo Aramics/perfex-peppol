@@ -66,7 +66,7 @@
                         <?php if (!empty($document->received_at) && !empty($document->provider_document_id)) : ?>
                         <button type="button" id="show-update-status-form" class="btn btn-xs btn-primary tw-ml-2"
                             data-toggle="tooltip" title="<?php echo _l('peppol_update_document_status'); ?>">
-                            <i class="fa fa-check"></i>
+                            <i class="fa fa-edit"></i>
                         </button>
 
                         <?php

@@ -56,11 +56,21 @@ trait Peppol_provider_operations_trait
      * Triggers the active provider's webhook processing method to handle
      * incoming notifications about document status changes or new documents.
      * 
-     * @return void
+     * @return array Processing results from the provider
      */
     public function process_notifications()
     {
-        peppol_get_active_provider()->webhook([]);
+        // Get notification lookup time from settings
+        $lookup_hours = (float)(get_option('peppol_notification_lookup_hours') ?: 72);
+        $total_minutes = $lookup_hours * 60;
+        
+        // Prepare filter parameters
+        $filter = [
+            'startDateTime' => date('c', strtotime("-{$total_minutes} minutes")),
+            'pageSize' => 100
+        ];
+        
+        return peppol_get_active_provider()->webhook($filter);
     }
 
     /**

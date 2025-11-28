@@ -530,3 +530,16 @@ $lang['peppol_converted'] = 'Converted';
 $lang['peppol_not_eligible'] = 'Not Eligible';
 $lang['peppol_invoice_expenses_subtitle'] = 'From paid invoices';
 $lang['peppol_credit_note_expenses_subtitle'] = 'From accepted credit notes';
+
+// Notification Settings
+$lang['peppol_notifications'] = 'Notifications';
+$lang['peppol_cron'] = 'Cron';
+$lang['peppol_notification_lookup_time'] = 'Notification Lookup Time (Hours)';
+$lang['peppol_notification_lookup_hours_help'] = 'Number of hours to look back for notifications. Use decimals for precision (e.g., 1.5 = 1 hour 30 minutes)';
+$lang['peppol_cron_interval'] = 'Cron Interval (Minutes)';
+$lang['peppol_cron_interval_help'] = 'How often to run the notification check process';
+$lang['peppol_last_notification_check'] = 'Last Check';
+$lang['peppol_next_notification_check'] = 'Next Check';
+$lang['peppol_calculating'] = 'Calculating';
+$lang['when_cron_runs'] = 'When cron runs next';
+$lang['never'] = 'Never';

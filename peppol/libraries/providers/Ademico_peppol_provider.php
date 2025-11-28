@@ -908,10 +908,10 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
      * Process PEPPOL webhook notifications
      * Fetches notifications, processes incoming documents, and updates sent document statuses
      * 
-     * @param array $payload Webhook payload data
+     * @param array $filter Webhook filters and parameters
      * @return array Processing results
      */
-    public function webhook($payload = [])
+    public function webhook($filter = [])
     {
         $CI = &get_instance();
         $CI->load->library('peppol/peppol_service');
@@ -927,11 +927,13 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
         ];
 
         try {
-            // Get recent notifications (last 24 hour if no specific filters)
-            $filters = [
-                'startDateTime' => date('c', strtotime('-100 hour')),
+            // Use passed filter parameters or defaults
+            $default_filters = [
+                'startDateTime' => date('c', strtotime('-72 hours')), // Default 72 hours
                 'pageSize' => 100
             ];
+            
+            $filters = array_merge($default_filters, $filter);
 
             $notifications_response = $this->_get_notifications($filters);
 

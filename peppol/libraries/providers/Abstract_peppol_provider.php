@@ -46,7 +46,7 @@ abstract class Abstract_peppol_provider implements Peppol_provider_interface
     /**
      * Default webhook handler (override in subclasses if webhooks are supported)
      */
-    public function webhook($payload)
+    public function webhook($filter)
     {
         return [
             'success' => false,

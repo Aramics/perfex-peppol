@@ -24,10 +24,10 @@ interface Peppol_provider_interface
     /**
      * Handle webhook callbacks from the provider
      * 
-     * @param array $payload Webhook payload
+     * @param array $filter Webhook filters and parameters
      * @return array Array with 'success' and 'message'
      */
-    public function webhook($payload);
+    public function webhook($filter);
 
     /**
      * Test connection to the provider's API/service

@@ -27,7 +27,8 @@ if (!function_exists('render_peppol_status_column')) {
 
 if (!function_exists('peppol_process_notifications')) {
     /**
-     * Run every 15 minutes via cron
+     * Process PEPPOL notifications via cron
+     * Frequency is configurable in settings (default: every 5 minutes)
      */
     function peppol_process_notifications()
     {
@@ -40,18 +41,25 @@ if (!function_exists('peppol_process_notifications')) {
         // Current timestamp
         $now = time();
 
-        // Only run if 15 minutes have passed since last run
-        if ($last_run && ($now - $last_run) < 15 * 60) {
+        // Get cron interval from settings (default 5 minutes)
+        $cron_interval = (int)(get_option('peppol_cron_interval') ?: 5);
+        $interval_seconds = $cron_interval * 60;
+
+        // Only run if configured interval has passed since last run
+        if ($last_run && ($now - $last_run) < $interval_seconds) {
             return;
         }
 
         // Update last run timestamp immediately to avoid duplicate execution
         update_option($option_key, $now);
+        
+        // Update last notification check timestamp
+        update_option('peppol_last_notification_check', date('Y-m-d H:i:s', $now));
 
         try {
             $CI->peppol_service->process_notifications();
         } catch (\Throwable $th) {
-            log_message('error', 'Error in my_custom_cron_job: ' . $th->getMessage());
+            log_message('error', 'Error in peppol_process_notifications: ' . $th->getMessage());
         }
     }
 }

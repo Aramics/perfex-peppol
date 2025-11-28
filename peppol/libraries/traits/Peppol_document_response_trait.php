@@ -79,20 +79,26 @@ trait Peppol_document_response_trait
             if ($result['success']) {
                 // Prepare data to store locally
                 $update_data = [
-                    'response_status' => $status,
-                    'response_note' => $note,
-                    'responded_at' => date('Y-m-d H:i:s'),
-                    'responded_by' => get_staff_user_id()
+                    'status' => $status,
+                    'provider_metadata' => array_merge(
+                        $document->metadata,
+                        [
+                            'response_note' => $note,
+                            'responded_by' => get_staff_user_id() ?? 0
+                        ]
+                    )
                 ];
 
                 // Store clarifications if provided
                 if (!empty($clarifications)) {
-                    $update_data['response_clarifications'] = json_encode($clarifications);
+                    $update_data['provider_metadata']['response_clarifications'] = json_encode($clarifications);
                 }
 
-                // Update document status locally only after successful provider response
-                $this->CI->db->where('id', $document_id);
-                $this->CI->db->update(db_prefix() . 'peppol_documents', $update_data);
+                // Update document status locally using model method
+                $this->CI->peppol_model->update_peppol_document($document_id, $update_data);
+
+                // Check if we should auto-create expense based on new status
+                $this->_check_auto_expense_creation($document, $status);
 
                 return [
                     'success' => true,
@@ -155,5 +161,105 @@ trait Peppol_document_response_trait
                 'OTH' => _l('peppol_clarification_action_oth')
             ]
         ];
+    }
+
+    /**
+     * Check if auto-expense creation should be triggered based on document status
+     * 
+     * @param object $document PEPPOL document object
+     * @param string $status New status being set
+     * @return void
+     * @private
+     */
+    private function _check_auto_expense_creation($document, $status)
+    {
+        // Only process received documents (inbound)
+        if (!empty($document->local_reference_id)) {
+            return;
+        }
+
+        $should_create_expense = false;
+
+        // Check if auto-creation is enabled and status conditions are met
+        if (
+            $document->document_type === 'invoice' &&
+            $status === 'FULLY_PAID' &&
+            get_option('peppol_auto_create_invoice_expenses') == '1'
+        ) {
+            $should_create_expense = true;
+        } elseif (
+            $document->document_type === 'credit_note' &&
+            $status === 'ACCEPTED' &&
+            get_option('peppol_auto_create_credit_note_expenses') == '1'
+        ) {
+            $should_create_expense = true;
+        }
+
+        if ($should_create_expense) {
+            try {
+                // Load PEPPOL service to access expense creation methods
+                $this->CI->load->library('peppol/peppol_service');
+
+                $result = $this->CI->peppol_service->create_expense_from_document($document->id);
+
+                if ($result['success']) {
+                    // Log successful auto-expense creation
+                    $this->CI->peppol_model->log_activity([
+                        'type' => 'auto_expense_created',
+                        'message' => sprintf(
+                            'Auto-created expense for %s marked as %s (Document ID: %d, Expense ID: %d)',
+                            $document->document_type,
+                            $status,
+                            $document->id,
+                            $result['expense_id']
+                        ),
+                        'data' => json_encode([
+                            'document_id' => $document->id,
+                            'document_type' => $document->document_type,
+                            'status' => $status,
+                            'expense_id' => $result['expense_id'],
+                            'auto_created' => true
+                        ])
+                    ]);
+                } else {
+                    // Log auto-expense creation failure
+                    $this->CI->peppol_model->log_activity([
+                        'type' => 'auto_expense_failed',
+                        'message' => sprintf(
+                            'Failed to auto-create expense for %s marked as %s (Document ID: %d): %s',
+                            $document->document_type,
+                            $status,
+                            $document->id,
+                            $result['message']
+                        ),
+                        'data' => json_encode([
+                            'document_id' => $document->id,
+                            'document_type' => $document->document_type,
+                            'status' => $status,
+                            'error' => $result['message'],
+                            'auto_created' => false
+                        ])
+                    ]);
+                }
+            } catch (Exception $e) {
+                // Log exception but don't fail the status update
+                $this->CI->peppol_model->log_activity([
+                    'type' => 'auto_expense_error',
+                    'message' => sprintf(
+                        'Exception during auto-expense creation for %s marked as %s (Document ID: %d): %s',
+                        $document->document_type,
+                        $status,
+                        $document->id,
+                        $e->getMessage()
+                    ),
+                    'data' => json_encode([
+                        'document_id' => $document->id,
+                        'document_type' => $document->document_type,
+                        'status' => $status,
+                        'exception' => $e->getMessage()
+                    ])
+                ]);
+            }
+        }
     }
 }

@@ -606,3 +606,17 @@ $lang['peppol_tax'] = 'Tax';
 $lang['peppol_total'] = 'Total';
 $lang['peppol_notes'] = 'Notes';
 $lang['peppol_view_expense'] = 'View Expense';
+
+// Logs functionality
+$lang['peppol_logs'] = 'PEPPOL Logs';
+$lang['peppol_logs_menu'] = 'Logs';
+$lang['peppol_clear_logs'] = 'Clear Logs';
+$lang['peppol_logs_cleared_successfully'] = 'Logs cleared successfully';
+$lang['peppol_logs_clear_failed'] = 'Failed to clear logs';
+$lang['peppol_confirm_clear_logs'] = 'Are you sure you want to clear all PEPPOL logs? This action cannot be undone.';
+$lang['peppol_action'] = 'Action';
+$lang['peppol_message'] = 'Message';
+$lang['peppol_date_created'] = 'Date Created';
+$lang['peppol_filter_action'] = 'Filter by Action';
+$lang['peppol_filter_document_type'] = 'Filter by Document Type';
+$lang['peppol_filter_status'] = 'Filter by Status';

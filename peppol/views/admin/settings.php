@@ -214,7 +214,7 @@
                     <div class="form-group">
                         <label><?php echo _l('peppol_last_notification_check'); ?></label>
                         <div class="form-control-static" id="last-notification-check">
-                            <?php 
+                            <?php
                             $last_check = get_option('peppol_last_notification_check');
                             echo $last_check ? date('Y-m-d H:i:s', strtotime($last_check)) : _l('never');
                             ?>
@@ -232,25 +232,21 @@
             </div>
         </div>
 
+        <hr />
+
+        <div class="row">
+            <div class="col-md-6">
+                <?php echo render_yes_no_option('peppol_auto_create_invoice_expenses', _l('peppol_auto_create_invoice_expenses'), _l('peppol_auto_create_invoice_expenses_help')); ?>
+            </div>
+            <div class="col-md-6">
+                <?php echo render_yes_no_option('peppol_auto_create_credit_note_expenses', _l('peppol_auto_create_credit_note_expenses'), _l('peppol_auto_create_credit_note_expenses_help')); ?>
+            </div>
+        </div>
+
     </div>
 
 </div>
 
-<style>
-.form-control.has-error {
-    border-color: #d73925;
-    box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075), 0 0 6px #f4a193;
-}
-
-.form-control.has-success {
-    border-color: #84c541;
-    box-shadow: inset 0 1px 1px rgba(0, 0, 0, .075), 0 0 6px #b7df8b;
-}
-
-.text-danger {
-    color: #d73925 !important;
-}
-</style>
 
 <script>
 function peppolProviderChanged() {
@@ -324,31 +320,32 @@ document.addEventListener("DOMContentLoaded", function() {
     // Bank Information Validation
     $('#peppol-bank-account').on('input', function() {
         var iban = $(this).val().replace(/\s/g, ''); // Remove spaces
-        var isValid = validateIBAN(iban) || validateAccountNumber(iban);
+        var isValid = PeppolBankValidator.validateIBAN(iban) || PeppolBankValidator
+            .validateAccountNumber(iban);
 
         if (iban.length > 0) {
             if (isValid) {
-                $(this).removeClass('has-error').addClass('has-success');
+                $(this).closest('.form-group').removeClass('has-error').addClass('has-success');
             } else {
-                $(this).removeClass('has-success').addClass('has-error');
+                $(this).closest('.form-group').removeClass('has-success').addClass('has-error');
             }
         } else {
-            $(this).removeClass('has-error has-success');
+            $(this).closest('.form-group').removeClass('has-error has-success');
         }
     });
 
     $('#peppol-bank-bic').on('input', function() {
         var bic = $(this).val().toUpperCase();
-        var isValid = validateBIC(bic);
+        var isValid = PeppolBankValidator.validateBIC(bic);
 
         if (bic.length > 0) {
             if (isValid) {
-                $(this).removeClass('has-error').addClass('has-success');
+                $(this).closest('.form-group').removeClass('has-error').addClass('has-success');
             } else {
-                $(this).removeClass('has-success').addClass('has-error');
+                $(this).closest('.form-group').removeClass('has-success').addClass('has-error');
             }
         } else {
-            $(this).removeClass('has-error has-success');
+            $(this).closest('.form-group').removeClass('has-error has-success');
         }
     });
 
@@ -356,17 +353,17 @@ document.addEventListener("DOMContentLoaded", function() {
     function calculateNextNotificationCheck() {
         var cronInterval = $('#peppol-cron-interval').val() || 5;
         var lastCheck = '<?php echo get_option('peppol_last_notification_check'); ?>';
-        
+
         if (lastCheck) {
             var nextCheck = new Date(lastCheck);
             nextCheck.setMinutes(nextCheck.getMinutes() + parseInt(cronInterval));
             // Format to match PHP date('Y-m-d H:i:s') format
-            var formatted = nextCheck.getFullYear() + '-' + 
-                           ('0' + (nextCheck.getMonth() + 1)).slice(-2) + '-' + 
-                           ('0' + nextCheck.getDate()).slice(-2) + ' ' + 
-                           ('0' + nextCheck.getHours()).slice(-2) + ':' + 
-                           ('0' + nextCheck.getMinutes()).slice(-2) + ':' + 
-                           ('0' + nextCheck.getSeconds()).slice(-2);
+            var formatted = nextCheck.getFullYear() + '-' +
+                ('0' + (nextCheck.getMonth() + 1)).slice(-2) + '-' +
+                ('0' + nextCheck.getDate()).slice(-2) + ' ' +
+                ('0' + nextCheck.getHours()).slice(-2) + ':' +
+                ('0' + nextCheck.getMinutes()).slice(-2) + ':' +
+                ('0' + nextCheck.getSeconds()).slice(-2);
             $('#calculated-next-check').text(formatted);
         } else {
             $('#calculated-next-check').text('<?php echo _l('when_cron_runs'); ?>');
@@ -375,23 +372,21 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // Update next check time when cron interval changes
     $('#peppol-cron-interval').change(calculateNextNotificationCheck);
-    
+
     // Calculate on page load
     calculateNextNotificationCheck();
 
 
 });
 
-// IBAN Validation
-function validateIBAN(iban) {
-    if (!iban || iban.length < 4) return false;
+/**
+ * Banking Validation Utility
+ * Provides validation for IBAN, BIC/SWIFT and Basic Account Numbers
+ */
+var PeppolBankValidator = (function() {
 
-    // Basic IBAN format check
-    var ibanRegex = /^[A-Z]{2}[0-9]{2}[A-Z0-9]+$/;
-    if (!ibanRegex.test(iban)) return false;
-
-    // IBAN length check by country
-    var countryLengths = {
+    // IBAN length by country
+    var IBAN_COUNTRY_LENGTHS = {
         'AD': 24,
         'AE': 23,
         'AL': 28,
@@ -465,27 +460,58 @@ function validateIBAN(iban) {
         'XK': 20
     };
 
-    var countryCode = iban.substr(0, 2);
-    var expectedLength = countryLengths[countryCode];
+    return {
 
-    return expectedLength && iban.length === expectedLength;
-}
+        /**
+         * Validate an IBAN
+         * @param {string} iban
+         * @returns {boolean}
+         */
+        validateIBAN: function(iban) {
+            if (!iban || iban.length < 4) return false;
 
-// Basic Account Number Validation (for non-IBAN accounts)
-function validateAccountNumber(account) {
-    if (!account || account.length < 4) return false;
+            iban = iban.replace(/\s+/g, '').toUpperCase();
 
-    // Allow various formats: digits, dashes, spaces
-    var accountRegex = /^[0-9\-\s]+$/;
-    return accountRegex.test(account) && account.replace(/[\-\s]/g, '').length >= 4;
-}
+            var regex = /^[A-Z]{2}[0-9]{2}[A-Z0-9]+$/;
+            if (!regex.test(iban)) return false;
 
-// BIC/SWIFT Code Validation
-function validateBIC(bic) {
-    if (!bic || bic.length < 8) return false;
+            var country = iban.substring(0, 2);
+            var expectedLength = IBAN_COUNTRY_LENGTHS[country];
 
-    // BIC format: 4 letters (bank) + 2 letters (country) + 2 alphanumeric (location) + optional 3 alphanumeric (branch)
-    var bicRegex = /^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$/;
-    return bicRegex.test(bic) && (bic.length === 8 || bic.length === 11);
-}
+            if (!expectedLength || iban.length !== expectedLength) return false;
+
+            return true; // (Optional: mod97 check can be added for full IBAN checksum)
+        },
+
+        /**
+         * Validate basic (non-IBAN) account numbers
+         * @param {string} account
+         * @returns {boolean}
+         */
+        validateAccountNumber: function(account) {
+            if (!account) return false;
+
+            var cleaned = account.replace(/[\s-]/g, '');
+            if (cleaned.length < 4) return false;
+
+            var regex = /^[0-9\-\s]+$/;
+            return regex.test(account);
+        },
+
+        /**
+         * Validate a BIC / SWIFT code
+         * @param {string} bic
+         * @returns {boolean}
+         */
+        validateBIC: function(bic) {
+            if (!bic) return false;
+
+            bic = bic.toUpperCase();
+
+            var regex = /^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$/;
+            return regex.test(bic) && (bic.length === 8 || bic.length === 11);
+        }
+    };
+
+})();
 </script>

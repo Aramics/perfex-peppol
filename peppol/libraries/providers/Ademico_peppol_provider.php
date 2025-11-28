@@ -932,7 +932,7 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                 'startDateTime' => date('c', strtotime('-72 hours')), // Default 72 hours
                 'pageSize' => 100
             ];
-            
+
             $filters = array_merge($default_filters, $filter);
 
             $notifications_response = $this->_get_notifications($filters);
@@ -969,7 +969,14 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                     }
 
                     // Process status updates for sent documents
-                    elseif (in_array($event_type, ['DOCUMENT_SENT', 'DOCUMENT_SEND_FAILED', 'MLR_RECEIVED', 'INVOICE_RESPONSE_RECEIVED'])) {
+                    elseif (in_array($event_type, [
+                        'DOCUMENT_SENT',
+                        'DOCUMENT_SEND_FAILED',
+                        'MLR_RECEIVED',
+                        'INVOICE_RESPONSE_RECEIVED',
+                        'INVOICE_RESPONSE_SENT',
+                        'INVOICE_RESPONSE_SEND_FAILED',
+                    ])) {
                         $status_result = $this->_update_document_status($notification);
                         if ($status_result['success']) {
                             $results['updated_statuses']++;
@@ -1242,6 +1249,10 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
             $updated = $CI->peppol_model->update_peppol_document($peppol_document->id, $update_data);
 
             if ($updated) {
+
+                // Auto create expense record if possible
+                $CI->peppol_service->check_auto_expense_creation($peppol_document, $status);
+
                 $status_data = [
                     'peppol_document_id' => $peppol_document->id,
                     'document_type' => $peppol_document->document_type,

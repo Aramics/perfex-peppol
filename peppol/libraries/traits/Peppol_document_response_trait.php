@@ -79,7 +79,6 @@ trait Peppol_document_response_trait
             if ($result['success']) {
                 // Prepare data to store locally
                 $update_data = [
-                    'status' => $status,
                     'provider_metadata' => array_merge(
                         $document->metadata,
                         [
@@ -94,11 +93,8 @@ trait Peppol_document_response_trait
                     $update_data['provider_metadata']['response_clarifications'] = json_encode($clarifications);
                 }
 
-                // Update document status locally using model method
+                // Update document metadata. The real status will be updated through the notification
                 $this->CI->peppol_model->update_peppol_document($document_id, $update_data);
-
-                // Check if we should auto-create expense based on new status
-                $this->_check_auto_expense_creation($document, $status);
 
                 return [
                     'success' => true,
@@ -171,7 +167,7 @@ trait Peppol_document_response_trait
      * @return void
      * @private
      */
-    private function _check_auto_expense_creation($document, $status)
+    public function check_auto_expense_creation($document, $status)
     {
         // Only process received documents (inbound)
         if (!empty($document->local_reference_id)) {

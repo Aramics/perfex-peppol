@@ -549,4 +549,3 @@ $lang['peppol_auto_create_invoice_expenses'] = 'Create expenses from received in
 $lang['peppol_auto_create_invoice_expenses_help'] = 'Automatically create expense records when received invoices are marked as fully paid';
 $lang['peppol_auto_create_credit_note_expenses'] = 'Create expenses from received credit notes when accepted (negative amounts)';
 $lang['peppol_auto_create_credit_note_expenses_help'] = 'Automatically create negative expense records when received credit notes are marked as accepted';
-$lang['peppol_expense_auto_created_successfully'] = 'Expense auto-created successfully from PEPPOL document';

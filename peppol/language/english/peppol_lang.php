@@ -582,3 +582,7 @@ $lang['peppol_filter_action'] = 'Filter by Action';
 $lang['peppol_filter_document_type'] = 'Filter by Document Type';
 $lang['peppol_filter_status'] = 'Filter by Status';
 $lang['peppol_process_notifications'] = "Process Notifications";
+
+// SaaS Settings
+$lang['peppol_enforce_on_all_tenants'] = 'Enforce on all tenants';
+$lang['peppol_enforce_on_all_tenants_help'] = 'When enabled, this PEPPOL provider configuration will be automatically applied to all tenants in the SaaS environment. Individual tenants will not be able to override these settings.';

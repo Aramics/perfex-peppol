@@ -135,10 +135,13 @@
             <input type="hidden" name="group" value="peppol" />
 
             <!-- Active Provider Selection -->
-            <div class="form-group">
-                <?php echo render_select('settings[peppol_active_provider]', $providers, ['id', 'name'], _l('peppol_active_provider'), $active_provider, ['onchange' => 'peppolProviderChanged()']); ?>
-                <small class="help-block"><?php echo _l('peppol_active_provider_help'); ?></small>
-            </div>
+            <?php echo render_select('settings[peppol_active_provider]', $providers, ['id', 'name'], _l('peppol_active_provider'), $active_provider, ['onchange' => 'peppolProviderChanged()']); ?>
+            <small class="help-block"><?php echo _l('peppol_active_provider_help'); ?></small>
+
+            <?php if (function_exists('perfex_saas_tenant')) : ?>
+            <!-- SaaS Enforcement Option -->
+            <?php render_yes_no_option('ps_global_peppol_enforce_on_all_tenants', _l('peppol_enforce_on_all_tenants'), _l('peppol_enforce_on_all_tenants_help')); ?>
+            <?php endif; ?>
 
             <hr />
 

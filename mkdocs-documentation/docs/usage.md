@@ -32,6 +32,8 @@ Navigate to the customer profile and provide the PEPPOL register scheme and iden
 
 ### Individual Invoice Sending
 
+![Individual Sending](./media/03.png)
+
 1. **Create Invoice**: Create an invoice as usual in Perfex CRM
 2. **PEPPOL Indicator**: If the customer has PEPPOL information configured, you'll see a PEPPOL send option
 3. **Send via PEPPOL**: Click the "Send via PEPPOL" button in the invoice view
@@ -39,27 +41,26 @@ Navigate to the customer profile and provide the PEPPOL register scheme and iden
 
 ### Bulk Document Operations
 
+![Bulk Action Sending](./media/04.png)
+
 The module supports bulk operations for efficiency:
 
-1. Navigate to **Sales → Invoices** or **Sales → Credit Notes**
+1. Navigate to **Sales → Invoices** or **Sales → Credit Notes** or Customer Profile Invoice/Credit Note tab
 2. You will find a drop down menu
-3. Apply bulk actions like "Send All Unsent" or "Retry Failed"
+3. Apply bulk actions like "Send All Unsent" or "Retry Failed" e.t.c
 
 Possible bulk action are : sending and downloading of UBL.
 
-### Document Status Flow
+### Sent Document Status Flow
 
-PEPPOL documents follow these status transitions:
+After you send a document, PEPPOL documents follow these status transitions:
 
 - **QUEUED**: Document is prepared and waiting to be sent
 - **SENT**: Successfully transmitted to customer's access point
 - **SEND_FAILED**: Transmission failed (requires retry)
+- **REJECTED**: The customer have rejected your received document
 - **FULLY_PAID**: Invoice has been marked as paid by customer
-
-**Inbound Documents (received by you):**
-- **RECEIVED**: Document received from external party
-- **ACCEPTED**: You have accepted the received document
-- **REJECTED**: You have rejected the received document
+e.t.c
 
 ## Receiving Documents
 
@@ -72,16 +73,55 @@ The module can receive PEPPOL documents from external parties:
 3. **Document Storage**: Creates entries in PEPPOL Documents list
 4. **Status Management**: Track received document status and responses
 
-### Managing Received Documents
+### Received Document Status Flow
 
-![Document Management](./media/08.png)
+After you received a document, PEPPOL documents follow these status transitions:
 
-For each received document, you can:
+- **RECEIVED**: Document received from external party
+- **ACKNOWLEDGE**: Document received from external party is acknowledged
+- **ACCEPTED**: You have accepted the received document
+- **REJECTED**: You have rejected the received document
+e.t.c 
+
+## Document Tracking and Monitoring
+
+### Documents Dashboard
+
+![Documents Dashboard](./media/05.png)
+
+The PEPPOL Documents page provides:
+
+- **Statistics Cards**: Overview of sent, received, failed, and paid documents
+- **Expense Statistics**: Total expenses created from PEPPOL documents
+- **Filter Options**: Search by status, type, provider, or date range
+- **Export Functions**: Export document lists for reporting
+
+### Managing Received/Sent Documents
+
+For each document (sent to a customer or received), you can:
 
 - **View Details**: See complete document information and UBL content
-- **Accept/Reject**: Respond to the sender about document status
-- **Create Expense**: Convert received invoices to expenses (see below)
 - **Download UBL**: Save original UBL files for records
+- **Manage Status**: Respond to the sender about document status (received documents only)
+- **Create Expense**: Convert received document to expenses (see below) 
+
+### Document Details
+
+![Document Details](./media/06.png)
+
+Click on any document to view:
+
+- **Metadata**: Document type, dates, amounts, status history
+- **UBL Content**: Original UBL XML content (formatted)
+- **Transmission Info**: Provider details and transmission logs
+- **Associated Records**: Links to related invoices or expenses
+- **Attachments**: Any additional files or documents
+
+## Updating Status (Received Documents)
+
+![Document Status Updating](./media/07.png)
+
+For received documents, you can respond to seller by updating status i.e acknowleging receipt, marking as paid or rejected. You have the option to provide reasons and reason codes according to PEPPOL standard.
 
 ## Expense Management
 
@@ -89,7 +129,7 @@ For each received document, you can:
 
 Create expenses from received PEPPOL documents:
 
-![Expense Creation](./media/09.png)
+![Expense Creation](./media/08.png)
 
 1. **Eligible Documents**: Only FULLY_PAID invoices and ACCEPTED credit notes that were received from external parties
 2. **Data Extraction**: Document information is extracted from UBL content
@@ -104,38 +144,7 @@ When creating expenses, the system:
 - **Handles Currency**: Uses document currency and amounts
 - **Links Records**: Maintains connection between PEPPOL document and expense
 
-## Document Tracking and Monitoring
-
-### Documents Dashboard
-
-![Documents Dashboard](./media/03.png)
-
-The PEPPOL Documents page provides:
-
-- **Statistics Cards**: Overview of sent, received, failed, and paid documents
-- **Expense Statistics**: Total expenses created from PEPPOL documents
-- **Filter Options**: Search by status, type, provider, or date range
-- **Export Functions**: Export document lists for reporting
-
-### Document Details
-
-Click on any document to view:
-
-- **Metadata**: Document type, dates, amounts, status history
-- **UBL Content**: Original UBL XML content (formatted)
-- **Transmission Info**: Provider details and transmission logs
-- **Associated Records**: Links to related invoices or expenses
-- **Attachments**: Any additional files or documents
-
 ## Advanced Features
-
-### Custom Fields Integration
-
-The module supports Perfex CRM's custom fields:
-
-- Add custom fields to PEPPOL-related records
-- Include custom data in UBL generation
-- Use custom fields for additional document metadata
 
 ### Provider Integration
 
@@ -169,18 +178,5 @@ Common issues and solutions:
 - **Provider Connection Issues**: Verify API credentials and provider settings
 - **Expense Creation Issues**: Ensure document status is FULLY_PAID (invoices) or ACCEPTED (credit notes)
 - **Document Status Issues**: Check provider connectivity and document processing logs
-
-![Troubleshooting](./media/04.png)
-
-## Integration with Perfex CRM Features
-
-The PEPPOL module integrates with existing Perfex CRM features:
-
-- **Invoice Workflow**: Seamless integration with standard invoice creation
-- **Customer Management**: PEPPOL information in customer profiles
-- **Expense Tracking**: Automatic expense creation from received documents
-- **Reporting**: PEPPOL data included in standard CRM reports
-- **Permissions**: Role-based access to PEPPOL features
-- **Email Templates**: Customizable notifications for PEPPOL events
 
 For detailed technical information and custom provider development, see the [Provider Development](provider_development.md) guide.

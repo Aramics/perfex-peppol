@@ -54,6 +54,10 @@ class Peppol_model extends App_Model
 
     /**
      * Get PEPPOL document by type and local ref document ID
+     * 
+     * @param string $document_type Document type (invoice or credit_note)
+     * @param int $document_id Local document ID (invoice ID or credit note ID)
+     * @return object|null PEPPOL document object or null if not found
      */
     public function get_peppol_document_by_local_ref_id($document_type, $document_id)
     {
@@ -66,6 +70,10 @@ class Peppol_model extends App_Model
     /**
      * Get PEPPOL document by transmission ID
      * This is useful when processing notifications that include transmission ID
+     * 
+     * @param string $transmission_id Provider transmission ID
+     * @param string|null $provider Optional provider filter
+     * @return object|null PEPPOL document object or null if not found
      */
     public function get_peppol_document_by_transmission_id($transmission_id, $provider = null)
     {
@@ -101,6 +109,9 @@ class Peppol_model extends App_Model
 
     /**
      * Create PEPPOL document record
+     * 
+     * @param array $data Document data array
+     * @return int|false Insert ID on success, false on failure
      */
     public function create_peppol_document($data)
     {
@@ -117,6 +128,10 @@ class Peppol_model extends App_Model
 
     /**
      * Update PEPPOL document
+     * 
+     * @param int $id Document ID
+     * @param array $data Update data array
+     * @return bool True on success, false on failure
      */
     public function update_peppol_document($id, $data)
     {
@@ -186,6 +201,9 @@ class Peppol_model extends App_Model
 
     /**
      * Log PEPPOL activity
+     * 
+     * @param array $data Log data array
+     * @return int|false Insert ID on success, false on failure
      */
     public function log_activity($data)
     {
@@ -201,6 +219,11 @@ class Peppol_model extends App_Model
 
     /**
      * Count documents for bulk action statistics
+     * 
+     * @param string $document_type Document type (invoice or credit_note)
+     * @param string $action Action type (send_unsent, retry_failed, download_sent, download_all_ubl)
+     * @param int|null $client_id Optional client ID filter
+     * @return int Count of documents matching the criteria
      */
     public function count_documents_for_action($document_type, $action, $client_id = null)
     {
@@ -290,6 +313,11 @@ class Peppol_model extends App_Model
 
     /**
      * Get document IDs for bulk operations
+     * 
+     * @param string $document_type Document type (invoice or credit_note)
+     * @param string $action Action type (send_unsent, retry_failed)
+     * @param int|null $client_id Optional client ID filter
+     * @return array Array of document IDs
      */
     public function get_document_ids_for_action($document_type, $action, $client_id = null)
     {
@@ -347,6 +375,10 @@ class Peppol_model extends App_Model
 
     /**
      * Get documents by status for a document type
+     * 
+     * @param string $document_type Document type (invoice or credit_note)
+     * @param string $status Document status
+     * @return array Array of document objects
      */
     public function get_documents_by_status($document_type, $status)
     {
@@ -358,6 +390,10 @@ class Peppol_model extends App_Model
 
     /**
      * Get documents by multiple statuses for a document type
+     * 
+     * @param string $document_type Document type (invoice or credit_note)
+     * @param array $statuses Array of status values
+     * @return array Array of document objects
      */
     public function get_documents_by_statuses($document_type, $statuses)
     {
@@ -369,6 +405,9 @@ class Peppol_model extends App_Model
 
     /**
      * Get statistics for a document type
+     * 
+     * @param string $document_type Document type (invoice or credit_note)
+     * @return array Statistics array with counts by status and totals
      */
     public function get_document_statistics($document_type)
     {

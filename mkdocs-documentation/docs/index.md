@@ -10,6 +10,7 @@ The PEPPOL module enables seamless electronic document exchange via the PEPPOL n
 - **Provider Support**: Built-in Ademico provider with framework for additional providers
 - **Status Tracking**: Monitor and update document status (queued, sent, failed, received, paid)
 - **Bulk Operations**: Send multiple documents at once. Send bulk when view whole document or when viewing a documents for a particular company (client).
+- **Credit Notes Attachment Visibility Toggle**: Add switch button to toggle credit notes attachment files visibility to customers. This allow in controlling which files are attached when sending or generating the UBL.
 - **Expense Management**: Optional create expenses from received invoices and credit notes (negative). We have taken this approach as Perfex do not support vendor credit and invoices by default. Creating expense can allow tracking of spent money used to pay vendor invoice. Negative expense for received credit note suggest a credit. These are optional and you can neglect depending on your business needs.
 
 

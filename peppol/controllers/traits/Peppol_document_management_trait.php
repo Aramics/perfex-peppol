@@ -105,58 +105,6 @@ trait Peppol_document_management_trait
     }
 
     /**
-     * View PEPPOL document details (AJAX - Legacy for modal)
-     * 
-     * Loads comprehensive document information including metadata, 
-     * attachments, and available response options. Returns formatted
-     * HTML content for modal display. Kept for backward compatibility.
-     * 
-     * @param int $id PEPPOL document ID
-     * @return void Outputs JSON response with document details
-     */
-    public function view_document_modal($id)
-    {
-        if (!staff_can('view', 'peppol')) {
-            return $this->json_output(['success' => false, 'message' => _l('access_denied')]);
-        }
-
-        $document = $this->peppol_service->get_enriched_document($id);
-
-        if (empty($document->id)) {
-            return $this->json_output(['success' => false, 'message' => _l('peppol_document_not_found')]);
-        }
-
-        // Parse metadata
-        $metadata = $document->metadata;
-
-        // Get attachments from UBL document
-        $attachments = [];
-        if (isset($document->ubl_document['data']['attachments'])) {
-            $attachments = $document->ubl_document['data']['attachments'];
-        }
-
-        // Get clarifications data for forms
-        $clarifications = $this->peppol_service->get_available_clarifications();
-
-        // Prepare simplified view data - pass document directly with minimal processing
-        $view_data = [
-            'document' => $document,
-            'metadata' => $metadata,
-            'attachments' => $attachments,
-            'clarifications' => $clarifications
-        ];
-
-        // Render the view content
-        $content = $this->load->view('peppol/templates/document_details_content', $view_data, true);
-
-        return $this->json_output([
-            'success' => true,
-            'content' => $content,
-            'clarifications' => $clarifications
-        ]);
-    }
-
-    /**
      * Mark document response status (AJAX)
      * 
      * Updates the status of a PEPPOL document (e.g., accept, reject, paid).

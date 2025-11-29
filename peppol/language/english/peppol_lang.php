@@ -578,6 +578,7 @@ $lang['peppol_local_reference'] = 'Local Ref';
 $lang['peppol_document_number'] = 'Document Number';
 $lang['peppol_total_amount'] = 'Total Amount';
 $lang['peppol_date'] = 'Date';
+$lang['peppol_due_date'] = 'Due Date';
 $lang['peppol_all_document_types'] = 'All Document Types';
 $lang['peppol_all_statuses'] = 'All Statuses';
 $lang['peppol_all_providers'] = 'All Providers';

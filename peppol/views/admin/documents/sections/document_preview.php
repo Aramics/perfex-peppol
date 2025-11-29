@@ -26,7 +26,7 @@
 
                 <?php if (!empty($ubl_data['due_date'])) : ?>
                 <tr>
-                    <td class="tw-font-medium"><?php echo _l('due_date'); ?></td>
+                    <td class="tw-font-medium"><?php echo _l('peppol_due_date'); ?></td>
                     <td><?php echo e($ubl_data['due_date']); ?></td>
                 </tr>
                 <?php endif; ?>

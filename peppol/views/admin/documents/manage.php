@@ -258,30 +258,16 @@ $(function() {
         data.filter_document_type = $('#filter_document_type').val() || '';
         data.filter_status = $('#filter_status').val() || '';
         data.filter_provider = $('#filter_provider').val() || '';
-
-        // Debug logging
-        console.log('Sending filter values:', {
-            document_type: data.filter_document_type,
-            status: data.filter_status,
-            provider: data.filter_provider
-        });
-        console.log('Form element values:', {
-            document_type: $('#filter_document_type').length,
-            status: $('#filter_status').length,
-            provider: $('#filter_provider').length
-        });
     });
 
     // Filter functionality  
     $('#apply-filters').on('click', function(e) {
         e.preventDefault();
-        console.log('Apply filters clicked');
         peppolTable.ajax.reload();
     });
 
     $('#clear-filters').on('click', function(e) {
         e.preventDefault();
-        console.log('Clear filters clicked');
         $('#filter_document_type').val('').trigger('change');
         $('#filter_status').val('').trigger('change');
         $('#filter_provider').val('').trigger('change');
@@ -290,86 +276,7 @@ $(function() {
 
     // Auto-apply filters on change
     $('#filter_document_type, #filter_status, #filter_provider').on('change', function() {
-        console.log('Filter changed:', $(this).attr('id'), $(this).val());
         peppolTable.ajax.reload();
     });
 });
-
-// Global clarifications cache
-var peppolClarificationsCache = null;
-
-/**
- * View PEPPOL document details
- */
-function viewPeppolDocument(documentId) {
-    // Show modal and reset content with fresh preloader
-    $('#document-details-modal').modal('show');
-
-    // Show preloader
-    $('#document-details-content').html('<div class="text-center tw-p-8">' +
-        '<i class="fa fa-spinner fa-spin fa-2x text-primary"></i>' +
-        '<div class="tw-mt-3"><p class="text-muted"><?php echo _l("peppol_loading_document_details"); ?>...</p></div>' +
-        '</div>');
-
-    $.ajax({
-        url: admin_url + 'peppol/view_document/' + documentId,
-        type: 'POST',
-        dataType: 'json',
-        success: function(response) {
-            if (response.success) {
-                // Cache clarifications data globally for reuse
-                if (response.clarifications && !peppolClarificationsCache) {
-                    peppolClarificationsCache = response.clarifications;
-                }
-
-                // Simply load the pre-rendered content from backend
-                $('#document-details-content').html(response.content);
-            } else {
-                $('#document-details-modal').modal('hide');
-                alert_float('danger', response.message);
-            }
-        },
-        error: function() {
-            $('#document-details-modal').modal('hide');
-            alert_float('danger', '<?php echo _l("something_went_wrong"); ?>');
-        }
-    });
-}
-
-
-/**
- * Download UBL from provider
- */
-function downloadProviderUbl(documentId) {
-    // Show loading indicator
-    var button = $('a[onclick="downloadProviderUbl(' + documentId + ')"]');
-    var originalHtml = button.html();
-    button.html('<i class="fa fa-spinner fa-spin"></i>');
-    button.prop('disabled', true);
-
-    // Create a temporary form to trigger download
-    var form = $('<form>').attr({
-        method: 'POST',
-        action: admin_url + 'peppol/download_provider_ubl/' + documentId,
-        target: '_blank'
-    });
-
-    // Add CSRF token if available
-    if (typeof csrfData !== 'undefined') {
-        form.append($('<input>').attr({
-            type: 'hidden',
-            name: csrfData.token_name,
-            value: csrfData.hash
-        }));
-    }
-
-    // Append form to body and submit
-    form.appendTo('body').submit().remove();
-
-    // Reset button after a short delay
-    setTimeout(function() {
-        button.html(originalHtml);
-        button.prop('disabled', false);
-    }, 2000);
-}
 </script>

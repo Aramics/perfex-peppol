@@ -646,7 +646,7 @@ class Peppol_model extends App_Model
 
         // Inbound statuses (documents received from others)
         $inbound_statuses = [
-            'received' => [
+            'RECEIVED' => [
                 'label' => 'Received',
                 'color' => 'label-info',
                 'description' => 'Document received from external party'

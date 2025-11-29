@@ -63,13 +63,13 @@ trait Peppol_provider_operations_trait
         // Get notification lookup time from settings
         $lookup_hours = (float)(get_option('peppol_notification_lookup_hours') ?: 72);
         $total_minutes = $lookup_hours * 60;
-        
+
         // Prepare filter parameters
         $filter = [
             'startDateTime' => date('c', strtotime("-{$total_minutes} minutes")),
             'pageSize' => 100
         ];
-        
+
         return peppol_get_active_provider()->webhook($filter);
     }
 
@@ -147,7 +147,7 @@ trait Peppol_provider_operations_trait
                 'success' => true,
                 'ubl_content' => $ubl_content,
                 'document' => $peppol_document,
-                'filename' => $peppol_document->document_type . '_' . ($peppol_document->local_reference_id ?? 'unknown') . '_provider_ubl.xml'
+                'filename' => $peppol_document->document_type . '_' . ($peppol_document->peppol_provider_document_id) . '_' . ($peppol_document->local_reference_id ?? '') . '_provider_ubl.xml'
             ];
         } catch (Exception $e) {
             return [

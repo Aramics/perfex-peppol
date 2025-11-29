@@ -16,7 +16,7 @@ if (!function_exists('render_peppol_status_column')) {
         $CI = &get_instance();
 
         // Has PEPPOL record - show status badge
-        $badge_class =  $CI->peppol_model->get_status_display($status ?? '')['label'] ?? 'label-default';
+        $badge_class =  $CI->peppol_model->get_status_display($status ?? '')['color'] ?? 'label-default';
 
         $status_text = ucfirst($status);
         return '<span class="label ' . $badge_class . ' peppol-status-badge" 
@@ -52,7 +52,7 @@ if (!function_exists('peppol_process_notifications')) {
 
         // Update last run timestamp immediately to avoid duplicate execution
         update_option($option_key, $now);
-        
+
         // Update last notification check timestamp
         update_option('peppol_last_notification_check', date('Y-m-d H:i:s', $now));
 

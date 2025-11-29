@@ -59,9 +59,11 @@ foreach ($rResult as $aRow) {
     $row = [];
 
     // Document type with badge
-    $typeClass = $aRow['document_type'] === 'invoice' ? 'primary' : 'info';
-    $row[] = '<span class="label label-' . $typeClass . '">' .
-        ucfirst(str_replace('_', ' ', $aRow['document_type'])) . '</span>';
+    $typeClass = $aRow['document_type'] === 'invoice' ? 'default' : 'default';
+    $dirIcon = empty($aRow['received_at']) ? 'down text-danger' : 'up text-success';
+    $dirText = empty($aRow['received_at']) ? _l('peppol_inbound') : _l('peppol_outbound');
+    $row[] = '<span class="label label-' . $typeClass . '" data-toggle="tooltip" title="' . e($dirText) . '">' .
+        ucfirst(str_replace('_', ' ', $aRow['document_type'])) . ' <i class="tw-ml-1 fa fa-arrow-' . ($dirIcon) . '"></i>' . '</span>';
 
     // Document number with link
     $documentLink = '';
@@ -71,7 +73,7 @@ foreach ($rResult as $aRow) {
         $documentLink = admin_url('credit_notes/list_credit_notes/' . $aRow['local_reference_id']);
     }
 
-    $documentNumber = $aRow['document_number'] ?: (!empty($aRow['local_reference_id']) ? '#' . $aRow['local_reference_id'] : _l('peppol_no_local_reference'));
+    $documentNumber = $aRow['document_number'] ?: (!empty($aRow['local_reference_id']) ? '#' . $aRow['local_reference_id'] : '-');
     $row[] = $documentLink ?
         '<a href="' . $documentLink . '" target="_blank">' . e($documentNumber) . '</a>' :
         e($documentNumber);
@@ -93,18 +95,21 @@ foreach ($rResult as $aRow) {
     $row[] = !empty($aRow['date']) ? _dt($aRow['date']) : '-';
 
     // Actions
-    $actions = '';
+    $actions = '<div class="tw-flex tw-items-center tw-space-x-1">';
     if (staff_can('view', 'peppol')) {
         // View document details (sidewise view)
         $actions .= '<a href="' . admin_url('peppol/view_document/' . $aRow['id']) . '" class="btn btn-default btn-icon" data-toggle="tooltip" title="' . _l('view') . '">';
         $actions .= '<i class="fa fa-eye"></i></a>';
 
         // Download UBL from provider (only for sent/delivered documents)
-        if (in_array($aRow['status'], ['sent', 'delivered', 'received']) && !empty($aRow['provider_document_id'])) {
+        if (in_array(strtolower($aRow['status']), ['sent', 'delivered', 'received']) && !empty($aRow['provider_document_id'])) {
             $actions .= ' <a href="#" onclick="downloadProviderUbl(' . $aRow['id'] . ')" class="btn btn-default btn-icon" data-toggle="tooltip" title="' . _l('peppol_download_provider_ubl') . '">';
             $actions .= '<i class="fa fa-cloud-download"></i></a>';
         }
     }
+
+    $actions .= '</div>';
+
     $row[] = $actions;
 
     $output['aaData'][] = $row;

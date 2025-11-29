@@ -1,9 +1,10 @@
-site_name: Delivery Notes for Perfex CRM
+site_name: PEPPOL Module for Perfex CRM
 theme: readthedocs
 nav:
     - Home: index.md
     - Installation: installation.md
     - Configuration: configuration.md
     - Usage: usage.md
+    - Provider Development: provider_development.md
     - Faq: faq.md
     - Credit: credit.md

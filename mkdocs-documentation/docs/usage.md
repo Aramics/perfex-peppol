@@ -51,6 +51,8 @@ The module supports bulk operations for efficiency:
 
 Possible bulk action are : sending and downloading of UBL.
 
+![Bulk Action Sending](./media/09.png)
+
 ### Sent Document Status Flow
 
 After you send a document, PEPPOL documents follow these status transitions:

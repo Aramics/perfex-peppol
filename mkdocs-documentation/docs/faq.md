@@ -1,6 +1,20 @@
 # FAQ and Support
 
-## Frequently Asked Questions
+## Overview
+
+-   We provide documentation covering installation and usage.
+
+-   We respond to your questions as fast as possible.
+
+-   **We dont provide refund for the extension after purchase, so confirm before purchase. Please ask any question before purchase!**
+
+-   Any custom work including setup, installation and extension (that might require skilled hours) are not free. You can hire us for this.
+
+-   We are always ready to fix any confirmed detected bug.
+
+-   You are required to have been registered on PEPPOL and have Access Point Provider.
+
+## Specific FAQ
 
 ### General Questions
 
@@ -106,7 +120,7 @@ When reporting issues, please include:
 
 For technical support beyond the scope of this documentation:
 
-- **Email**: support@turnsaas.com
+- **Email**: https://codecanyon.net/user/ulutfa
 - **Provider Issues**: Contact your PEPPOL access point provider directly
 - **PEPPOL General**: Visit official PEPPOL community resources
 

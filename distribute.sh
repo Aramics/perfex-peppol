@@ -1,6 +1,6 @@
 #!/bin/bash
 #remove DSTORE
-basedir="/Users/Aramics/Projects/web/TurnSaas/delivery-notes-perfex"
+basedir="/Users/Aramics/Projects/web/TurnSaas/perfex-peppol"
 sudo find $basedir -name ".DS_Store" -depth -exec rm {} \;
 isKnown=True
 

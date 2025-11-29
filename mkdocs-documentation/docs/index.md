@@ -26,8 +26,16 @@ PEPPOL (Pan-European Public Procurement On-Line) is a standardized electronic do
 - **Audit Trail**: Complete tracking and documentation of all transactions
 - **Error Reduction**: Automated processing minimizes human errors
 
-Author: TurnSaaS
+Author: Ulutfa
 
-Email: support@turnsaas.com
+Created: 29th November 2025
+
+Portfolio: [ulutfa](https://codecanyon.net/user/ulutfa)
+
+Email: lutfatusman@gmail.com
+
+For full demo and viewing of our other items, visit our profile on [codecanyon.net](https://codecanyon.net/user/ulutfa).
+
+If you have any questions that are beyond the scope of this help file, please feel free to email us via contact form [here](https://codecanyon.net/user/ulutfa).
 
 For technical support and advanced configuration, please contact your system administrator or PEPPOL provider.

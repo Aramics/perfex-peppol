@@ -4,9 +4,6 @@ defined('BASEPATH') or exit('No direct script access allowed');
 
 $aColumns = [
     'pl.id',
-    'pl.type',
-    'pl.document_type',
-    'pl.local_reference_id',
     'pl.message',
     'pl.created_at'
 ];
@@ -23,18 +20,7 @@ if (!staff_can('view', 'peppol_logs')) {
     $where[] = 'AND 1=0';
 }
 
-// Apply filters
-if ($CI->input->post('filter_type') && $CI->input->post('filter_type') !== '') {
-    $where[] = 'AND pl.type = ' . $CI->db->escape($CI->input->post('filter_type'));
-}
-
-if ($CI->input->post('filter_document_type') && $CI->input->post('filter_document_type') !== '') {
-    $where[] = 'AND pl.document_type = ' . $CI->db->escape($CI->input->post('filter_document_type'));
-}
-
-$result = data_tables_init($aColumns, $sIndexColumn, $sTable, $join, $where, [
-    'pl.staff_id'
-]);
+$result = data_tables_init($aColumns, $sIndexColumn, $sTable, $join, $where, []);
 
 $output  = $result['output'];
 $rResult = $result['rResult'];
@@ -57,8 +43,16 @@ foreach ($rResult as $aRow) {
     }
     $row[] = '<span title="' . e($aRow['message'] ?? '') . '">' . $message . '</span>';
 
-    // Date
-    $row[] = _dt($aRow['created_at'] ?? '');
+    // Date - using raw datetime for sorting with formatted display
+    $dateValue = $aRow['created_at'] ?? '';
+    if (!empty($dateValue)) {
+        // Convert to ISO format for proper sorting, but display formatted
+        $isoDate = date('Y-m-d\TH:i:s', strtotime($dateValue));
+        $formattedDate = _dt($dateValue);
+        $row[] = '<span data-order="' . $isoDate . '">' . $formattedDate . '</span>';
+    } else {
+        $row[] = '-';
+    }
 
     $output['aaData'][] = $row;
 }

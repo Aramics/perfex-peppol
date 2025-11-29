@@ -111,8 +111,15 @@ foreach ($rResult as $aRow) {
     // Provider
     $row[] = ucfirst($aRow['provider']);
 
-    // Date
-    $row[] = !empty($aRow['date']) ? _dt($aRow['date']) : '-';
+    // Date - with proper sorting support
+    $dateValue = $aRow['date'] ?? '';
+    if (!empty($dateValue)) {
+        $isoDate = date('Y-m-d\TH:i:s', strtotime($dateValue));
+        $formattedDate = _dt($dateValue);
+        $row[] = '<span data-order="' . $isoDate . '">' . $formattedDate . '</span>';
+    } else {
+        $row[] = '-';
+    }
 
     // Actions
     $actions = '<div class="tw-flex tw-items-center tw-space-x-1">';

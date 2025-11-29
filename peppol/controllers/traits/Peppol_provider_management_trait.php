@@ -94,7 +94,7 @@ trait Peppol_provider_management_trait
         }
 
         try {
-            $this->peppol_service->process_notifications([]);
+            peppol_process_notifications(true);
             set_alert('success', _l('peppol_operation_completed'));
         } catch (\Throwable $th) {
             set_alert('success', $th->getMessage());

@@ -99,6 +99,8 @@ trait Peppol_document_response_trait
                 // Update document metadata. The real status will be updated through the notification
                 $this->CI->peppol_model->update_peppol_document($document_id, $update_data);
 
+                hooks()->do_action('peppol_after_document_status_updated', $document, $result);
+
                 return [
                     'success' => true,
                     'message' => _l('peppol_response_sent_successfully'),

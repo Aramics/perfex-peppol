@@ -1245,22 +1245,26 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
             }
 
             // Update the document status
+            $metadata = array_merge(
+                json_decode($peppol_document->provider_metadata ?? '{}', true),
+                [
+                    'last_status_update' => date('Y-m-d H:i:s'),
+                    'ademico_status' => $status,
+                    'event_type' => $event_type,
+                    'notification_date' => $notification['notificationDate'] ?? null
+                ]
+            );
+
             $update_data = [
                 'status' => $status,
-                'provider_metadata' => json_encode(array_merge(
-                    json_decode($peppol_document->provider_metadata ?? '{}', true),
-                    [
-                        'last_status_update' => date('Y-m-d H:i:s'),
-                        'ademico_status' => $status,
-                        'event_type' => $event_type,
-                        'notification_date' => $notification['notificationDate'] ?? null
-                    ]
-                ))
+                'provider_metadata' => $metadata
             ];
 
             if ($peppol_document->provider_document_transmission_id != $transmission_id) {
-                $update_data['provider_document_transmission_id'] = $transmission_id;
+                $update_data['provider_metadata']['response_transmission_id'] = $transmission_id;
             }
+
+            $update_data['provider_metadata'] = json_encode($metadata);
 
             $updated = $CI->peppol_model->update_peppol_document($peppol_document->id, $update_data);
 

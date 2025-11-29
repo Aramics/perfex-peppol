@@ -29,8 +29,9 @@ if (!function_exists('peppol_process_notifications')) {
     /**
      * Process PEPPOL notifications via cron
      * Frequency is configurable in settings (default: every 5 minutes)
+     * @param bool $manual If the processing is called by human
      */
-    function peppol_process_notifications()
+    function peppol_process_notifications($manual = false)
     {
         $CI = &get_instance();
 
@@ -41,13 +42,15 @@ if (!function_exists('peppol_process_notifications')) {
         // Current timestamp
         $now = time();
 
-        // Get cron interval from settings (default 5 minutes)
-        $cron_interval = (int)(get_option('peppol_cron_interval') ?: 5);
-        $interval_seconds = $cron_interval * 60;
+        if (!$manual) {
+            // Get cron interval from settings (default 5 minutes)
+            $cron_interval = (int)(get_option('peppol_cron_interval') ?: 5);
+            $interval_seconds = $cron_interval * 60;
 
-        // Only run if configured interval has passed since last run
-        if ($last_run && ($now - $last_run) < $interval_seconds) {
-            return;
+            // Only run if configured interval has passed since last run
+            if ($last_run && ($now - $last_run) < $interval_seconds) {
+                return;
+            }
         }
 
         // Update last run timestamp immediately to avoid duplicate execution

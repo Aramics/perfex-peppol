@@ -3,6 +3,12 @@
 defined('BASEPATH') or exit('No direct script access allowed');
 
 if (function_exists('perfex_saas_is_tenant') && perfex_saas_is_tenant()) {
+    /**
+     * Get super admin seting at once and cache
+     *
+     * @param string|null $key
+     * @return mixed
+     */
     function peppol_saas_super_admin_settings($key = null)
     {
         static $options = null;
@@ -14,20 +20,25 @@ if (function_exists('perfex_saas_is_tenant') && perfex_saas_is_tenant()) {
         return $key === null ? $options : ($options[$key] ?? null);
     }
 
+    // Let hide some tabs for tenants as necessary
     hooks()->add_filter('peppol_settings_tabs', function ($peppol_settings_tabs) {
-        $override = (int)peppol_saas_super_admin_settings('ps_global_peppol_enforce_on_all_tenants');
+        $override = (int)perfex_saas_tenant_get_super_option('ps_global_peppol_enforce_on_all_tenants');
         if ($override === 1) {
             $peppol_settings_tabs['providers']['hidden'] = true;
-            $peppol_settings_tabs['notifications']['hidden'] = true;
         }
+
+        $peppol_settings_tabs['notifications']['hidden'] = true;
+
         return $peppol_settings_tabs;
     });
 
+    // Let override provider settings if enabled.
     hooks()->add_filter('peppol_provider_settings', function ($settings, $provider_instance) {
         // Rebuild the setting using super admin options.
-        $super_settings = peppol_saas_super_admin_settings();
-        $override = (int)$super_settings['ps_global_peppol_enforce_on_all_tenants'];
+        $override = (int)perfex_saas_tenant_get_super_option('ps_global_peppol_enforce_on_all_tenants');
         if ($override === 1) {
+
+            $super_settings = peppol_saas_super_admin_settings();
 
             $option_names = [];
 
@@ -47,10 +58,9 @@ if (function_exists('perfex_saas_is_tenant') && perfex_saas_is_tenant()) {
         return $settings;
     }, 10, 2);
 
+    // Let override option get calls for PEPPOL settings
     hooks()->add_filter('peppol_get_option', function ($value, $key) {
-        if (in_array($key, [
-            'peppol_active_provider',
-        ])) {
+        if ($key == 'peppol_active_provider') {
             $super_settings = peppol_saas_super_admin_settings();
             $override = (int)$super_settings['ps_global_peppol_enforce_on_all_tenants'];
             if ($override === 1) {

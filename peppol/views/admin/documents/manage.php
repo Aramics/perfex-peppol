@@ -74,7 +74,7 @@ $card_class = 'panel_s panel-body tw-px-4 tw-py-3';
                     <div class="widget-drilldown">
                         <h4 class="tw-mt-0"><?php echo _l('peppol_total_expenses_created'); ?></h4>
                         <div class="tw-flex tw-items-center tw-justify-between">
-                            <span class="tw-font-semibold tw-text-lg text-success">
+                            <span class="tw-font-semibold tw-text-lg text-primary">
                                 <?php echo $expense_stats['total_expenses'] ?? 0; ?>
                             </span>
                             <i class="fa fa-money tw-text-2xl text-muted"></i>
@@ -95,7 +95,7 @@ $card_class = 'panel_s panel-body tw-px-4 tw-py-3';
                     <div class="widget-drilldown">
                         <h4 class="tw-mt-0"><?php echo _l('peppol_invoice_expenses'); ?></h4>
                         <div class="tw-flex tw-items-center tw-justify-between">
-                            <span class="tw-font-semibold tw-text-lg text-primary">
+                            <span class="tw-font-semibold tw-text-lg text-warning">
                                 <?php echo app_format_money($expense_stats['invoice_amount'] ?? 0, get_base_currency()); ?>
                             </span>
                             <i class="fa fa-file-text-o tw-text-2xl text-muted"></i>
@@ -115,7 +115,7 @@ $card_class = 'panel_s panel-body tw-px-4 tw-py-3';
                     <div class="widget-drilldown">
                         <h4 class="tw-mt-0"><?php echo _l('peppol_credit_note_expenses'); ?></h4>
                         <div class="tw-flex tw-items-center tw-justify-between">
-                            <span class="tw-font-semibold tw-text-lg text-warning">
+                            <span class="tw-font-semibold tw-text-lg text-success">
                                 <?php echo app_format_money($expense_stats['credit_note_amount'] ?? 0, get_base_currency()); ?>
                             </span>
                             <i class="fa fa-file-o tw-text-2xl text-muted"></i>

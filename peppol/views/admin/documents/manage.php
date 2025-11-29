@@ -200,6 +200,7 @@ $card_class = 'panel_s panel-body tw-px-4 tw-py-3';
                                 _l('client'),
                                 _l('peppol_total_amount'),
                                 _l('peppol_status'),
+                                _l('peppol_expense_reference'),
                                 _l('peppol_provider'),
                                 _l('peppol_date'),
                                 _l('options')
@@ -250,7 +251,7 @@ $card_class = 'panel_s panel-body tw-px-4 tw-py-3';
 $(function() {
     // Initialize DataTable with Perfex pattern
     var peppolTable = initDataTable('.table-peppol-documents', admin_url + 'peppol/documents', undefined,
-        undefined, undefined, [8, 'desc']);
+        undefined, undefined, [7, 'desc']);
 
     // Use preXhr event to modify data before sending
     peppolTable.on('preXhr.dt', function(e, settings, data) {

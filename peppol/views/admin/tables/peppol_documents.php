@@ -11,7 +11,8 @@ $aColumns = [
     'COALESCE(i.total, cn.total) as document_total',
     'pd.status',
     'pd.provider',
-    'COALESCE(pd.sent_at, pd.received_at) as date'
+    'COALESCE(pd.sent_at, pd.received_at) as date',
+    'pd.expense_id'
 ];
 
 $CI = &get_instance();
@@ -23,6 +24,7 @@ $join = [
     'LEFT JOIN ' . db_prefix() . 'invoices i ON pd.document_type = "invoice" AND pd.local_reference_id = i.id',
     'LEFT JOIN ' . db_prefix() . 'creditnotes cn ON pd.document_type = "credit_note" AND pd.local_reference_id = cn.id',
     'LEFT JOIN ' . db_prefix() . 'clients c ON c.userid = COALESCE(i.clientid, cn.clientid)',
+    'LEFT JOIN ' . db_prefix() . 'expenses e ON pd.expense_id = e.id',
 ];
 
 $where = [];
@@ -51,7 +53,8 @@ $result = data_tables_init($aColumns, $sIndexColumn, $sTable, $join, $where, [
     'pd.sent_at',
     'pd.received_at',
     'pd.created_at',
-    'pd.provider_metadata'
+    'pd.provider_metadata',
+    'e.expense_name'
 ]);
 
 $output  = $result['output'];
@@ -95,6 +98,15 @@ foreach ($rResult as $aRow) {
 
     // Status with badge
     $row[] =  render_peppol_status_column($aRow['id'], $aRow['status']);
+
+    // Expense Reference
+    $expenseDisplay = '-';
+    if (!empty($aRow['expense_id'])) {
+        $expenseLink = admin_url('expenses/expense/' . $aRow['expense_id']);
+        $expenseText = !empty($aRow['expense_name']) ? e($aRow['expense_name']) : '#' . $aRow['expense_id'];
+        $expenseDisplay = '<a href="' . $expenseLink . '" target="_blank">' . $expenseText . '</a>';
+    }
+    $row[] = $expenseDisplay;
 
     // Provider
     $row[] = ucfirst($aRow['provider']);

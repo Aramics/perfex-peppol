@@ -381,7 +381,7 @@ $lang['peppol_invalid_identifier_type'] = 'Invalid identifier type. Expected str
 $lang['peppol_no_transmission_id'] = 'No transmission ID available for UBL retrieval';
 $lang['peppol_ubl_retrieve_error'] = 'Error retrieving UBL from provider: %s';
 $lang['peppol_no_local_reference'] = 'No Reference';
-$lang['peppol_local_reference'] = 'Local Reference';
+$lang['peppol_expense_reference'] = 'Expense Ref.';
 
 // Invoice Response
 $lang['peppol_mark_document_status'] = 'Mark Document Status';
@@ -574,7 +574,7 @@ $lang['peppol_transmission_id'] = 'Transmission ID';
 $lang['peppol_updated_at'] = 'Updated At';
 $lang['peppol_document_information'] = 'Document Information';
 $lang['peppol_provider_document_id'] = 'Provider Doc ID';
-$lang['peppol_local_reference'] = 'Local Ref';
+$lang['peppol_local_reference'] = 'Local Document Ref.';
 $lang['peppol_document_number'] = 'Document Number';
 $lang['peppol_total_amount'] = 'Total Amount';
 $lang['peppol_date'] = 'Date';

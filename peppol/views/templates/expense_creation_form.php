@@ -57,13 +57,22 @@
         </div>
 
         <div class="row">
-            <!-- Tax Rate 1 -->
+            <!-- Tax 1 -->
             <div class="col-md-6">
                 <div class="form-group">
-                    <label for="expense-tax-rate"><?php echo _l('tax_1'); ?> (%)</label>
-                    <input type="number" name="tax_rate" id="expense-tax-rate" class="form-control" step="0.01" min="0"
-                        max="100" value="<?php echo $expense_data['tax1_rate']; ?>">
-                    <?php if ($expense_data['tax1_rate'] > 0) : ?>
+                    <label for="expense-tax1"><?php echo _l('tax_1'); ?></label>
+                    <select name="tax1_id" id="expense-tax1" class="form-control">
+                        <option value=""><?php echo _l('none'); ?></option>
+                        <?php if (!empty($taxes) && is_array($taxes)) : ?>
+                            <?php foreach ($taxes as $tax) : ?>
+                            <option value="<?php echo $tax['id']; ?>"
+                                <?php echo ($tax['id'] == ($expense_data['tax1_id'] ?? '')) ? 'selected' : ''; ?>>
+                                <?php echo e($tax['name']) . ' - ' . $tax['taxrate'] . '%'; ?>
+                            </option>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </select>
+                    <?php if (!empty($expense_data['tax1_id'])) : ?>
                     <small class="text-success">
                         <i class="fa fa-check"></i> <?php echo _l('auto_detected'); ?>:
                         <?php echo $expense_data['tax1_rate']; ?>%
@@ -72,13 +81,22 @@
                 </div>
             </div>
 
-            <!-- Tax Rate 2 -->
+            <!-- Tax 2 -->
             <div class="col-md-6">
                 <div class="form-group">
-                    <label for="expense-tax2-rate"><?php echo _l('tax_2'); ?> (%)</label>
-                    <input type="number" name="tax2_rate" id="expense-tax2-rate" class="form-control" step="0.01"
-                        min="0" max="100" value="<?php echo $expense_data['tax2_rate']; ?>">
-                    <?php if ($expense_data['tax2_rate'] > 0) : ?>
+                    <label for="expense-tax2"><?php echo _l('tax_2'); ?></label>
+                    <select name="tax2_id" id="expense-tax2" class="form-control">
+                        <option value=""><?php echo _l('none'); ?></option>
+                        <?php if (!empty($taxes) && is_array($taxes)) : ?>
+                            <?php foreach ($taxes as $tax) : ?>
+                            <option value="<?php echo $tax['id']; ?>"
+                                <?php echo ($tax['id'] == ($expense_data['tax2_id'] ?? '')) ? 'selected' : ''; ?>>
+                                <?php echo e($tax['name']) . ' - ' . $tax['taxrate'] . '%'; ?>
+                            </option>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </select>
+                    <?php if (!empty($expense_data['tax2_id'])) : ?>
                     <small class="text-success">
                         <i class="fa fa-check"></i> <?php echo _l('auto_detected'); ?>:
                         <?php echo $expense_data['tax2_rate']; ?>%
@@ -89,7 +107,7 @@
         </div>
 
         <!-- Auto-detected Information Display -->
-        <?php if (!empty($expense_data['paymentmode']) || $expense_data['tax1_rate'] > 0 || $expense_data['tax2_rate'] > 0) : ?>
+        <?php if (!empty($expense_data['paymentmode']) || !empty($expense_data['tax1_id']) || !empty($expense_data['tax2_id'])) : ?>
         <div class="alert alert-info">
             <h5><i class="fa fa-magic"></i> <?php echo _l('auto_detected_information'); ?></h5>
             <ul class="list-unstyled tw-mb-0">
@@ -106,12 +124,32 @@
                 </li>
                 <?php endif; ?>
 
-                <?php if ($expense_data['tax1_rate'] > 0) : ?>
-                <li><strong><?php echo _l('tax_rate'); ?>:</strong> <?php echo $expense_data['tax1_rate']; ?>%</li>
+                <?php if (!empty($expense_data['tax1_id']) && !empty($taxes) && is_array($taxes)) : ?>
+                    <?php 
+                    $selected_tax1 = array_filter($taxes, function ($tax) use ($expense_data) {
+                        return $tax['id'] == $expense_data['tax1_id'];
+                    });
+                    if ($selected_tax1) {
+                        $tax1 = array_values($selected_tax1)[0];
+                        ?>
+                        <li><strong><?php echo _l('tax_1'); ?>:</strong> <?php echo e($tax1['name']) . ' - ' . $tax1['taxrate'] . '%'; ?></li>
+                        <?php
+                    }
+                    ?>
                 <?php endif; ?>
 
-                <?php if ($expense_data['tax2_rate'] > 0) : ?>
-                <li><strong><?php echo _l('tax_2'); ?>:</strong> <?php echo $expense_data['tax2_rate']; ?>%</li>
+                <?php if (!empty($expense_data['tax2_id']) && !empty($taxes) && is_array($taxes)) : ?>
+                    <?php 
+                    $selected_tax2 = array_filter($taxes, function ($tax) use ($expense_data) {
+                        return $tax['id'] == $expense_data['tax2_id'];
+                    });
+                    if ($selected_tax2) {
+                        $tax2 = array_values($selected_tax2)[0];
+                        ?>
+                        <li><strong><?php echo _l('tax_2'); ?>:</strong> <?php echo e($tax2['name']) . ' - ' . $tax2['taxrate'] . '%'; ?></li>
+                        <?php
+                    }
+                    ?>
                 <?php endif; ?>
             </ul>
             <small class="text-muted">
@@ -192,8 +230,8 @@ $(function() {
         var formData = {
             category: $form.find('[name="category"]').val(),
             paymentmode: $form.find('[name="paymentmode"]').val(),
-            tax_rate: $form.find('[name="tax_rate"]').val(),
-            tax2_rate: $form.find('[name="tax2_rate"]').val()
+            tax1_id: $form.find('[name="tax1_id"]').val(),
+            tax2_id: $form.find('[name="tax2_id"]').val()
         };
 
         $.post(admin_url + 'peppol/create_expense/' + documentId, formData)

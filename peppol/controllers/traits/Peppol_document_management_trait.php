@@ -328,7 +328,9 @@ trait Peppol_document_management_trait
                     'document' => $form_data['document'],
                     'expense_data' => $form_data['expense_data'],
                     'payment_modes' => $form_data['payment_modes'],
-                    'expense_categories' => $form_data['expense_categories']
+                    'expense_categories' => $form_data['expense_categories'],
+                    'taxes' => $form_data['taxes'],
+                    'ubl_data' => $form_data['ubl_data']
                 ];
 
                 $form_html = $this->load->view('peppol/templates/expense_creation_form', $view_data, true);
@@ -352,6 +354,9 @@ trait Peppol_document_management_trait
             $override_data = [
                 'category' => $this->input->post('category'),
                 'paymentmode' => $this->input->post('paymentmode'),
+                'tax1_id' => $this->input->post('tax1_id'),
+                'tax2_id' => $this->input->post('tax2_id'),
+                // Keep backward compatibility with tax rates for manual entry
                 'tax_rate' => $this->input->post('tax_rate'),
                 'tax2_rate' => $this->input->post('tax2_rate', true)
             ];

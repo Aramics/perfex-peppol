@@ -91,12 +91,26 @@ trait Peppol_expense_trait
                 $payment_mode = $override_data['paymentmode'];
             }
 
-            if (isset($override_data['tax_rate'])) {
+            // Convert tax rates to tax IDs
+            $tax1_id = null;
+            $tax2_id = null;
+
+            if (isset($override_data['tax1_id'])) {
+                $tax1_id = $override_data['tax1_id'];
+            } elseif (isset($override_data['tax_rate'])) {
                 $tax_info['tax1_rate'] = (float) $override_data['tax_rate'];
+                $tax1_id = $this->get_tax_id_by_rate($tax_info['tax1_rate']);
+            } else {
+                $tax1_id = $this->get_tax_id_by_rate($tax_info['tax1_rate']);
             }
 
-            if (isset($override_data['tax2_rate'])) {
+            if (isset($override_data['tax2_id'])) {
+                $tax2_id = $override_data['tax2_id'];
+            } elseif (isset($override_data['tax2_rate'])) {
                 $tax_info['tax2_rate'] = (float) $override_data['tax2_rate'];
+                $tax2_id = $this->get_tax_id_by_rate($tax_info['tax2_rate']);
+            } else {
+                $tax2_id = $this->get_tax_id_by_rate($tax_info['tax2_rate']);
             }
 
             // Prepare expense data
@@ -107,14 +121,11 @@ trait Peppol_expense_trait
                 'date' => $document->received_at ? date('Y-m-d', strtotime($document->received_at)) : date('Y-m-d'),
                 'expense_name' => $this->generate_expense_name($document, $ubl_data),
                 'note' => $this->generate_expense_note($document, $ubl_data),
-                'clientid' => 0, // No client for supplier expenses
-                'project_id' => 0,
-                'billable' => 0,
-                'invoiceid' => 0,
+                //'clientid' => null, // No client for supplier expenses
                 'paymentmode' => $payment_mode,
                 'reference_no' => $ubl_data['document_number'] ?? '',
-                'tax' => $tax_info['tax1_rate'],
-                'tax2' => $tax_info['tax2_rate'],
+                'tax' => $tax1_id,
+                'tax2' => $tax2_id,
                 'create_invoice_billable' => 0,
                 'send_invoice_to_customer' => 0,
                 'dateadded' => date('Y-m-d H:i:s'),
@@ -573,12 +584,15 @@ trait Peppol_expense_trait
                 'paymentmode' => $payment_mode,
                 'tax1_rate' => $tax_info['tax1_rate'],
                 'tax2_rate' => $tax_info['tax2_rate'],
+                'tax1_id' => $this->get_tax_id_by_rate($tax_info['tax1_rate']),
+                'tax2_id' => $this->get_tax_id_by_rate($tax_info['tax2_rate']),
             ];
 
             // Get form options
             $this->CI->load->model(['expenses_model', 'payment_modes_model']);
             $expense_categories = $this->CI->expenses_model->get_category();
             $payment_modes = $this->CI->payment_modes_model->get();
+            $taxes = $this->get_all_taxes();
 
             return [
                 'success' => true,
@@ -586,6 +600,7 @@ trait Peppol_expense_trait
                 'expense_data' => $expense_data,
                 'expense_categories' => $expense_categories,
                 'payment_modes' => $payment_modes,
+                'taxes' => $taxes,
                 'ubl_data' => $ubl_data
             ];
         } catch (Exception $e) {
@@ -594,5 +609,50 @@ trait Peppol_expense_trait
                 'message' => 'Error: ' . $e->getMessage()
             ];
         }
+    }
+
+    /**
+     * Get tax ID by matching tax rate
+     * 
+     * @param float $rate Tax rate percentage
+     * @return int|null Tax ID or null if not found
+     */
+    protected function get_tax_id_by_rate($rate)
+    {
+        if (empty($rate) || $rate == 0) {
+            return null;
+        }
+
+        $this->CI->db->where('taxrate', $rate);
+        $tax = $this->CI->db->get(db_prefix() . 'taxes')->row();
+
+        return $tax ? $tax->id : null;
+    }
+
+    /**
+     * Get all available taxes for dropdowns
+     * 
+     * @return array Array of tax records
+     */
+    protected function get_all_taxes()
+    {
+        $this->CI->db->order_by('name', 'ASC');
+        return $this->CI->db->get(db_prefix() . 'taxes')->result_array();
+    }
+
+    /**
+     * Get tax record by ID
+     * 
+     * @param int $id Tax ID
+     * @return object|null Tax record or null if not found
+     */
+    protected function get_tax_by_id($id)
+    {
+        if (empty($id)) {
+            return null;
+        }
+
+        $this->CI->db->where('id', $id);
+        return $this->CI->db->get(db_prefix() . 'taxes')->row();
     }
 }

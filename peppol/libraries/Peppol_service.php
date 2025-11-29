@@ -264,6 +264,7 @@ class Peppol_service
             if ($attachment['visible_to_customer'] == 1) {
                 $link = base_url('download/file/sales_attachment/' . ($attachment['attachment_key'] ?: random_string()));
                 $attachment['external_link'] = empty($attachment['external_link']) ? $link : $attachment['external_link'];
+                $attachment['description'] = $attachment['file_name'] ?? $attachment['attachment_key'];
                 $attachments[] = $attachment;
             }
         }

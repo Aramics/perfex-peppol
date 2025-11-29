@@ -410,7 +410,7 @@ class Peppol_ubl_document_parser
         if (!empty($ublAttachments)) {
             foreach ($ublAttachments as $attachment) {
                 $attachmentData = [
-                    'file_name' => $attachment->getFilename() ?: 'Unknown File',
+                    'file_name' => $attachment->getFilename() ?: $attachment->getDescription(),
                     'description' => $attachment->getDescription() ?: $attachment->getFilename(),
                     'mime_type' => $attachment->getMimeCode(),
                     'file_size' => null, // UBL doesn't typically include file size

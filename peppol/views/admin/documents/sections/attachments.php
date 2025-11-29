@@ -16,17 +16,17 @@
             <div>
                 <?php if (!empty($attachment['external_link'])) : ?>
                 <a href="<?php echo e($attachment['external_link']); ?>" target="_blank" class="text-primary">
-                    <strong><?php echo e($attachment['file_name'] ?? 'Unknown File'); ?></strong>
+                    <strong><?php echo e($attachment['file_name']); ?></strong>
                     <i class="fa fa-external-link fa-xs tw-ml-1"></i>
                 </a>
                 <?php else : ?>
-                <strong><?php echo e($attachment['file_name'] ?? 'Unknown File'); ?></strong>
+                <strong><?php echo e($attachment['file_name']); ?></strong>
                 <?php endif; ?>
 
                 <?php if (!empty($attachment['description']) && $attachment['description'] !== ($attachment['file_name'] ?? '')) : ?>
                 <br><small class="text-muted"><?php echo e($attachment['description']); ?></small>
                 <?php endif; ?>
-                
+
                 <?php if (!empty($attachment['mime_type'])) : ?>
                 <br><small class="text-info"><?php echo e($attachment['mime_type']); ?></small>
                 <?php endif; ?>
@@ -34,8 +34,8 @@
         </div>
         <div>
             <?php if (!empty($attachment['external_link'])) : ?>
-            <a href="<?php echo e($attachment['external_link']); ?>" target="_blank" 
-               class="btn btn-sm btn-primary" data-toggle="tooltip" title="<?php echo _l('download'); ?>">
+            <a href="<?php echo e($attachment['external_link']); ?>" target="_blank" class="btn btn-sm btn-primary"
+                data-toggle="tooltip" title="<?php echo _l('download'); ?>">
                 <i class="fa fa-download"></i>
             </a>
             <?php endif; ?>

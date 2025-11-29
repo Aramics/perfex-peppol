@@ -170,8 +170,6 @@ function openStatusUpdateModal(documentId) {
  */
 function createExpenseFromDocument(documentId) {
     var originalText = event.target.innerHTML;
-    event.target.innerHTML = '<i class="fa fa-spinner fa-spin"></i>';
-    event.target.disabled = true;
 
     $.getJSON(admin_url + 'peppol/create_expense/' + documentId)
         .done(function(response) {

@@ -4,6 +4,8 @@ defined('BASEPATH') or exit('No direct script access allowed');
 
 $aColumns = [
     'pd.document_type',
+    'pd.provider_document_id',
+    'pd.local_reference_id',
     'COALESCE(i.number, cn.number) as document_number',
     'c.company as client_name',
     'COALESCE(i.total, cn.total) as document_total',
@@ -65,18 +67,24 @@ foreach ($rResult as $aRow) {
     $row[] = '<span class="label label-' . $typeClass . '" data-toggle="tooltip" title="' . e($dirText) . '">' .
         ucfirst(str_replace('_', ' ', $aRow['document_type'])) . ' <i class="tw-ml-1 fa fa-arrow-' . ($dirIcon) . '"></i>' . '</span>';
 
-    // Document number with link
-    $documentLink = '';
-    if ($aRow['document_type'] === 'invoice' && !empty($aRow['local_reference_id'])) {
-        $documentLink = admin_url('invoices/list_invoices/' . $aRow['local_reference_id']);
-    } elseif ($aRow['document_type'] === 'credit_note' && !empty($aRow['local_reference_id'])) {
-        $documentLink = admin_url('credit_notes/list_credit_notes/' . $aRow['local_reference_id']);
-    }
+    // Provider Document ID
+    $row[] = !empty($aRow['provider_document_id']) ? e($aRow['provider_document_id']) : '-';
 
-    $documentNumber = $aRow['document_number'] ?: (!empty($aRow['local_reference_id']) ? '#' . $aRow['local_reference_id'] : '-');
-    $row[] = $documentLink ?
-        '<a href="' . $documentLink . '" target="_blank">' . e($documentNumber) . '</a>' :
-        e($documentNumber);
+    // Local Reference ID with link
+    $localRefDisplay = '-';
+    if (!empty($aRow['local_reference_id'])) {
+        $documentLink = '';
+        if ($aRow['document_type'] === 'invoice') {
+            $documentLink = admin_url('invoices/list_invoices/' . $aRow['local_reference_id']);
+        } elseif ($aRow['document_type'] === 'credit_note') {
+            $documentLink = admin_url('credit_notes/list_credit_notes/' . $aRow['local_reference_id']);
+        }
+
+        $localRefDisplay = $documentLink ?
+            '<a href="' . $documentLink . '" target="_blank">#' . e($aRow['local_reference_id']) . '</a>' :
+            '#' . e($aRow['local_reference_id']);
+    }
+    $row[] = $localRefDisplay;
 
     // Client name
     $row[] = !empty($aRow['client_name']) ? e($aRow['client_name']) : '-';

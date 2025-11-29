@@ -147,7 +147,7 @@ trait Peppol_provider_operations_trait
                 'success' => true,
                 'ubl_content' => $ubl_content,
                 'document' => $peppol_document,
-                'filename' => $peppol_document->document_type . '_' . ($peppol_document->peppol_provider_document_id) . '_' . ($peppol_document->local_reference_id ?? '') . '_provider_ubl.xml'
+                'filename' => $peppol_document->document_type . '_' . ($peppol_document->provider_document_id) . '_' . ($peppol_document->local_reference_id ?? '') . '_provider_ubl.xml'
             ];
         } catch (Exception $e) {
             return [

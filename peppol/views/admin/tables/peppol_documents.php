@@ -108,12 +108,6 @@ foreach ($rResult as $aRow) {
         // View document details (sidewise view)
         $actions .= '<a href="' . admin_url('peppol/view_document/' . $aRow['id']) . '" class="btn btn-default btn-icon" data-toggle="tooltip" title="' . _l('view') . '">';
         $actions .= '<i class="fa fa-eye"></i></a>';
-
-        // Download UBL from provider (only for sent/delivered documents)
-        if (in_array(strtolower($aRow['status']), ['sent', 'delivered', 'received']) && !empty($aRow['provider_document_id'])) {
-            $actions .= ' <a href="#" onclick="downloadProviderUbl(' . $aRow['id'] . ')" class="btn btn-default btn-icon" data-toggle="tooltip" title="' . _l('peppol_download_provider_ubl') . '">';
-            $actions .= '<i class="fa fa-cloud-download"></i></a>';
-        }
     }
 
     $actions .= '</div>';

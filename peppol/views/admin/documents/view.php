@@ -44,12 +44,11 @@
                         <?php endif; ?>
 
                         <!-- Download UBL -->
-                        <?php if (!empty($document->provider_document_id)) : ?>
-                        <a href="javascript:void(0)" onclick="downloadProviderUbl(<?php echo $document->id; ?>)"
-                            class="btn btn-info" data-toggle="tooltip" title="<?php echo _l('peppol_download_ubl'); ?>">
+                        <a href="<?= admin_url('peppol/download_provider_ubl/' . $document->id); ?>"
+                            onclick="downloadProviderUbl(<?php echo $document->id; ?>)" class="btn btn-info"
+                            data-toggle="tooltip" title="<?php echo _l('peppol_download_ubl'); ?>">
                             <i class="fa fa-download"></i> UBL
                         </a>
-                        <?php endif; ?>
                     </div>
                 </div>
 
@@ -227,28 +226,5 @@ function createExpenseFromDocument(documentId) {
             $('#expenseLoadingModal').modal('hide');
             alert_float('danger', '<?php echo _l("something_went_wrong"); ?>');
         });
-}
-
-/**
- * Download UBL from provider
- */
-function downloadProviderUbl(documentId) {
-    // Create a temporary form to trigger download
-    var form = $('<form>').attr({
-        method: 'POST',
-        action: admin_url + 'peppol/download_provider_ubl/' + documentId,
-        target: '_blank'
-    });
-
-    // Add CSRF token if available
-    if (typeof csrfData !== 'undefined') {
-        form.append($('<input>').attr({
-            type: 'hidden',
-            name: csrfData.token_name,
-            value: csrfData.hash
-        }));
-    }
-
-    form.appendTo('body').submit().remove();
 }
 </script>

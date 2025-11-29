@@ -75,7 +75,7 @@
 
                 <?php if (!empty($ubl_data['seller']['country'])) : ?>
                 <tr>
-                    <td class="tw-font-medium"><?php echo _l('country'); ?></td>
+                    <td class="tw-font-medium"><?php echo _l('clients_country'); ?></td>
                     <td><?php echo e($ubl_data['seller']['country']); ?></td>
                 </tr>
                 <?php endif; ?>
@@ -120,7 +120,7 @@
 
                 <?php if (!empty($ubl_data['buyer']['country_code'])) : ?>
                 <tr>
-                    <td class="tw-font-medium"><?php echo _l('country'); ?></td>
+                    <td class="tw-font-medium"><?php echo _l('clients_country'); ?></td>
                     <td><?php echo e($ubl_data['buyer']['country_code']); ?></td>
                 </tr>
                 <?php endif; ?>

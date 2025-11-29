@@ -1,16 +1,5 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
 
-<!-- Expense Creation Form -->
-<div class="modal-header">
-    <h4 class="modal-title">
-        <i class="fa fa-plus"></i>
-        <?php echo _l('peppol_create_expense'); ?>
-    </h4>
-    <button type="button" class="close" data-dismiss="modal">&times;</button>
-</div>
-
-<div class="modal-body">
-
     <form id="expense-creation-form" data-document-id="<?php echo $document->id; ?>">
         <div class="row">
             <!-- Category -->
@@ -210,16 +199,15 @@
             </div>
         </div>
     </form>
-</div>
 
-<div class="modal-footer">
-    <button type="button" class="btn btn-default" data-dismiss="modal">
-        <?php echo _l('cancel'); ?>
-    </button>
-    <button type="button" id="create-expense-submit" class="btn btn-primary">
-        <i class="fa fa-plus"></i> <?php echo _l('peppol_create_expense'); ?>
-    </button>
-</div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">
+            <?php echo _l('cancel'); ?>
+        </button>
+        <button type="button" id="create-expense-submit" class="btn btn-primary">
+            <i class="fa fa-plus"></i> <?php echo _l('peppol_create_expense'); ?>
+        </button>
+    </div>
 
 <script>
 $(function() {

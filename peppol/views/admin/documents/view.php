@@ -128,7 +128,7 @@
 <!-- Create Expense Loading Modal -->
 <div class="modal fade" id="expenseLoadingModal" tabindex="-1" role="dialog" data-backdrop="static"
     data-keyboard="false">
-    <div class="modal-dialog" role="document">
+    <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <button type="button" class="close" data-dismiss="modal">
@@ -138,10 +138,8 @@
                     <i class="fa fa-plus"></i> <?php echo _l('peppol_create_expense'); ?>
                 </h4>
             </div>
-            <div class="modal-body text-center" style="padding: 40px;">
-                <div class="spinner-border text-primary tw-mb-4" role="status">
-                    <i class="fa fa-spinner fa-spin fa-3x"></i>
-                </div>
+            <div class="modal-body" id="expenseLoadingModalBody">
+                <!-- Content loaded via AJAX -->
             </div>
         </div>
     </div>
@@ -155,17 +153,21 @@ $(function() {
     window.peppolClarificationsCache = <?php echo json_encode($clarifications ?? []); ?>;
 });
 
+function setModalContentLoading(selector){
+    // Show loading
+    $(selector).html('<div class="text-center tw-p-8">' +
+        '<i class="fa fa-spinner fa-spin fa-2x text-primary"></i>' +
+        '<div class="tw-mt-3"><p class="text-muted"><?php echo _l("loading"); ?>...</p></div>' +
+        '</div>');
+}
+
 /**
  * Open status update modal
  */
 function openStatusUpdateModal(documentId) {
     $('#statusUpdateModal').modal('show');
 
-    // Show loading
-    $('#statusUpdateModalBody').html('<div class="text-center tw-p-8">' +
-        '<i class="fa fa-spinner fa-spin fa-2x text-primary"></i>' +
-        '<div class="tw-mt-3"><p class="text-muted"><?php echo _l("loading"); ?>...</p></div>' +
-        '</div>');
+    setModalContentLoading('#statusUpdateModalBody');
 
     // Load status update form
     $.ajax({
@@ -193,24 +195,14 @@ function createExpenseFromDocument(documentId) {
     // Show loading modal
     $('#expenseLoadingModal').modal('show');
 
+    setModalContentLoading('#expenseLoadingModalBody');
+
     $.getJSON(admin_url + 'peppol/create_expense/' + documentId)
         .done(function(response) {
-            // Hide loading modal
-            $('#expenseLoadingModal').modal('hide');
-
             if (response.success) {
                 if (response.show_form) {
                     // Show form modal for user to review/modify auto-detected data
-                    var modal = $('<div class="modal fade" tabindex="-1">');
-                    modal.html('<div class="modal-dialog modal-lg"><div class="modal-content">' +
-                        response.form_html + '</div></div>');
-                    $('body').append(modal);
-                    modal.modal('show');
-
-                    // Clean up modal when closed
-                    modal.on('hidden.bs.modal', function() {
-                        modal.remove();
-                    });
+                    $('#expenseLoadingModalBody').html(response.form_html);
                 } else {
                     alert_float('success', response.message);
                     setTimeout(function() {

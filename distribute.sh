@@ -6,11 +6,11 @@ isKnown=True
 
 #make translations
 cd /Users/Aramics/Projects/web/TurnSaas/tools;
-./translate_lang_files.sh "$basedir/delivery_notes/language";
+./translate_lang_files.sh "$basedir/peppol/language";
 cd -;
 
 if [[ "$isKnown" == True ]]; then
-    name="delivery_notes"
+    name="peppol"
     tmpBasedir="$basedir/tmp";
     tmpFolder="tmp/$name";
     filename="$name.zip"

@@ -16,8 +16,8 @@ $country_value = get_option('peppol_company_country_code') ?: 'BE';
     'identifier_name' => 'settings[peppol_company_identifier]',
     'scheme_value' => $scheme_value,
     'identifier_value' => $identifier_value,
-    'label' => 'Company PEPPOL Identifier',
-    'help_text' => 'Enter your company\'s PEPPOL participant identifier. Start typing in the scheme field to see suggestions. Format: scheme:identifier (e.g., 0208:0123456789)',
+    'label' => _l('peppol_company_identifier'),
+    'help_text' => _l('peppol_company_scheme_identifier_help'),
     'required' => false,
     'enable_autocomplete' => true,
     'container_id' => 'peppol_company_identifier'
@@ -25,7 +25,9 @@ $country_value = get_option('peppol_company_country_code') ?: 'BE';
 
 <!-- Company Country -->
 <div class="form-group">
-    <label for="peppol-company-country-code"><?php echo _l('country'); ?></label>
+    <i class="fa-regular fa-circle-question pull-left tw-mt-0.5 tw-mr-1" data-toggle="tooltip"
+        data-title="<?php echo e(_l('peppol_company_country_code_help')); ?>"></i>
+    <label for="peppol-company-country-code"><?php echo _l('clients_country'); ?></label>
     <select name="settings[peppol_company_country_code]" class="form-control" id="peppol-company-country-code">
         <?php foreach (get_all_countries() as $country) { ?>
         <option value="<?php echo $country['iso2']; ?>"
@@ -34,6 +36,16 @@ $country_value = get_option('peppol_company_country_code') ?: 'BE';
         </option>
         <?php } ?>
     </select>
-    <small class="help-block text-muted">Select the country for your company. This will be used in UBL documents
-        and PEPPOL transmission.</small>
+    <small class="help-block text-muted"></small>
+</div>
+
+<hr />
+
+<div class="row">
+    <div class="col-md-12">
+        <?php echo render_yes_no_option('peppol_auto_create_invoice_expenses', _l('peppol_auto_create_invoice_expenses'), _l('peppol_auto_create_invoice_expenses_help')); ?>
+    </div>
+    <div class="col-md-12">
+        <?php echo render_yes_no_option('peppol_auto_create_credit_note_expenses', _l('peppol_auto_create_credit_note_expenses'), _l('peppol_auto_create_credit_note_expenses_help')); ?>
+    </div>
 </div>

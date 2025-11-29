@@ -115,15 +115,6 @@ $lang['peppol_send_all_unsent_credit_notes'] = 'Send all unsent credit notes';
 $lang['peppol_retry_all_failed_credit_notes'] = 'Retry all failed credit notes';
 $lang['peppol_download_all_sent_credit_note_ubl'] = 'Download all sent credit note UBL files';
 
-// Help texts
-$lang['peppol_company_identifier_help'] = 'Your company\'s PEPPOL participant identifier';
-$lang['peppol_company_scheme_help'] = 'The scheme used for your PEPPOL identifier (e.g., 0208)';
-$lang['peppol_environment_help'] = 'Choose Sandbox for testing or Live for production use';
-
-// Access and permissions
-$lang['peppol_access_denied'] = 'Access denied';
-$lang['peppol_no_permission'] = 'You do not have permission to perform this action';
-
 // Error messages
 $lang['peppol_invoice_not_found'] = 'Invoice not found';
 $lang['peppol_credit_note_not_found'] = 'Credit note not found';
@@ -164,21 +155,10 @@ $lang['peppol_credit_note_error_format'] = 'Credit note #%d: %s';
 $lang['peppol_unknown_action'] = 'Unknown action';
 
 // Settings page translations
-$lang['peppol_identifier_format_help'] = 'Format: <code>scheme:identifier</code> (e.g., <code>0208:0123456789</code>). Start typing in the scheme field to see suggestions.';
-$lang['peppol_provider_manual'] = 'Manual (Test/Development)';
-$lang['peppol_provider_service'] = 'PEPPOL Service Provider';
-$lang['peppol_provider_custom'] = 'Custom API';
 $lang['peppol_environment_sandbox'] = 'Sandbox (Testing)';
 $lang['peppol_environment_production'] = 'Production (Live)';
-$lang['peppol_webhook_url_help'] = 'URL for receiving status updates from PEPPOL provider';
-$lang['peppol_test_connection_help'] = 'Test the connection with current settings';
-$lang['peppol_auto_send_help'] = 'Automatically send invoices via PEPPOL when marked as sent';
-$lang['peppol_enter_company_identifier'] = 'Enter your company identifier';
-$lang['peppol_scheme_validation_error'] = 'Scheme identifier should be a 4-digit code (e.g. 0208) or a valid custom identifier';
 $lang['peppol_selected_scheme'] = 'Selected scheme';
 $lang['peppol_testing'] = 'Testing';
-$lang['peppol_production_warning'] = 'Are you sure you want to switch to PRODUCTION environment? This will send real documents via PEPPOL network.';
-$lang['peppol_manual_mode_notice'] = 'Manual mode is for testing only. No actual PEPPOL transmission will occur.';
 $lang['peppol_not_available'] = 'PEPPOL not available for this document';
 
 // Bulk operation results translations
@@ -221,6 +201,7 @@ $lang['peppol_active_provider'] = 'Active Provider';
 $lang['peppol_active_provider_help'] = 'Select which PEPPOL provider to use for sending documents';
 $lang['peppol_no_providers_registered'] = 'No PEPPOL providers are currently registered.';
 $lang['peppol_no_providers_help'] = 'PEPPOL providers can be registered through modules, extensions, or custom implementations.';
+$lang['peppol_no_active_provider'] = 'No active PEPPOL provider is set. Please configure one in the settings.';
 $lang['peppol_invalid_provider'] = 'Invalid provider specified';
 $lang['peppol_provider_not_found'] = 'Provider not found or not properly configured';
 $lang['peppol_provider_no_test_available'] = 'Connection testing is not available for this provider';
@@ -510,7 +491,6 @@ $lang['peppol_not_eligible'] = 'Not Eligible';
 
 // Notification Settings
 $lang['peppol_notifications'] = 'Notifications';
-$lang['peppol_cron'] = 'Cron';
 $lang['peppol_notification_lookup_time'] = 'Notification Lookup Time (Hours)';
 $lang['peppol_notification_lookup_hours_help'] = 'Number of hours to look back for notifications. Use decimals for precision (e.g., 1.5 = 1 hour 30 minutes)';
 $lang['peppol_cron_interval'] = 'Cron Interval (Minutes)';
@@ -586,3 +566,7 @@ $lang['peppol_process_notifications'] = "Process Notifications";
 // SaaS Settings
 $lang['peppol_enforce_on_all_tenants'] = 'Enforce on all tenants';
 $lang['peppol_enforce_on_all_tenants_help'] = 'When enabled, this PEPPOL provider configuration will be automatically applied to all tenants in the SaaS environment. Individual tenants will not be able to override these settings.';
+
+$lang['peppol_company_country_code'] = 'Company Country Code';
+$lang['peppol_company_country_code_help'] = 'Select the country for your company. This will be used in UBL documents and PEPPOL transmission.';
+$lang['peppol_company_scheme_identifier_help'] = 'Enter your company\'s PEPPOL participant identifier. Start typing in the scheme field to see suggestions. Format: scheme:identifier (e.g., 0208:0123456789)';

@@ -45,6 +45,14 @@ interface Peppol_provider_interface
     public function get_setting_inputs();
 
     /**
+     * Get the setting prefix for this provider
+     * 
+     * @param string $key Optional specific key to append
+     * @return string Setting prefix
+     */
+    public function get_setting_prefix($key = '');
+
+    /**
      * Get current settings values
      * 
      * @return array Array of current setting values

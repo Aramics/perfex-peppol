@@ -46,7 +46,7 @@ trait Peppol_local_document_single_trait
         if (!staff_can('create', 'peppol')) {
             return $this->json_output([
                 'success' => false,
-                'message' => _l('peppol_access_denied')
+                'message' => _l('access_denied')
             ]);
         }
 

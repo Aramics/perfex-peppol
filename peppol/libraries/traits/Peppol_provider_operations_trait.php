@@ -62,16 +62,40 @@ trait Peppol_provider_operations_trait
     public function process_notifications(?float $lookup_hours = null)
     {
         // Get notification lookup time from settings
-        $lookup_hours = $lookup_hours ?: (float)(get_option('peppol_notification_lookup_hours') ?: 72);
+        $lookup_hours = $lookup_hours ?: (float)(peppol_get_option('peppol_notification_lookup_hours') ?: 72);
         $total_minutes = $lookup_hours * 60;
+
+        $provider = peppol_get_active_provider();
+
+        if (!$provider) {
+            return [
+                'success' => false,
+                'message' => _l('peppol_no_active_provider')
+            ];
+        }
+
+        $company_identifier = get_option('peppol_company_identifier');
+        $company_scheme = get_option('peppol_company_scheme');
 
         // Prepare filter parameters
         $filter = [
             'startDateTime' => date('c', strtotime("-{$total_minutes} minutes")),
-            'pageSize' => 100
+            'pageSize' => 50,
         ];
 
-        return peppol_get_active_provider()->webhook($filter);
+        // Filters for documents where we are receiver or sender 
+        // This allow smooth use in multi-tenant or multi-company setups
+        $my_received_docs_filter = array_merge($filter, [
+            'receiver' => "{$company_scheme}:{$company_identifier}",
+        ]);
+
+        $my_sent_docs_filter = array_merge($filter, [
+            'sender' => "{$company_scheme}:{$company_identifier}",
+        ]);
+
+        $result1 = $provider->webhook($my_received_docs_filter);
+        $result2 = $provider->webhook($my_sent_docs_filter);
+        return array_merge_recursive($result1, $result2);
     }
 
     /**

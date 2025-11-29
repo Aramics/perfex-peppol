@@ -30,10 +30,13 @@ if (!function_exists('peppol_process_notifications')) {
      * Process PEPPOL notifications via cron
      * Frequency is configurable in settings (default: every 5 minutes)
      * @param bool $manual If the processing is called by human
+     * @return mixed
      */
     function peppol_process_notifications($manual = false)
     {
         $CI = &get_instance();
+        $CI->load->model(PEPPOL_MODULE_NAME . '/peppol_model');
+        $CI->load->library(PEPPOL_MODULE_NAME . '/peppol_service');
 
         // Option key to store last execution timestamp
         $option_key = 'peppol_cron_last_run';
@@ -44,7 +47,7 @@ if (!function_exists('peppol_process_notifications')) {
 
         if (!$manual) {
             // Get cron interval from settings (default 5 minutes)
-            $cron_interval = (int)(get_option('peppol_cron_interval') ?: 5);
+            $cron_interval = (int)(peppol_get_option('peppol_cron_interval') ?: 5);
             $interval_seconds = $cron_interval * 60;
 
             // Only run if configured interval has passed since last run
@@ -60,9 +63,21 @@ if (!function_exists('peppol_process_notifications')) {
         update_option('peppol_last_notification_check', date('Y-m-d H:i:s', $now));
 
         try {
-            $CI->peppol_service->process_notifications();
+            return $CI->peppol_service->process_notifications();
         } catch (\Throwable $th) {
             log_message('error', 'Error in peppol_process_notifications: ' . $th->getMessage());
         }
+        return false;
+    }
+}
+
+if (!function_exists('peppol_get_option')) {
+    /**
+     * Helper to get PEPPOL module option with provider prefix
+     */
+    function peppol_get_option($option_name, $default = null)
+    {
+        $value = get_option($option_name);
+        return  hooks()->apply_filters('peppol_get_option', $value !== false ? $value : $default);
     }
 }

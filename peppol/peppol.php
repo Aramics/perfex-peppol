@@ -52,7 +52,8 @@ $hook_files = [
     'add_admin_menu_permissions.php',
     'expense_deletion_cleanup.php',
     'add_credit_note_attachment_visibility_toggle.php',
-    'misc.php'
+    'misc.php',
+    'saas.php'
 ];
 
 foreach ($hook_files as $hook_file) {

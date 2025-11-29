@@ -77,23 +77,36 @@ abstract class Abstract_peppol_provider implements Peppol_provider_interface
     }
 
     /**
+     * {@inheritDoc}
+     */
+    public function get_setting_prefix($key = '')
+    {
+        return "peppol_{$this->get_id()}_{$key}";
+    }
+
+    /**
      * Default implementation for getting settings
      */
     public function get_settings()
     {
         $inputs = $this->get_setting_inputs();
-        $settings = [];
+        static $settings = [];
+
+        if (!empty($settings)) {
+            return $settings;
+        }
 
         foreach ($inputs as $key => $input) {
             // For hidden and readonly fields, always use the default value
             if ($input['type'] === 'hidden' || $input['type'] === 'readonly') {
                 $settings[$key] = $input['default'] ?? '';
             } else {
-                $option_name = "peppol_{$this->get_id()}_{$key}";
+                $option_name = $this->get_setting_prefix($key);
                 $settings[$key] = get_option($option_name, $input['default'] ?? '');
             }
         }
 
+        $settings = hooks()->apply_filters('peppol_provider_settings', $settings, $this);
         return $settings;
     }
 

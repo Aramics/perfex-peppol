@@ -28,7 +28,7 @@ trait Peppol_provider_management_trait
         if (!staff_can('edit', 'settings') || !$this->input->post()) {
             return $this->json_output([
                 'success' => false,
-                'message' => _l('peppol_access_denied')
+                'message' => _l('access_denied')
             ]);
         }
 
@@ -94,8 +94,13 @@ trait Peppol_provider_management_trait
         }
 
         try {
-            peppol_process_notifications(true);
-            set_alert('success', _l('peppol_operation_completed'));
+            $resp = peppol_process_notifications(true);
+
+            if (isset($resp['message']) && !empty($resp['message'])) {
+                set_alert(isset($resp['success']) ? ($resp['success'] ? 'success' : 'danger') : 'info', $resp['message']);
+            } else {
+                set_alert('success', _l('peppol_operation_completed'));
+            }
         } catch (\Throwable $th) {
             set_alert('success', $th->getMessage());
         }

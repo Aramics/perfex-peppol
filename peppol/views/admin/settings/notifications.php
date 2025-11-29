@@ -5,7 +5,6 @@
 $lookup_hours = get_option('peppol_notification_lookup_hours') ?: '72';
 $cron_interval = get_option('peppol_cron_interval') ?: '5';
 ?>
-
 <div class="row">
     <div class="col-md-6">
         <i class="fa-regular fa-circle-question pull-left tw-mt-0.5 tw-mr-1" data-toggle="tooltip"
@@ -16,6 +15,7 @@ $cron_interval = get_option('peppol_cron_interval') ?: '5';
             'id' => 'peppol-notification-lookup-hours'
         ]); ?>
     </div>
+
     <div class="col-md-6">
         <i class="fa-regular fa-circle-question pull-left tw-mt-0.5 tw-mr-1" data-toggle="tooltip"
             data-title="<?php echo e(_l('peppol_cron_interval_help')); ?>"></i>
@@ -50,16 +50,5 @@ $cron_interval = get_option('peppol_cron_interval') ?: '5';
                 </div>
             </div>
         </div>
-    </div>
-</div>
-
-<hr />
-
-<div class="row">
-    <div class="col-md-12">
-        <?php echo render_yes_no_option('peppol_auto_create_invoice_expenses', _l('peppol_auto_create_invoice_expenses'), _l('peppol_auto_create_invoice_expenses_help')); ?>
-    </div>
-    <div class="col-md-12">
-        <?php echo render_yes_no_option('peppol_auto_create_credit_note_expenses', _l('peppol_auto_create_credit_note_expenses'), _l('peppol_auto_create_credit_note_expenses_help')); ?>
     </div>
 </div>

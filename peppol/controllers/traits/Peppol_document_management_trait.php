@@ -50,7 +50,7 @@ trait Peppol_document_management_trait
 
         // Get provider information
         $data['providers'] = peppol_get_registered_providers();
-        $data['active_provider'] = get_option('peppol_active_provider', '');
+        $data['active_provider'] = peppol_get_option('peppol_active_provider', '');
 
         $this->load->view('peppol/admin/documents/manage', $data);
     }

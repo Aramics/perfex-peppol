@@ -47,7 +47,7 @@ function peppol_register_default_providers($providers)
  */
 function peppol_get_active_provider()
 {
-    $active_provider_id = get_option('peppol_active_provider', '');
+    $active_provider_id = peppol_get_option('peppol_active_provider', '');
 
     if (empty($active_provider_id)) {
         return null;

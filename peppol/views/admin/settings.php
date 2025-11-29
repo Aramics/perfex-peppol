@@ -26,11 +26,11 @@ $peppol_settings_tabs = [
     ],
     'notifications' => [
         'id' => 'peppol_notifications',
-        'title' => _l('peppol_cron'),
+        'title' => _l('peppol_notifications'),
         'file' => __DIR__ . '/settings/notifications.php',
         'active' => false,
         'weight' => 40
-    ]
+    ],
 ];
 
 // Allow modules and plugins to modify tabs through hooks

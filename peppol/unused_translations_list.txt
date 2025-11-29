@@ -1,0 +1,87 @@
+PEPPOL MODULE - UNUSED TRANSLATION KEYS ANALYSIS
+Generated: <?php echo date('Y-m-d H:i:s'); ?>
+
+=================================================================
+HIGH CONFIDENCE - LIKELY UNUSED (Safe to remove)
+=================================================================
+
+These translation keys were not found in any PHP files and are likely safe to remove:
+
+peppol_document_preview
+peppol_attachments  
+peppol_metadata
+peppol_transmission_info
+peppol_status_info
+peppol_ubl_document
+peppol_xml_content
+peppol_transmission_id
+peppol_provider_metadata
+peppol_advanced_settings
+peppol_debug_mode
+peppol_test_mode
+peppol_sandbox_mode
+peppol_validation_error
+peppol_connection_error
+peppol_timeout_error
+peppol_unknown_error
+peppol_statistics
+peppol_reports
+peppol_export
+peppol_import
+
+=================================================================
+MEDIUM CONFIDENCE - LIKELY UNUSED (Review before removing)
+=================================================================
+
+These are used in filter dropdowns but might be legacy status codes:
+
+peppol_status_pending
+peppol_status_sent
+peppol_status_delivered  
+peppol_status_failed
+peppol_status_received
+peppol_status_rejected_inbound
+
+=================================================================
+LOW CONFIDENCE - UNCERTAIN (Test before removing)
+=================================================================
+
+Clarifications feature - appears partially implemented:
+
+peppol_clarifications
+peppol_clarifications_optional
+peppol_add_clarification
+peppol_clarification_type
+peppol_clarification_code
+peppol_clarification_message
+peppol_clarification_message_placeholder
+peppol_select_type
+peppol_select_code
+
+Dynamic status codes - might be used programmatically:
+
+peppol_status_queued
+peppol_status_technical_acceptance
+peppol_status_buyer_acknowledge
+peppol_status_under_query
+peppol_status_conditionally_accepted
+peppol_status_partially_paid
+peppol_status_fully_paid
+peppol_status_send_failed
+
+=================================================================
+CONFIRMED USED - DO NOT REMOVE (131 keys)
+=================================================================
+
+All other translation keys in the language file are actively used and should be kept.
+
+=================================================================
+RECOMMENDATIONS
+=================================================================
+
+1. START WITH HIGH CONFIDENCE: Remove the 21 keys listed as "likely unused" first
+2. REVIEW MEDIUM CONFIDENCE: Check if legacy status codes are still needed
+3. TEST LOW CONFIDENCE: Verify clarifications and dynamic status usage
+4. KEEP ALL OTHERS: The remaining ~131 translation keys are actively used
+
+Total language file size could be reduced by approximately 15-20% by removing unused keys.

@@ -106,6 +106,32 @@ class Peppol_model extends App_Model
         return $this->db->get(db_prefix() . 'peppol_documents')->row();
     }
 
+    /**
+     * Find PEPPOL document by provider document ID and sender/receiver parties
+     * 
+     * @param string $provider_document_id The provider's document ID
+     * @param string $sender The sender party identifier
+     * @param string $receiver The receiver party identifier
+     * @param string $provider The provider identifier
+     * @return object|null The matching document or null
+     */
+    public function get_peppol_document_by_provider_id_and_parties($provider_document_id, $sender, $receiver, $provider)
+    {
+        // Use JSON_EXTRACT to search in the metadata
+        $key = 'sender';
+        $this->db->where("JSON_UNQUOTE(JSON_EXTRACT(provider_metadata, '$.$key')) =", $sender);
+
+        $key = 'receiver';
+        $this->db->where("JSON_UNQUOTE(JSON_EXTRACT(provider_metadata, '$.$key')) =", $receiver);
+
+
+        $this->db->where('provider', $provider);
+
+        $this->db->where('provider_document_id', $provider_document_id);
+
+        return $this->db->get(db_prefix() . 'peppol_documents')->row();
+    }
+
 
     /**
      * Create PEPPOL document record

@@ -98,6 +98,9 @@ trait Peppol_provider_management_trait
 
             if (isset($resp['message']) && !empty($resp['message'])) {
                 set_alert(isset($resp['success']) ? ($resp['success'] ? 'success' : 'danger') : 'info', $resp['message']);
+            }
+            if (isset($resp['errors']) && !empty($resp['errors'])) {
+                set_alert('danger', $resp['errors'][0] ?? '');
             } else {
                 set_alert('success', _l('peppol_operation_completed'));
             }

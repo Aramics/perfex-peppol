@@ -78,6 +78,6 @@ if (!function_exists('peppol_get_option')) {
     function peppol_get_option($option_name, $default = null)
     {
         $value = get_option($option_name);
-        return  hooks()->apply_filters('peppol_get_option', $value !== false ? $value : $default);
+        return  hooks()->apply_filters('peppol_get_option', $value !== false ? $value : $default, $option_name);
     }
 }

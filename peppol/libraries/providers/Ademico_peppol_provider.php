@@ -1050,29 +1050,158 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
             // Build query parameters from filters
             $query_params = array_merge([
                 'page' => 0,
-                'pageSize' => 50
+                'pageSize' => 100  // Max page size for efficiency
             ], $filters);
 
-            $response = $this->call_api($endpoint, null, $headers, $query_params, 'GET');
+            $all_notifications = [];
+            $final_pagination = [];
 
-            if ($response['success']) {
-                return [
-                    'success' => true,
-                    'notifications' => $response['data']['notifications'] ?? [],
-                    'pagination' => $response['data']['pagination'] ?? []
-                ];
-            } else {
-                return [
-                    'success' => false,
-                    'message' => 'API error: ' . ($response['error'] ?? 'Unknown error')
-                ];
+            $sender = $query_params['sender'] ?? null;
+            $receiver = $query_params['receiver'] ?? null;
+
+            unset($query_params['sender']);
+            unset($query_params['receiver']);
+
+            // Fetch all pages for sender filter
+            if ($sender !== null) {
+                $sender_notifications = $this->_fetch_all_pages(
+                    $endpoint,
+                    $headers,
+                    array_merge($query_params, ['sender' => $sender])
+                );
+
+                if ($sender_notifications['success']) {
+                    $all_notifications = array_merge($all_notifications, $sender_notifications['notifications']);
+                    $final_pagination = $sender_notifications['pagination'];
+                } else {
+                    return $sender_notifications; // Return error
+                }
             }
+
+            // Fetch all pages for receiver filter
+            if ($receiver !== null) {
+                $receiver_notifications = $this->_fetch_all_pages(
+                    $endpoint,
+                    $headers,
+                    array_merge($query_params, ['receiver' => $receiver])
+                );
+
+                if ($receiver_notifications['success']) {
+                    $all_notifications = array_merge($all_notifications, $receiver_notifications['notifications']);
+
+                    // Update pagination with combined count
+                    if (!empty($final_pagination)) {
+                        $final_pagination['count'] = ($final_pagination['count'] ?? 0) + count($receiver_notifications['notifications']);
+                    } else {
+                        $final_pagination = $receiver_notifications['pagination'];
+                    }
+                } else {
+                    return $receiver_notifications; // Return error
+                }
+            }
+
+            // Fetch all notifications if no sender/receiver filter
+            if ($sender === null && $receiver === null) {
+                $all_result = $this->_fetch_all_pages($endpoint, $headers, $query_params);
+
+                if ($all_result['success']) {
+                    $all_notifications = $all_result['notifications'];
+                    $final_pagination = $all_result['pagination'];
+                } else {
+                    return $all_result; // Return error
+                }
+            }
+
+            // Sort the notifications by notificationId in ascending order (oldest first)
+            // The sorting and its order is very important
+            usort($all_notifications, function ($a, $b) {
+                return ($a['notificationId'] ?? 0) - ($b['notificationId'] ?? 0);
+            });
+
+            // Update final count
+            $final_pagination['count'] = count($all_notifications);
+
+            return [
+                'success' => true,
+                'notifications' => $all_notifications,
+                'pagination' => $final_pagination
+            ];
         } catch (Exception $e) {
             return [
                 'success' => false,
                 'message' => 'Exception: ' . $e->getMessage()
             ];
         }
+    }
+
+    /**
+     * Fetch all pages of notifications from API
+     * 
+     * @param string $endpoint API endpoint
+     * @param array $headers Request headers
+     * @param array $query_params Query parameters
+     * @return array Result with all notifications
+     */
+    private function _fetch_all_pages($endpoint, $headers, $query_params)
+    {
+        $all_notifications = [];
+        $page = $query_params['page'] ?? 0;
+        $page_size = $query_params['pageSize'] ?? 100;
+        $total_count = null;
+        $final_pagination = [];
+
+        do {
+            // Update page number for current request
+            $query_params['page'] = $page;
+
+            $response = $this->call_api(
+                $endpoint,
+                null,
+                $headers,
+                $query_params,
+                'GET'
+            );
+
+            if (!$response['success']) {
+                return [
+                    'success' => false,
+                    'message' => 'API error: ' . ($response['error'] ?? 'Unknown error')
+                ];
+            }
+
+            $notifications = $response['data']['notifications'] ?? [];
+            $pagination = $response['data']['pagination'] ?? [];
+
+            // Merge notifications from this page
+            $all_notifications = array_merge($all_notifications, $notifications);
+
+            // Store pagination info from first request
+            if ($page === ($query_params['page'] ?? 0)) {
+                $total_count = $pagination['count'] ?? 0;
+                $final_pagination = $pagination;
+            }
+
+            // Calculate if there are more pages
+            $page++;
+            $fetched_count = count($all_notifications);
+            $has_more = ($total_count !== null) && ($fetched_count < $total_count);
+
+            // Safety check to prevent infinite loops
+            if ($page > 20) {
+                break;
+            }
+        } while ($has_more);
+
+        // Update final pagination with actual fetched count
+        $final_pagination['count'] = count($all_notifications);
+        $final_pagination['page'] = 0; // Reset to 0 as we're returning all results
+        $final_pagination['pageSize'] = count($all_notifications); // All items in one "virtual" page
+
+        return [
+            'success' => true,
+            'notifications' => $all_notifications,
+            'pagination' => $final_pagination
+        ];
     }
 
     /**
@@ -1234,6 +1363,29 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                     if ($_document_id)
                         $peppol_document = $CI->peppol_model->get_peppol_document_by_transmission_id($transmission_id, $this->get_id());
                 }
+            }
+
+            if (!$peppol_document) {
+
+                $sender = $notification['sender'];
+                $receiver = $notification['receiver'];
+
+                if ($event_type == 'INVOICE_RESPONSE_SENT' || $event_type == 'INVOICE_RESPONSE_SEND_FAILED') {
+                    // The buyer sending response (now become sender of this notification)
+                    $CI->peppol_model->db->where('received_at IS NOT NULL');
+
+                    $sender = $notification['receiver']; // Sender lookup will be the one receving the message originally
+                    $receiver = $notification['sender']; // Receiver lookup will be the one sending the message originally
+                } else {
+                    $CI->peppol_model->db->where('received_at IS NULL');
+                }
+
+                $peppol_document = $CI->peppol_model->get_peppol_document_by_provider_id_and_parties(
+                    $document_id,
+                    $sender,
+                    $receiver,
+                    $this->get_id()
+                );
             }
 
             if (!$peppol_document) {

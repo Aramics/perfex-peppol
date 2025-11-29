@@ -80,22 +80,12 @@ trait Peppol_provider_operations_trait
         // Prepare filter parameters
         $filter = [
             'startDateTime' => date('c', strtotime("-{$total_minutes} minutes")),
-            'pageSize' => 50,
+            'pageSize' => 100,
+            'receiver' => "{$company_scheme}:{$company_identifier}",
+            'sender' => "{$company_scheme}:{$company_identifier}",
         ];
 
-        // Filters for documents where we are receiver or sender 
-        // This allow smooth use in multi-tenant or multi-company setups
-        $my_received_docs_filter = array_merge($filter, [
-            'receiver' => "{$company_scheme}:{$company_identifier}",
-        ]);
-
-        $my_sent_docs_filter = array_merge($filter, [
-            'sender' => "{$company_scheme}:{$company_identifier}",
-        ]);
-
-        $result1 = $provider->webhook($my_received_docs_filter);
-        $result2 = $provider->webhook($my_sent_docs_filter);
-        return array_merge_recursive($result1, $result2);
+        return $provider->webhook($filter);
     }
 
     /**

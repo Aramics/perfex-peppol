@@ -19,7 +19,7 @@
                     </div>
                     <div class="tw-flex tw-items-center tw-space-x-2">
                         <!-- Status Update Button -->
-                        <?php if (!empty($document->received_at) && !empty($document->provider_document_id)) : ?>
+                        <?php if (!empty($document->received_at) && !empty($document->provider_document_transmission_id)) : ?>
                         <button type="button" class="btn btn-primary"
                             onclick="openStatusUpdateModal(<?php echo $document->id; ?>)">
                             <i class="fa fa-edit"></i> <?php echo _l('peppol_update_status'); ?>
@@ -35,7 +35,7 @@
                             title="<?php echo _l('peppol_view_expense_record'); ?>">
                             <i class="fa fa-external-link"></i> <?php echo _l('peppol_view_expense'); ?>
                         </a>
-                        <?php else : ?>
+                        <?php elseif (!empty($document->received_at)) : ?>
                         <button type="button" class="btn btn-warning"
                             onclick="createExpenseFromDocument(<?php echo $document->id; ?>)" data-toggle="tooltip"
                             title="<?php echo _l('peppol_create_expense'); ?>">
@@ -126,6 +126,28 @@
     </div>
 </div>
 
+<!-- Create Expense Loading Modal -->
+<div class="modal fade" id="expenseLoadingModal" tabindex="-1" role="dialog" data-backdrop="static"
+    data-keyboard="false">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+                <h4 class="modal-title">
+                    <i class="fa fa-plus"></i> <?php echo _l('peppol_create_expense'); ?>
+                </h4>
+            </div>
+            <div class="modal-body text-center" style="padding: 40px;">
+                <div class="spinner-border text-primary tw-mb-4" role="status">
+                    <i class="fa fa-spinner fa-spin fa-3x"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <?php init_tail(); ?>
 
 <script>
@@ -169,10 +191,14 @@ function openStatusUpdateModal(documentId) {
  * Create expense from PEPPOL document
  */
 function createExpenseFromDocument(documentId) {
-    var originalText = event.target.innerHTML;
+    // Show loading modal
+    $('#expenseLoadingModal').modal('show');
 
     $.getJSON(admin_url + 'peppol/create_expense/' + documentId)
         .done(function(response) {
+            // Hide loading modal
+            $('#expenseLoadingModal').modal('hide');
+
             if (response.success) {
                 if (response.show_form) {
                     // Show form modal for user to review/modify auto-detected data
@@ -197,11 +223,9 @@ function createExpenseFromDocument(documentId) {
             }
         })
         .fail(function() {
+            // Hide loading modal on error
+            $('#expenseLoadingModal').modal('hide');
             alert_float('danger', '<?php echo _l("something_went_wrong"); ?>');
-        })
-        .always(function() {
-            event.target.disabled = false;
-            event.target.innerHTML = originalText;
         });
 }
 

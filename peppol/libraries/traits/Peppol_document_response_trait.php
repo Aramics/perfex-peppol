@@ -83,7 +83,8 @@ trait Peppol_document_response_trait
                         $document->metadata,
                         [
                             'response_note' => $note,
-                            'responded_by' => get_staff_user_id() ?? 0
+                            'responded_by' => get_staff_user_id() ?? 0,
+                            'response_transmission_id' => $result['transmission_id']
                         ]
                     )
                 ];

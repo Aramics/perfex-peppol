@@ -134,7 +134,6 @@ trait Peppol_document_management_trait
         if (isset($document->ubl_document['data']['attachments'])) {
             $attachments = $document->ubl_document['data']['attachments'];
         }
-        dd($attachments);
 
         // Get clarifications data for forms
         $clarifications = $this->peppol_service->get_available_clarifications();

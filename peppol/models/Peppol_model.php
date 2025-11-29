@@ -78,6 +78,26 @@ class Peppol_model extends App_Model
         return $this->db->get(db_prefix() . 'peppol_documents')->row();
     }
 
+    /**
+     * Find PEPPOL document by searching in metadata
+     * 
+     * @param string $key The metadata key to search for
+     * @param mixed $value The value to search for
+     * @param string $provider Optional provider filter
+     * @return object|null The first matching document or null
+     */
+    public function get_peppol_document_by_metadata($key, $value, $provider = null)
+    {
+        // Use JSON_EXTRACT to search in the metadata
+        $this->db->where("JSON_UNQUOTE(JSON_EXTRACT(provider_metadata, '$.$key')) =", $value);
+
+        if ($provider !== null) {
+            $this->db->where('provider', $provider);
+        }
+
+        return $this->db->get(db_prefix() . 'peppol_documents')->row();
+    }
+
 
     /**
      * Create PEPPOL document record

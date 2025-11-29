@@ -2,7 +2,7 @@
 
 <form id="mark-status-form">
     <input type="hidden" name="document_id" value="<?php echo $document->id; ?>">
-    
+
     <div class="alert alert-info">
         <i class="fa fa-info-circle"></i>
         <?php echo _l('peppol_mark_status_help'); ?>
@@ -11,14 +11,19 @@
     <div class="row">
         <div class="col-md-4">
             <div class="form-group">
-                <label for="response-status"><?php echo _l('peppol_response_status'); ?> <span class="text-danger">*</span></label>
+                <label for="response-status"><?php echo _l('peppol_response_status'); ?> <span
+                        class="text-danger">*</span></label>
                 <select name="status" id="response-status" class="form-control" required>
                     <option value=""><?php echo _l('peppol_select_status'); ?></option>
+                    <?php if (!empty($document->received_at)) : ?>
                     <option value="AB"><?php echo _l('peppol_status_acknowledged'); ?></option>
                     <option value="IP"><?php echo _l('peppol_status_in_process'); ?></option>
                     <option value="AP"><?php echo _l('peppol_status_accepted'); ?></option>
                     <option value="RE"><?php echo _l('peppol_status_rejected'); ?></option>
+                    <?php if ($document->document_type == 'invoice') : ?>
                     <option value="PD"><?php echo _l('peppol_status_paid'); ?></option>
+                    <?php endif; ?>
+                    <?php endif; ?>
                 </select>
             </div>
         </div>

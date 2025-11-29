@@ -973,9 +973,9 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                         'DOCUMENT_SENT',
                         'DOCUMENT_SEND_FAILED',
                         'MLR_RECEIVED',
-                        'INVOICE_RESPONSE_RECEIVED',
-                        'INVOICE_RESPONSE_SENT',
-                        'INVOICE_RESPONSE_SEND_FAILED',
+                        'INVOICE_RESPONSE_RECEIVED', // our sent document has status response
+                        'INVOICE_RESPONSE_SENT', // our status update to a received document sent
+                        'INVOICE_RESPONSE_SEND_FAILED', // our status update to a received document failed
                     ])) {
                         $status_result = $this->_update_document_status($notification);
                         if ($status_result['success']) {
@@ -1185,21 +1185,37 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
             // Find the PEPPOL document record
             $peppol_document = null;
             if ($transmission_id) {
+
+                // Add direction (inboud/outbond) filter
+                if ($event_type == 'INVOICE_RESPONSE_RECEIVED') {
+                    $CI->peppol_model->db->where('sent_at IS NOT NULL');
+                }
+                if ($event_type == 'INVOICE_RESPONSE_SENT' || $event_type == 'INVOICE_RESPONSE_SEND_FAILED') {
+                    $CI->peppol_model->db->where('received_at IS NOT NULL');
+                }
                 $peppol_document = $CI->peppol_model->get_peppol_document_by_transmission_id($transmission_id, $this->get_id());
+            }
+
+            if (!$peppol_document && str_starts_with($event_type, 'INVOICE_RESPONSE_')) {
+                $peppol_document = $CI->peppol_model->get_peppol_document_by_metadata('response_transmission_id', $transmission_id, $this->get_id());
             }
 
             // Attempt to create the record is is DOCUMENT_SENT event incase local db entry was removed or notifation missed somehow
             if (!$peppol_document && $document_id && $event_type == 'DOCUMENT_SENT') {
-                $local_references = $CI->credit_notes_model->get('', ['formatted_number' => $document_id]);
-                if (empty($local_references))
-                    $local_references = $CI->invoices_model->get('', ['formatted_number' => $document_id]);
+                $l_document_type = 'invoice';
+                $local_references = $CI->invoices_model->get('', ['formatted_number' => $document_id]);
+
+                if (empty($local_references)) {
+                    $l_document_type = 'credit_note';
+                    $local_references = $CI->credit_notes_model->get('', ['formatted_number' => $document_id]);
+                }
 
                 if (!empty($local_references)) {
                     $local_ref = $local_references[0];
 
                     // Create PEPPOL document entry to track received document
                     $peppol_document_data = [
-                        'document_type' => $this->_map_peppol_document_type($notification['peppolDocumentType'] ?? 'unknown'),
+                        'document_type' => $l_document_type,
                         'local_reference_id' => $local_ref['id'],
                         'status' => $status,
                         'provider' => $this->get_id(),

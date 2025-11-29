@@ -172,7 +172,7 @@ trait Peppol_provider_operations_trait
      */
     private function _handle_send_result($document_type, $document_id, $result, $provider)
     {
-        if ($result['success']) {
+        if ($result['success'] && isset($result['metadata']['transmissionId'])) {
             // Store PEPPOL document metadata
             $peppol_data = [
                 'document_type' => $document_type,
@@ -181,6 +181,7 @@ trait Peppol_provider_operations_trait
                 'provider' => $provider->get_id(),
                 'provider_document_id' => $result['document_id'] ?? null,
                 'provider_metadata' => json_encode($result['metadata'] ?? []),
+                'provider_document_transmission_id' => $result['metadata']['transmissionId'],
                 'sent_at' => date('Y-m-d H:i:s'),
                 'created_at' => date('Y-m-d H:i:s')
             ];

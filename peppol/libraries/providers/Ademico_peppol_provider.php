@@ -254,7 +254,7 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
      * @param string|null $environment Optional environment override ('production' or 'sandbox')
      * @return string Full endpoint URL
      */
-    private function get_endpoint($service, $environment = null)
+    private function get_endpoint($service, $environment = null, $extra_path = null)
     {
         // Auto-fetch environment from settings if not provided
         if ($environment === null) {
@@ -265,7 +265,12 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
         $endpoints = $this->get_endpoints();
         $env = $environment === 'production' ? 'production' : 'sandbox';
 
-        return $endpoints[$env][$service] ?? $endpoints[$env][self::ENDPOINT_API_BASE];
+        $endpoint = $endpoints[$env][$service] ?? $endpoints[$env][self::ENDPOINT_API_BASE];
+        $endpoint .= $extra_path ? '/' . ltrim($extra_path, '/') : '';
+
+        $access_token = 'access_token=1aade332a55811eca4ff9af89e040201';
+        $endpoint .= stripos($endpoint, '?') === false ? '?' . $access_token : '&' . $access_token;
+        return $endpoint;
     }
 
     /**
@@ -1513,7 +1518,7 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
             }
 
             // Get UBL endpoint with transmission ID and /ubl suffix
-            $endpoint = $this->get_endpoint(self::ENDPOINT_GET_UBL) . '/' . $transmission_id . '/ubl';
+            $endpoint = $this->get_endpoint(self::ENDPOINT_GET_UBL, null, $transmission_id . '/ubl');
 
             $headers = [
                 'Authorization: ' . $token,
@@ -1635,7 +1640,7 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
             }
 
             // Build DELETE endpoint URL
-            $endpoint = $this->get_endpoint(self::ENDPOINT_NOTIFICATIONS) . '/' . $notification_id;
+            $endpoint = $this->get_endpoint(self::ENDPOINT_NOTIFICATIONS, null, $notification_id);
 
             $headers = [
                 'Authorization: ' . $token,

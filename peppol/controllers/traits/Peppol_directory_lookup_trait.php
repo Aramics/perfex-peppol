@@ -112,42 +112,6 @@ trait Peppol_directory_lookup_trait
     }
 
     /**
-     * Batch process customers (for cron or admin UI)
-     */
-    public function batch_lookup_customers()
-    {
-        // Admin only for manual runs
-        if (!$this->input->is_cli_request() && !is_admin()) {
-            access_denied();
-        }
-
-        $limit = (int) ($this->input->get('limit') ?? 50);
-
-        $this->load->library('peppol/peppol_directory_lookup');
-        $results = $this->peppol_directory_lookup->batch_lookup_customers($limit);
-
-        if ($this->input->is_ajax_request()) {
-            echo json_encode($results);
-        } elseif ($this->input->is_cli_request()) {
-            // CLI output for cron
-            echo "Peppol Directory Lookup: Processed {$results['processed']}, Updated {$results['updated']}\n";
-            if (!empty($results['errors'])) {
-                echo "Errors: " . count($results['errors']) . "\n";
-            }
-        } else {
-            // Manual admin run - show simple results
-            echo "<h3>Peppol Directory Batch Lookup Results</h3>";
-            echo "<p>Processed: {$results['processed']} customers</p>";
-            echo "<p>Updated: {$results['updated']} customers</p>";
-            if (!empty($results['errors'])) {
-                echo "<p>Errors: " . count($results['errors']) . "</p>";
-                echo "<details><summary>Error Details</summary><pre>" . implode("\n", $results['errors']) . "</pre></details>";
-            }
-            echo "<br><a href='" . admin_url('peppol') . "' class='btn btn-default'>Back to Peppol</a>";
-        }
-    }
-
-    /**
      * Peppol Directory page
      */
     public function directory()

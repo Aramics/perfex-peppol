@@ -52,6 +52,9 @@ $card_class = 'panel_s panel-body tw-px-4 tw-py-3';
     </div>
 </div>
 
+<!-- Include Directory Modal Template -->
+<?php $this->load->view('peppol/templates/directory_modal'); ?>
+
 <?php init_tail(); ?>
 
 <!-- Include Peppol Directory Lookup JavaScript -->

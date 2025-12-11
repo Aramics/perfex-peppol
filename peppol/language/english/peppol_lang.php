@@ -585,3 +585,14 @@ $lang['peppol_lookup_success_message'] = 'Peppol information updated successfull
 $lang['peppol_lookup_failed_message'] = 'Lookup failed: %s';
 $lang['peppol_lookup_request_failed'] = 'Request failed. Please try again.';
 $lang['peppol_invalid_customer_id'] = 'Invalid customer ID';
+
+// Directory Modal Language Keys
+$lang['peppol_lookup_all_customers'] = 'Auto-lookup all customers without Peppol data';
+$lang['peppol_select_specific_customers'] = 'Select specific customers';
+$lang['peppol_loading_customers'] = 'Loading customers';
+$lang['peppol_processing_customers'] = 'Processing customers';
+$lang['peppol_lookup_completed'] = 'Lookup completed';
+$lang['peppol_successfully_updated'] = 'Successfully Updated';
+$lang['peppol_failed'] = 'Failed';
+$lang['peppol_multiple_results'] = 'Multiple Results';
+$lang['peppol_start_auto_lookup'] = 'Start Auto Lookup';

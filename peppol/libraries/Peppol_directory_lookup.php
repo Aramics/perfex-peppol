@@ -45,7 +45,7 @@ class Peppol_directory_lookup
         if (!empty($customer->company)) {
             $search_terms[] = $customer->company;
         }
-        
+
         // Try VAT search first if available
         if (!empty($customer->vat)) {
             $result = $this->search_by_vat($customer->vat, $customer->country);
@@ -64,7 +64,7 @@ class Peppol_directory_lookup
                 } else {
                     // Multiple results - return for manual selection
                     return [
-                        'success' => false, 
+                        'success' => false,
                         'message' => 'Multiple participants found (' . count($result['participants']) . ' results). Manual selection required.',
                         'multiple_results' => true,
                         'participants' => $result['participants']
@@ -82,7 +82,7 @@ class Peppol_directory_lookup
     public function search_by_vat($vat, $country_code = null)
     {
         $vat = $this->clean_vat($vat);
-        
+
         // Extract country from VAT if not provided
         if (!$country_code && preg_match('/^([A-Z]{2})/', $vat, $matches)) {
             $country_code = $matches[1];
@@ -95,7 +95,7 @@ class Peppol_directory_lookup
 
         $scheme = self::SCHEME_MAPPING[$country_code];
         $identifier = $scheme . ':' . $vat;
-        
+
         $url = $this->api_base_url . '/participants/' . urlencode($identifier);
         $response = $this->make_request($url);
 
@@ -116,7 +116,7 @@ class Peppol_directory_lookup
     {
         $query = is_array($search_terms) ? implode(' ', $search_terms) : $search_terms;
         $url = $this->api_base_url . '/participants?' . http_build_query(['q' => $query, 'limit' => 10]);
-        
+
         $response = $this->make_request($url);
         if (!$response['success']) {
             return $response;
@@ -148,7 +148,7 @@ class Peppol_directory_lookup
         ];
 
         $updated = $this->CI->clients_model->update($customer_id, $update_data);
-        
+
         if ($updated) {
             return [
                 'success' => true,
@@ -158,45 +158,6 @@ class Peppol_directory_lookup
         }
 
         return ['success' => false, 'message' => 'Failed to update customer'];
-    }
-
-    /**
-     * Batch process all customers (for cron)
-     */
-    public function batch_lookup_customers($limit = 50)
-    {
-        // Get customers without Peppol identifiers
-        $this->CI->db->select('*');
-        $this->CI->db->from(db_prefix() . 'clients');
-        $this->CI->db->where('company IS NOT NULL');
-        $this->CI->db->where('company !=', '');
-        // Only process customers that don't already have Peppol data
-        $this->CI->db->where('(SELECT COUNT(*) FROM ' . db_prefix() . 'customfieldsvalues cfv 
-            WHERE cfv.relid = ' . db_prefix() . 'clients.userid 
-            AND cfv.fieldto = "customers" 
-            AND cfv.slug IN ("customers_peppol_scheme", "customers_peppol_identifier") 
-            AND cfv.value != "") = 0', null, false);
-        $this->CI->db->limit($limit);
-        
-        $customers = $this->CI->db->get()->result();
-        
-        $results = ['processed' => 0, 'updated' => 0, 'errors' => []];
-        
-        foreach ($customers as $customer) {
-            $results['processed']++;
-            
-            $result = $this->auto_lookup_customer($customer->userid);
-            if ($result['success']) {
-                $results['updated']++;
-            } else {
-                $results['errors'][] = "Customer {$customer->userid}: {$result['message']}";
-            }
-            
-            // Small delay to be respectful to the API
-            usleep(200000); // 0.2 seconds
-        }
-        
-        return $results;
     }
 
     /**

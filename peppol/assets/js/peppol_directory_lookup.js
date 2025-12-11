@@ -46,8 +46,6 @@ function peppolAutoLookup(customerId) {
 
 // Modal-based batch lookup functionality
 var PeppolBatchLookup = {
-    customers: [],
-    selectedCustomers: [],
     isProcessing: false,
     currentProgress: 0,
     totalProcessed: 0,
@@ -59,160 +57,22 @@ var PeppolBatchLookup = {
 
     // Show the batch lookup modal
     showModal: function() {
-        var modalHtml = this.getModalHtml();
-        
-        // Remove existing modal
-        $('#peppol-batch-lookup-modal').remove();
-        
-        // Add modal to body
-        $('body').append(modalHtml);
+        // Reset modal state
+        this.resetModal();
         
         // Show modal
         $('#peppol-batch-lookup-modal').modal('show');
         
-        // Load customers
-        this.loadCustomers();
-    },
-
-    // Get modal HTML
-    getModalHtml: function() {
-        return `
-        <div class="modal fade" id="peppol-batch-lookup-modal" tabindex="-1">
-            <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h4 class="modal-title">
-                            <i class="fa fa-search"></i> Peppol Auto Lookup
-                        </h4>
-                        <button type="button" class="close" data-dismiss="modal">&times;</button>
-                    </div>
-                    <div class="modal-body">
-                        <div id="peppol-customer-selection">
-                            <div class="form-group">
-                                <label>
-                                    <input type="radio" name="lookup_mode" value="all" checked> 
-                                    Auto-lookup all customers without Peppol data
-                                </label>
-                            </div>
-                            <div class="form-group">
-                                <label>
-                                    <input type="radio" name="lookup_mode" value="selected"> 
-                                    Select specific customers
-                                </label>
-                            </div>
-                            
-                            <div id="customer-list" style="display: none; max-height: 300px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; margin-top: 10px;">
-                                <div class="text-center">
-                                    <i class="fa fa-spinner fa-spin"></i> Loading customers...
-                                </div>
-                            </div>
-                        </div>
-
-                        <div id="peppol-progress" style="display: none;">
-                            <div class="alert alert-info">
-                                <strong>Processing customers...</strong>
-                            </div>
-                            
-                            <div class="progress">
-                                <div class="progress-bar" style="width: 0%">
-                                    <span id="progress-text">0 / 0</span>
-                                </div>
-                            </div>
-                            
-                            <div id="progress-details" style="margin-top: 15px; max-height: 200px; overflow-y: auto;">
-                                <!-- Progress details will appear here -->
-                            </div>
-                        </div>
-
-                        <div id="peppol-results" style="display: none;">
-                            <div class="alert alert-success">
-                                <strong>Lookup completed!</strong>
-                            </div>
-                            
-                            <div class="row">
-                                <div class="col-md-4 text-center">
-                                    <div class="stat-card">
-                                        <h3 class="text-success" id="successful-count">0</h3>
-                                        <p>Successfully Updated</p>
-                                    </div>
-                                </div>
-                                <div class="col-md-4 text-center">
-                                    <div class="stat-card">
-                                        <h3 class="text-danger" id="failed-count">0</h3>
-                                        <p>Failed</p>
-                                    </div>
-                                </div>
-                                <div class="col-md-4 text-center">
-                                    <div class="stat-card">
-                                        <h3 class="text-warning" id="multiple-count">0</h3>
-                                        <p>Multiple Results</p>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div id="detailed-results" style="margin-top: 20px; max-height: 300px; overflow-y: auto;">
-                                <!-- Detailed results will appear here -->
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                        <button type="button" class="btn btn-primary" id="start-lookup-btn" onclick="PeppolBatchLookup.startLookup()">
-                            <i class="fa fa-play"></i> Start Auto Lookup
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>`;
-    },
-
-    // Load customers from server
-    loadCustomers: function() {
-        var self = this;
-        
-        $.ajax({
-            url: admin_url + 'peppol/ajax_get_customers',
-            type: 'GET',
-            dataType: 'json'
-        })
-        .done(function(response) {
-            if (response.success) {
-                self.customers = response.customers;
-                self.renderCustomerList();
-            } else {
-                $('#customer-list').html('<div class="text-danger">Failed to load customers</div>');
+        // Initialize selectpicker for client dropdown when modal is shown
+        $('#peppol-batch-lookup-modal').on('shown.bs.modal', function() {
+            if (!$('#peppol_clientid').hasClass('selectpicker-initialized')) {
+                init_ajax_search('customers', '#peppol_clientid');
+                $('#peppol_clientid').addClass('selectpicker-initialized');
             }
-        })
-        .fail(function() {
-            $('#customer-list').html('<div class="text-danger">Failed to load customers</div>');
         });
     },
 
-    // Render customer list
-    renderCustomerList: function() {
-        var html = '<div class="checkbox"><label><input type="checkbox" id="select-all-customers"> <strong>Select All</strong></label></div><hr>';
-        
-        if (this.customers.length === 0) {
-            html += '<div class="text-muted">No customers found without Peppol data.</div>';
-        } else {
-            this.customers.forEach(function(customer) {
-                var vatInfo = customer.vat ? ' (' + customer.vat + ')' : ' (No VAT)';
-                html += '<div class="checkbox">';
-                html += '<label>';
-                html += '<input type="checkbox" name="customer_ids[]" value="' + customer.userid + '"> ';
-                html += customer.company + vatInfo;
-                html += '</label>';
-                html += '</div>';
-            });
-        }
-        
-        $('#customer-list').html(html);
-        
-        // Bind select all checkbox
-        $('#select-all-customers').change(function() {
-            $('input[name="customer_ids[]"]').prop('checked', $(this).is(':checked'));
-        });
-    },
+
 
     // Start the lookup process
     startLookup: function() {
@@ -220,9 +80,7 @@ var PeppolBatchLookup = {
         var customerIds = [];
         
         if (mode === 'selected') {
-            customerIds = $('input[name="customer_ids[]"]:checked').map(function() {
-                return $(this).val();
-            }).get();
+            customerIds = $('#peppol_clientid').val() || [];
             
             if (customerIds.length === 0) {
                 alert('Please select at least one customer.');
@@ -325,19 +183,47 @@ var PeppolBatchLookup = {
     // Reset modal
     resetModal: function() {
         this.isProcessing = false;
+        this.currentProgress = 0;
+        this.totalProcessed = 0;
+        this.results = { successful: 0, failed: 0, multipleResults: 0 };
+        
+        // Reset form elements
+        $('input[name="lookup_mode"][value="all"]').prop('checked', true);
+        $('input[name="lookup_mode"][value="selected"]').prop('checked', false);
+        $('#client-selection').hide();
+        
+        // Reset selectpicker if it's initialized
+        if ($('#peppol_clientid').hasClass('selectpicker-initialized')) {
+            $('#peppol_clientid').val('').selectpicker('refresh');
+        }
+        
+        // Reset progress elements
+        $('.progress-bar').css('width', '0%');
+        $('#progress-text').text('0 / 0');
+        $('#progress-details').empty();
+        
+        // Reset result elements
+        $('#successful-count').text('0');
+        $('#failed-count').text('0');
+        $('#multiple-count').text('0');
+        $('#detailed-results').empty();
+        
+        // Show/hide sections
+        $('#peppol-customer-selection').show();
         $('#peppol-progress').hide();
         $('#peppol-results').hide();
-        $('#peppol-customer-selection').show();
-        $('#start-lookup-btn').prop('disabled', false);
+        
+        // Reset button (button text will be from the PHP template)
+        $('#start-lookup-btn').prop('disabled', false).find('i').attr('class', 'fa fa-play');
     }
 };
 
 // Show radio button behavior
 $(document).on('change', 'input[name="lookup_mode"]', function() {
     if ($(this).val() === 'selected') {
-        $('#customer-list').show();
+        $('#client-selection').show();
     } else {
-        $('#customer-list').hide();
+        $('#client-selection').hide();
     }
 });
 

@@ -91,7 +91,7 @@ if (!function_exists('peppol_auto_lookup_button')) {
      */
     function peppol_auto_lookup_button($customer_id)
     {
-        return '<button type="button" class="btn btn-info btn-sm" onclick="peppolAutoLookup(' . (int)$customer_id . ')">
+        return '<button type="button" class="btn btn-info btn-sm" onclick="PeppolLookup.singleCustomerLookup(' . (int)$customer_id . ')">
             <i class="fa fa-search"></i> Auto-fill Peppol
         </button>';
     }
@@ -109,7 +109,7 @@ if (!function_exists('peppol_batch_lookup_button')) {
             return '';
         }
         
-        return '<button type="button" class="btn btn-success" onclick="peppolBatchLookup()">
+        return '<button type="button" class="btn btn-success" onclick="PeppolLookup.showModal()">
             <i class="fa fa-users"></i> Batch Lookup All Customers
         </button>';
     }

@@ -2,50 +2,8 @@
  * Peppol Directory Lookup JavaScript with Modal
  */
 
-// Auto-lookup single customer (simple version)
-function peppolAutoLookup(customerId) {
-    if (!customerId) {
-        alert('Invalid customer ID');
-        return;
-    }
-    
-    var $btn = $('button[onclick*="peppolAutoLookup(' + customerId + ')"]');
-    $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Looking up...');
-    
-    $.ajax({
-        url: admin_url + 'peppol/ajax_auto_lookup_customer',
-        type: 'POST',
-        data: { customer_id: customerId },
-        dataType: 'json'
-    })
-    .done(function(response) {
-        if (response.success) {
-            alert('Peppol information updated successfully!\n\nCompany: ' + response.participant.name + '\nScheme: ' + response.participant.scheme + '\nIdentifier: ' + response.participant.identifier);
-            
-            if (response.participant.scheme) {
-                $('input[name*="peppol_scheme"], input[name*="customers_peppol_scheme"]').val(response.participant.scheme);
-            }
-            if (response.participant.identifier) {
-                $('input[name*="peppol_identifier"], input[name*="customers_peppol_identifier"]').val(response.participant.identifier);
-            }
-            
-            if (window.location.href.indexOf('clients/client/') > -1) {
-                location.reload();
-            }
-        } else {
-            alert('Lookup failed: ' + response.message);
-        }
-    })
-    .fail(function() {
-        alert('Request failed. Please try again.');
-    })
-    .always(function() {
-        $btn.prop('disabled', false).html('<i class="fa fa-search"></i> Auto-fill Peppol');
-    });
-}
-
-// Modal-based batch lookup functionality
-var PeppolBatchLookup = {
+// Modal-based lookup functionality (handles both batch and single customer)
+var PeppolLookup = {
     isProcessing: false,
     currentProgress: 0,
     totalProcessed: 0,
@@ -56,9 +14,14 @@ var PeppolBatchLookup = {
     },
 
     // Show the batch lookup modal
-    showModal: function() {
+    showModal: function(customerId) {
+        var self = this;
+        
         // Reset modal state
         this.resetModal();
+        
+        // Store customer ID for single lookup mode
+        this.singleCustomerId = customerId || null;
         
         // Show modal
         $('#peppol-batch-lookup-modal').modal('show');
@@ -69,17 +32,92 @@ var PeppolBatchLookup = {
                 init_ajax_search('customers', '#peppol_clientid');
                 $('#peppol_clientid').addClass('selectpicker-initialized');
             }
+            
+            // Initialize button click handler if not already done
+            if (!$('#start-lookup-btn').hasClass('handler-initialized')) {
+                $('#start-lookup-btn').on('click', function() {
+                    PeppolLookup.startLookup();
+                }).addClass('handler-initialized');
+            }
+            
+            // If single customer mode, pre-select and configure UI
+            if (self.singleCustomerId) {
+                self.setupSingleCustomerMode();
+            }
         });
     },
 
+    // Single customer lookup - shows modal and starts lookup immediately
+    singleCustomerLookup: function(customerId) {
+        if (!customerId) {
+            alert('Invalid customer ID');
+            return;
+        }
+        
+        var self = this;
+        
+        // Reset modal state
+        this.resetModal();
+        
+        // Store customer ID for single lookup mode
+        this.singleCustomerId = customerId;
+        
+        // Show modal
+        $('#peppol-batch-lookup-modal').modal('show');
+        
+        // Initialize selectpicker if needed and start lookup immediately
+        $('#peppol-batch-lookup-modal').on('shown.bs.modal', function() {
+            if (!$('#peppol_clientid').hasClass('selectpicker-initialized')) {
+                init_ajax_search('customers', '#peppol_clientid');
+                $('#peppol_clientid').addClass('selectpicker-initialized');
+            }
+            
+            // Initialize button click handler if not already done
+            if (!$('#start-lookup-btn').hasClass('handler-initialized')) {
+                $('#start-lookup-btn').on('click', function() {
+                    PeppolLookup.startLookup();
+                }).addClass('handler-initialized');
+            }
+            
+            // Hide customer selection section and start processing immediately
+            $('#peppol-customer-selection').hide();
+            $('#peppol-progress').show();
+            $('#start-lookup-btn').prop('disabled', true);
+            
+            // Start lookup immediately for single customer
+            setTimeout(function() {
+                self.startLookup();
+            }, 100);
+        });
+    },
 
+    // Setup single customer mode (used for batch modal with pre-selected customer)
+    setupSingleCustomerMode: function() {
+        // Pre-select the customer in the dropdown
+        if (this.singleCustomerId) {
+            // Set selected mode and show client selection
+            $('input[name="lookup_mode"][value="selected"]').prop('checked', true);
+            $('#client-selection').show();
+            
+            // Pre-select the customer (add option and select it)
+            $('#peppol_clientid').append('<option value="' + this.singleCustomerId + '" selected>Loading...</option>');
+            $('#peppol_clientid').selectpicker('refresh');
+            
+            // Disable the radio buttons and hide the all customers option
+            $('#peppol-customer-selection .form-group:first-child').hide();
+            $('input[name="lookup_mode"]').prop('disabled', true);
+        }
+    },
 
     // Start the lookup process
     startLookup: function() {
         var mode = $('input[name="lookup_mode"]:checked').val();
         var customerIds = [];
         
-        if (mode === 'selected') {
+        // Handle single customer mode
+        if (this.singleCustomerId) {
+            customerIds = [this.singleCustomerId];
+        } else if (mode === 'selected') {
             customerIds = $('#peppol_clientid').val() || [];
             
             if (customerIds.length === 0) {
@@ -88,10 +126,12 @@ var PeppolBatchLookup = {
             }
         }
         
-        // Hide selection, show progress
-        $('#peppol-customer-selection').hide();
-        $('#peppol-progress').show();
-        $('#start-lookup-btn').prop('disabled', true);
+        // Hide selection, show progress (only if not already done for single customer)
+        if (!this.singleCustomerId || $('#peppol-customer-selection').is(':visible')) {
+            $('#peppol-customer-selection').hide();
+            $('#peppol-progress').show();
+            $('#start-lookup-btn').prop('disabled', true);
+        }
         
         this.isProcessing = true;
         this.currentProgress = 0;
@@ -150,12 +190,12 @@ var PeppolBatchLookup = {
                 $('#progress-details').append(html);
                 
                 if (result.success) {
-                    PeppolBatchLookup.results.successful++;
+                    PeppolLookup.results.successful++;
                 } else {
                     if (result.message && (result.message.toLowerCase().indexOf('multiple') > -1 || result.message.indexOf('Manual selection required') > -1)) {
-                        PeppolBatchLookup.results.multipleResults++;
+                        PeppolLookup.results.multipleResults++;
                     } else {
-                        PeppolBatchLookup.results.failed++;
+                        PeppolLookup.results.failed++;
                     }
                 }
             });
@@ -177,7 +217,35 @@ var PeppolBatchLookup = {
         // Copy progress details to results
         $('#detailed-results').html($('#progress-details').html());
         
-        $('#start-lookup-btn').prop('disabled', false).text('Done');
+        // Change button to close modal instead of resubmitting
+        $('#start-lookup-btn').prop('disabled', false).text('Done').off('click').on('click', function() {
+            $('#peppol-batch-lookup-modal').modal('hide');
+        });
+        
+        // Handle post-lookup actions
+        this.handlePostLookupActions();
+    },
+    
+    // Handle actions after lookup completion
+    handlePostLookupActions: function() {
+        // Refresh directory table if it exists
+        if (typeof directoryTable !== 'undefined' && directoryTable) {
+            directoryTable.ajax.reload();
+        } else if ($('.table-peppol-directory').length > 0) {
+            $('.table-peppol-directory').DataTable().ajax.reload();
+        }
+        
+        // Trigger custom event for other components to listen
+        $(document).trigger('peppolLookupSuccess');
+        
+        // If single customer mode and on client page, reload page
+        if (this.singleCustomerId && window.location.href.indexOf('clients/client/') > -1) {
+            // Close modal and reload after short delay
+            setTimeout(function() {
+                $('#peppol-batch-lookup-modal').modal('hide');
+                location.reload();
+            }, 2000);
+        }
     },
 
     // Reset modal
@@ -187,14 +255,21 @@ var PeppolBatchLookup = {
         this.totalProcessed = 0;
         this.results = { successful: 0, failed: 0, multipleResults: 0 };
         
+        // Reset single customer mode
+        this.singleCustomerId = null;
+        
         // Reset form elements
         $('input[name="lookup_mode"][value="all"]').prop('checked', true);
         $('input[name="lookup_mode"][value="selected"]').prop('checked', false);
+        $('input[name="lookup_mode"]').prop('disabled', false);
         $('#client-selection').hide();
+        
+        // Show hidden elements for batch mode
+        $('#peppol-customer-selection .form-group:first-child').show();
         
         // Reset selectpicker if it's initialized
         if ($('#peppol_clientid').hasClass('selectpicker-initialized')) {
-            $('#peppol_clientid').val('').selectpicker('refresh');
+            $('#peppol_clientid').empty().selectpicker('refresh');
         }
         
         // Reset progress elements
@@ -213,8 +288,15 @@ var PeppolBatchLookup = {
         $('#peppol-progress').hide();
         $('#peppol-results').hide();
         
-        // Reset button (button text will be from the PHP template)
-        $('#start-lookup-btn').prop('disabled', false).find('i').attr('class', 'fa fa-play');
+        // Reset button (restore original text, keep proper click handler)
+        var originalButtonText = $('#start-lookup-btn').data('original-text') || 'Start Auto Lookup';
+        $('#start-lookup-btn')
+            .prop('disabled', false)
+            .html('<i class="fa fa-play"></i> ' + originalButtonText)
+            .off('click')
+            .on('click', function() {
+                PeppolLookup.startLookup();
+            });
     }
 };
 
@@ -229,6 +311,6 @@ $(document).on('change', 'input[name="lookup_mode"]', function() {
 
 // Initialize when document ready
 $(document).ready(function() {
-    // Make PeppolBatchLookup available globally
-    window.PeppolBatchLookup = PeppolBatchLookup;
+    // Make PeppolLookup available globally
+    window.PeppolLookup = PeppolLookup;
 });

@@ -5,7 +5,7 @@
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h4 class="modal-title" id="peppolBatchLookupModalLabel">
+                <h4 class="modal-title" id="peppolBatchLookupModalLabel" data-original-title="<?php echo _l('peppol_auto_lookup_button'); ?>">
                     <i class="fa fa-search"></i> <?php echo _l('peppol_auto_lookup_button'); ?>
                 </h4>
                 <button type="button" class="close" data-dismiss="modal" aria-label="<?php echo _l('close'); ?>">
@@ -92,7 +92,8 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo _l('close'); ?></button>
-                <button type="button" class="btn btn-primary" id="start-lookup-btn" onclick="PeppolBatchLookup.startLookup()">
+                <button type="button" class="btn btn-primary" id="start-lookup-btn" 
+                    data-original-text="<?php echo _l('peppol_start_auto_lookup'); ?>">
                     <i class="fa fa-play"></i> <?php echo _l('peppol_start_auto_lookup'); ?>
                 </button>
             </div>

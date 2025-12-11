@@ -73,7 +73,7 @@ foreach ($rResult as $aRow) {
     $row[] = $status_label;
 
     // Actions
-    $actions = '<button class="btn btn-sm btn-info" onclick="peppolAutoLookup(' . $aRow['userid'] . ')" title="Auto lookup">
+    $actions = '<button class="btn btn-sm btn-info" onclick="PeppolLookup.singleCustomerLookup(' . $aRow['userid'] . ')" title="Auto lookup">
                 <i class="fa fa-search"></i>
                 </button>';
     $row[] = $actions;

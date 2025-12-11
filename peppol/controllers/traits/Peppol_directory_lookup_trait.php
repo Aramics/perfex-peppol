@@ -8,27 +8,6 @@ defined('BASEPATH') or exit('No direct script access allowed');
 trait Peppol_directory_lookup_trait
 {
     /**
-     * Auto-lookup single customer via AJAX
-     */
-    public function ajax_auto_lookup_customer()
-    {
-        if (!$this->input->is_ajax_request()) {
-            show_404();
-        }
-
-        $customer_id = (int) $this->input->post('customer_id');
-        if (!$customer_id) {
-            echo json_encode(['success' => false, 'message' => 'Invalid customer ID']);
-            return;
-        }
-
-        $this->load->library('peppol/peppol_directory_lookup');
-        $result = $this->peppol_directory_lookup->auto_lookup_customer($customer_id);
-
-        echo json_encode($result);
-    }
-
-    /**
      * Batch lookup with progress tracking
      */
     public function ajax_batch_lookup_progress()

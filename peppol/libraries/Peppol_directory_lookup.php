@@ -48,6 +48,9 @@ class Peppol_directory_lookup
 
         // Try VAT search first if available
         if (!empty($customer->vat)) {
+
+            $search_terms[] = $customer->vat;
+
             $result = $this->search_by_vat($customer->vat, $customer->country);
             if ($result['success'] && !empty($result['participant'])) {
                 return $this->update_customer_fields($customer_id, $result['participant']);

@@ -12,7 +12,7 @@ $card_class = 'panel_s panel-body tw-px-4 tw-py-3';
             </h4>
             <div>
                 <?php if (is_admin()) { ?>
-                <button type="button" class="btn btn-info" onclick="PeppolBatchLookup.showModal()">
+                <button type="button" class="btn btn-info" onclick="PeppolLookup.showModal()">
                     <i class="fa fa-search"></i> <?php echo _l('peppol_auto_lookup_button'); ?>
                 </button>
                 <?php } ?>
@@ -117,48 +117,4 @@ $(function() {
     });
 });
 
-// Enhanced peppolAutoLookup function for directory page
-function peppolAutoLookup(customerId) {
-    if (!customerId) {
-        alert('<?php echo _l("peppol_invalid_customer_id"); ?>');
-        return;
-    }
-
-    var $btn = $('button[onclick*="peppolAutoLookup(' + customerId + ')"]');
-    $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i>');
-
-    $.ajax({
-            url: admin_url + 'peppol/ajax_auto_lookup_customer',
-            type: 'POST',
-            data: {
-                customer_id: customerId
-            },
-            dataType: 'json'
-        })
-        .done(function(response) {
-            if (response.success) {
-                // Show success message with participant info
-                var successMsg = '<?php echo _l("peppol_lookup_success_message"); ?>';
-                successMsg = successMsg.replace('%s', response.participant.name);
-                successMsg = successMsg.replace('%s', response.participant.scheme);
-                successMsg = successMsg.replace('%s', response.participant.identifier);
-                alert(successMsg);
-
-                // Trigger table refresh
-                $('.table-peppol-directory').DataTable().ajax.reload();
-
-                // Trigger custom event
-                $(document).trigger('peppolLookupSuccess');
-            } else {
-                var failMsg = '<?php echo _l("peppol_lookup_failed_message"); ?>';
-                alert(failMsg.replace('%s', response.message));
-            }
-        })
-        .fail(function() {
-            alert('<?php echo _l("peppol_lookup_request_failed"); ?>');
-        })
-        .always(function() {
-            $btn.prop('disabled', false).html('<i class="fa fa-search"></i>');
-        });
-}
 </script>

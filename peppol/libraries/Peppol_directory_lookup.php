@@ -8,7 +8,7 @@ defined('BASEPATH') or exit('No direct script access allowed');
 class Peppol_directory_lookup
 {
     protected $CI;
-    protected $api_base_url = 'https://directory.peppol.eu/api/v1';
+    protected $api_base_url = 'https://directory.peppol.eu/search/1.0/json';
     protected $timeout = 30;
 
     // Peppol scheme identifiers mapping
@@ -48,13 +48,11 @@ class Peppol_directory_lookup
 
         // Try VAT search first if available
         if (!empty($customer->vat)) {
-
             $search_terms[] = $customer->vat;
+        }
 
-            $result = $this->search_by_vat($customer->vat, $customer->country);
-            if ($result['success'] && !empty($result['participant'])) {
-                return $this->update_customer_fields($customer_id, $result['participant']);
-            }
+        if (!empty($customer->website)) {
+            $search_terms[] = $customer->website;
         }
 
         // Fallback to company name search
@@ -80,45 +78,12 @@ class Peppol_directory_lookup
     }
 
     /**
-     * Search by VAT number
-     */
-    public function search_by_vat($vat, $country_code = null)
-    {
-        $vat = $this->clean_vat($vat);
-
-        // Extract country from VAT if not provided
-        if (!$country_code && preg_match('/^([A-Z]{2})/', $vat, $matches)) {
-            $country_code = $matches[1];
-            $vat = substr($vat, 2);
-        }
-
-        if (!$country_code || !isset(self::SCHEME_MAPPING[$country_code])) {
-            return ['success' => false, 'message' => 'Invalid country or VAT'];
-        }
-
-        $scheme = self::SCHEME_MAPPING[$country_code];
-        $identifier = $scheme . ':' . $vat;
-
-        $url = $this->api_base_url . '/participants/' . urlencode($identifier);
-        $response = $this->make_request($url);
-
-        if ($response['success']) {
-            return [
-                'success' => true,
-                'participant' => $this->format_participant($response['data'])
-            ];
-        }
-
-        return ['success' => false, 'message' => 'Participant not found'];
-    }
-
-    /**
      * Search directory by terms
      */
     public function search_directory($search_terms)
     {
         $query = is_array($search_terms) ? implode(' ', $search_terms) : $search_terms;
-        $url = $this->api_base_url . '/participants?' . http_build_query(['q' => $query, 'limit' => 10]);
+        $url = $this->api_base_url . '?' . http_build_query(['q' => $query, 'limit' => 20]);
 
         $response = $this->make_request($url);
         if (!$response['success']) {

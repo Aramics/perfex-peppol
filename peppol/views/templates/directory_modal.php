@@ -58,6 +58,27 @@
                     </div>
                 </div>
 
+                <!-- Multiple Results Selection -->
+                <div id="peppol-multiple-results" style="display: none;">
+                    <div class="alert alert-warning">
+                        <strong><?php echo _l('peppol_multiple_results_found'); ?></strong> - <?php echo _l('peppol_multiple_results_help'); ?>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="control-label"><?php echo _l('peppol_select_correct_participant'); ?>:</label>
+                        <div id="multiple-results-list" style="max-height: 300px; overflow-y: auto; border: 1px solid #e0e0e0; padding: 10px; margin-top: 10px;">
+                            <!-- Multiple results will appear here -->
+                        </div>
+                    </div>
+                    
+                    <div class="text-center" style="margin-top: 15px;">
+                        <button type="button" class="btn btn-default" onclick="PeppolLookup.skipMultipleSelection()"><?php echo _l('peppol_skip_selection'); ?></button>
+                        <button type="button" class="btn btn-success" onclick="PeppolLookup.confirmMultipleSelection()" disabled id="confirm-selection-btn">
+                            <i class="fa fa-check"></i> <?php echo _l('peppol_confirm_selection'); ?>
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Results Section -->
                 <div id="peppol-results" style="display: none;">
                     <div class="alert alert-success">

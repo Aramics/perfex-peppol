@@ -24,7 +24,8 @@ $card_class = 'panel_s panel-body tw-px-4 tw-py-3';
             <div class="col-md-12">
                 <div class="alert alert-info">
                     <i class="fa fa-info-circle"></i>
-                    <strong><?php echo _l('peppol_directory_title'); ?></strong> - <?php echo _l('peppol_directory_info'); ?>
+                    <strong><?php echo _l('peppol_directory_title'); ?></strong> -
+                    <?php echo _l('peppol_directory_info'); ?>
                 </div>
             </div>
         </div>
@@ -41,7 +42,7 @@ $card_class = 'panel_s panel-body tw-px-4 tw-py-3';
                                 _l('client_vat_number'),
                                 _l('peppol_scheme'),
                                 _l('peppol_identifier'),
-                                _l('client_active'),
+                                _l('customer_active'),
                                 _l('options')
                             ], 'peppol-directory'); ?>
                         </div>
@@ -116,5 +117,4 @@ $(function() {
         directoryTable.ajax.reload();
     });
 });
-
 </script>

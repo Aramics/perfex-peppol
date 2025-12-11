@@ -12,6 +12,8 @@ var PeppolLookup = {
         failed: 0,
         multipleResults: 0
     },
+    currentMultipleResults: null,
+    currentMultipleCustomer: null,
 
     // Show the batch lookup modal
     showModal: function(customerId) {
@@ -109,6 +111,154 @@ var PeppolLookup = {
         }
     },
 
+    // Handle multiple results with smart VAT matching
+    handleMultipleResults: function(customerData, multipleResults) {
+        // Smart VAT matching: check if any result matches customer's VAT
+        var customerVat = customerData.vat ? customerData.vat.replace(/\D/g, '') : null;
+        var exactMatches = [];
+        
+        if (customerVat) {
+            exactMatches = multipleResults.filter(function(result) {
+                if (result.vat) {
+                    var resultVat = result.vat.replace(/\D/g, '');
+                    return resultVat === customerVat;
+                }
+                return false;
+            });
+        }
+        
+        // If exactly one VAT match found, use it automatically
+        if (exactMatches.length === 1) {
+            var exactMatch = exactMatches[0];
+            this.applyLookupResult(customerData.userid, exactMatch, 'VAT Match Found');
+            return true; // Handled automatically
+        }
+        
+        // If multiple VAT matches or no VAT match, show selection UI
+        this.showMultipleResultsSelection(customerData, multipleResults, exactMatches);
+        return false; // Requires user input
+    },
+    
+    // Show multiple results selection UI
+    showMultipleResultsSelection: function(customerData, multipleResults, vatMatches) {
+        this.currentMultipleResults = multipleResults;
+        this.currentMultipleCustomer = customerData;
+        
+        // Hide progress, show multiple results section
+        $('#peppol-progress').hide();
+        $('#peppol-multiple-results').show();
+        
+        // Build results list with clean, simple UI
+        var html = '';
+        multipleResults.forEach(function(result, index) {
+            var isVatMatch = vatMatches.includes(result);
+            var vatBadge = isVatMatch ? '<span class="label label-success">VAT Match</span>' : '';
+            
+            html += '<div class="radio" style="padding: 15px; margin: 8px 0; border: 1px solid #ddd; border-radius: 6px; background: #f9f9f9;">';
+            html += '<label style="font-weight: normal; cursor: pointer; width: 100%; margin: 0;">';
+            html += '<input type="radio" name="selected_participant" value="' + index + '" style="margin-right: 10px;">';
+            html += '<div style="display: inline-block; width: calc(100% - 25px);">';
+            html += '<div style="font-size: 16px; font-weight: 500; margin-bottom: 4px;">' + (result.name || result.company || 'Unknown Company') + ' ' + vatBadge + '</div>';
+            html += '<div style="font-size: 13px; color: #666;">';
+            html += '<span style="margin-right: 15px;"><strong>Scheme:</strong> ' + (result.scheme || 'N/A') + '</span>';
+            html += '<span style="margin-right: 15px;"><strong>ID:</strong> ' + (result.identifier || 'N/A') + '</span>';
+            if (result.vat) html += '<span style="margin-right: 15px;"><strong>VAT:</strong> ' + result.vat + '</span>';
+            if (result.country) html += '<span><strong>Country:</strong> ' + result.country + '</span>';
+            html += '</div>';
+            html += '</div>';
+            html += '</label>';
+            html += '</div>';
+        });
+        
+        $('#multiple-results-list').html(html);
+        
+        // Enable selection handling
+        $('input[name="selected_participant"]').change(function() {
+            $('#confirm-selection-btn').prop('disabled', false);
+        });
+    },
+    
+    // Skip multiple selection
+    skipMultipleSelection: function() {
+        // Mark as skipped and continue
+        this.logMultipleResult(this.currentMultipleCustomer.company, 'Skipped by user');
+        this.continueAfterMultipleResults();
+    },
+    
+    // Confirm multiple selection
+    confirmMultipleSelection: function() {
+        var selectedIndex = $('input[name="selected_participant"]:checked').val();
+        if (selectedIndex === undefined) {
+            alert('Please select a participant first.');
+            return;
+        }
+        
+        var selectedResult = this.currentMultipleResults[parseInt(selectedIndex)];
+        this.applyLookupResult(this.currentMultipleCustomer.userid, selectedResult, 'User Selected');
+        this.continueAfterMultipleResults();
+    },
+    
+    // Apply lookup result (either auto or user selected)
+    applyLookupResult: function(customerId, result, method) {
+        var self = this;
+        // Apply the selected result
+        $.ajax({
+            url: admin_url + 'peppol/ajax_apply_lookup_result',
+            type: 'POST',
+            data: {
+                customer_id: customerId,
+                scheme: result.scheme,
+                identifier: result.identifier,
+                method: method
+            },
+            dataType: 'json'
+        }).done(function(response) {
+            if (response.success) {
+                self.logMultipleResult(
+                    self.currentMultipleCustomer.company, 
+                    'Applied: ' + (result.name || result.company) + ' (' + method + ')'
+                );
+                self.results.successful++;
+            } else {
+                self.logMultipleResult(
+                    self.currentMultipleCustomer.company, 
+                    'Failed to apply: ' + (response.message || 'Unknown error')
+                );
+                self.results.failed++;
+            }
+        }).fail(function() {
+            self.logMultipleResult(
+                self.currentMultipleCustomer.company, 
+                'Failed to apply selection'
+            );
+            self.results.failed++;
+        });
+    },
+    
+    // Log multiple result handling
+    logMultipleResult: function(company, message) {
+        var icon = message.includes('Applied') || message.includes('VAT Match') ? 'fa-check text-success' : 
+                   message.includes('Failed') ? 'fa-times text-danger' : 'fa-info text-warning';
+        var html = '<div><i class="fa ' + icon + '"></i> ' + company + ': ' + message + '</div>';
+        $('#progress-details').append(html);
+        $('#progress-details').scrollTop($('#progress-details')[0].scrollHeight);
+    },
+    
+    // Continue processing after multiple results handling
+    continueAfterMultipleResults: function() {
+        // Reset multiple results state
+        this.currentMultipleResults = null;
+        this.currentMultipleCustomer = null;
+        
+        // Hide multiple results section, show progress
+        $('#peppol-multiple-results').hide();
+        $('#peppol-progress').show();
+        $('#confirm-selection-btn').prop('disabled', true);
+        
+        // Continue with next customer or finish
+        this.processNextBatch([], this.currentProgress + 1);
+    },
+
     // Start the lookup process
     startLookup: function() {
         var mode = $('input[name="lookup_mode"]:checked').val();
@@ -177,23 +327,44 @@ var PeppolLookup = {
 
     // Update progress display
     updateProgress: function(response) {
-        var percentage = Math.round((response.processed / response.total) * 100);
+        // Validate response data with fallbacks
+        var processed = parseInt(response.processed) || 0;
+        var total = parseInt(response.total) || 1; // Avoid division by zero
         
+        // Calculate percentage safely
+        var percentage = total > 0 ? Math.round((processed / total) * 100) : 0;
+        
+        // Update progress bar with validation
         $('.progress-bar').css('width', percentage + '%');
-        $('#progress-text').text(response.processed + ' / ' + response.total);
+        $('#progress-text').text(processed + ' / ' + total);
         
-        // Add batch results to details
+        // Add batch results to details and handle multiple results
         if (response.batch_results) {
             response.batch_results.forEach(function(result) {
-                var icon = result.success ? 'fa-check text-success' : 'fa-times text-danger';
-                var html = '<div><i class="fa ' + icon + '"></i> ' + result.company + ': ' + result.message + '</div>';
-                $('#progress-details').append(html);
-                
-                if (result.success) {
-                    PeppolLookup.results.successful++;
-                } else {
-                    if (result.message && (result.message.toLowerCase().indexOf('multiple') > -1 || result.message.indexOf('Manual selection required') > -1)) {
+                // Check for multiple results that need user intervention
+                if (result.multiple_results && result.multiple_results.length > 1) {
+                    // Check if we can auto-resolve with VAT matching
+                    var handled = PeppolLookup.handleMultipleResults(result.customer_data, result.multiple_results);
+                    
+                    if (handled) {
+                        // Auto-resolved with VAT match
+                        var icon = 'fa-check text-success';
+                        var html = '<div><i class="fa ' + icon + '"></i> ' + result.company + ': Auto-selected based on VAT match</div>';
+                        $('#progress-details').append(html);
+                        PeppolLookup.results.successful++;
+                    } else {
+                        // Requires user input - processing will pause here
                         PeppolLookup.results.multipleResults++;
+                        return; // Stop processing until user selects
+                    }
+                } else {
+                    // Regular single result or error
+                    var icon = result.success ? 'fa-check text-success' : 'fa-times text-danger';
+                    var html = '<div><i class="fa ' + icon + '"></i> ' + result.company + ': ' + result.message + '</div>';
+                    $('#progress-details').append(html);
+                    
+                    if (result.success) {
+                        PeppolLookup.results.successful++;
                     } else {
                         PeppolLookup.results.failed++;
                     }
@@ -258,6 +429,10 @@ var PeppolLookup = {
         // Reset single customer mode
         this.singleCustomerId = null;
         
+        // Reset multiple results state
+        this.currentMultipleResults = null;
+        this.currentMultipleCustomer = null;
+        
         // Reset form elements
         $('input[name="lookup_mode"][value="all"]').prop('checked', true);
         $('input[name="lookup_mode"][value="selected"]').prop('checked', false);
@@ -286,7 +461,12 @@ var PeppolLookup = {
         // Show/hide sections
         $('#peppol-customer-selection').show();
         $('#peppol-progress').hide();
+        $('#peppol-multiple-results').hide();
         $('#peppol-results').hide();
+        
+        // Reset multiple results UI
+        $('#multiple-results-list').empty();
+        $('#confirm-selection-btn').prop('disabled', true);
         
         // Reset button (restore original text, keep proper click handler)
         var originalButtonText = $('#start-lookup-btn').data('original-text') || 'Start Auto Lookup';

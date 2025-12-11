@@ -24,33 +24,8 @@ trait Peppol_directory_lookup_trait
 
         $this->load->library('peppol/peppol_directory_lookup');
         $result = $this->peppol_directory_lookup->auto_lookup_customer($customer_id);
-        
+
         echo json_encode($result);
-    }
-
-    /**
-     * Get customers list for modal selection
-     */
-    public function ajax_get_customers()
-    {
-        if (!$this->input->is_ajax_request() || !is_admin()) {
-            show_404();
-        }
-
-        $this->load->model('clients_model');
-        
-        // Get all customers
-        $this->db->select('userid, company, vat, country');
-        $this->db->from(db_prefix() . 'clients');
-        $this->db->where('company IS NOT NULL');
-        $this->db->where('company !=', '');
-        $this->db->where('active', 1);
-        $this->db->order_by('company', 'ASC');
-        $this->db->limit(500); // Reasonable limit
-        
-        $customers = $this->db->get()->result();
-        
-        echo json_encode(['success' => true, 'customers' => $customers]);
     }
 
     /**
@@ -65,7 +40,7 @@ trait Peppol_directory_lookup_trait
         $customer_ids = $this->input->post('customer_ids');
         $batch_size = 5; // Process 5 at a time
         $offset = (int) $this->input->post('offset', 0);
-        
+
         if (empty($customer_ids)) {
             // Get all customers
             $this->db->select('userid');
@@ -80,7 +55,7 @@ trait Peppol_directory_lookup_trait
 
         $total_customers = count($customer_ids);
         $batch_customer_ids = array_slice($customer_ids, $offset, $batch_size);
-        
+
         if (empty($batch_customer_ids)) {
             echo json_encode([
                 'success' => true,
@@ -110,7 +85,7 @@ trait Peppol_directory_lookup_trait
             }
 
             $result = $this->peppol_directory_lookup->auto_lookup_customer($customer_id);
-            
+
             $batch_result = [
                 'customer_id' => $customer_id,
                 'company' => $customer->company,
@@ -124,7 +99,7 @@ trait Peppol_directory_lookup_trait
 
             $results['batch_results'][] = $batch_result;
             $results['processed']++;
-            
+
             // Small delay to be respectful to the API
             usleep(200000); // 0.2 seconds
         }
@@ -147,10 +122,10 @@ trait Peppol_directory_lookup_trait
         }
 
         $limit = (int) ($this->input->get('limit') ?? 50);
-        
+
         $this->load->library('peppol/peppol_directory_lookup');
         $results = $this->peppol_directory_lookup->batch_lookup_customers($limit);
-        
+
         if ($this->input->is_ajax_request()) {
             echo json_encode($results);
         } elseif ($this->input->is_cli_request()) {
@@ -173,39 +148,6 @@ trait Peppol_directory_lookup_trait
     }
 
     /**
-     * Cron endpoint for directory lookup
-     * Usage: php index.php peppol/cron_lookup
-     */
-    public function cron_lookup()
-    {
-        if (!$this->input->is_cli_request()) {
-            show_404();
-        }
-        
-        $this->load->library('peppol/peppol_directory_lookup');
-        
-        // Prevent running too frequently
-        $last_run = (int) get_option('peppol_directory_cron_last_run');
-        $now = time();
-        
-        // Don't run more than once every 12 hours
-        if (($now - $last_run) < 43200) {
-            echo "Cron ran too recently. Skipping.\n";
-            return;
-        }
-        
-        $results = $this->peppol_directory_lookup->batch_lookup_customers(100);
-        
-        // Update last run time
-        update_option('peppol_directory_cron_last_run', $now);
-        
-        echo "Peppol Directory Cron: Processed {$results['processed']}, Updated {$results['updated']}\n";
-        if (!empty($results['errors'])) {
-            echo "Errors: " . count($results['errors']) . "\n";
-        }
-    }
-
-    /**
      * Peppol Directory page
      */
     public function directory()
@@ -220,7 +162,6 @@ trait Peppol_directory_lookup_trait
         }
 
         $data['title'] = _l('peppol_directory_menu');
-        $this->load->view('admin/peppol/directory', $data);
+        $this->load->view('admin/directory', $data);
     }
-
 }

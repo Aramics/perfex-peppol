@@ -1,0 +1,92 @@
+site_name: Peppol Module Documentation
+site_description: Documentation for the Perfex CRM Peppol Module
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: blue
+      accent: blue
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - search.highlight
+
+nav:
+  - Overview: index.md
+  - Getting Started:
+    - Installation: getting-started/installation.md
+    - Configuration: getting-started/configuration.md
+    - First Steps: getting-started/first-steps.md
+  - Features:
+    - Document Management: features/document-management.md
+    - Directory Lookup: features/directory-lookup.md
+    - Provider Integration: features/provider-integration.md
+    - Status Management: features/status-management.md
+  - User Guides:
+    - Sending Documents: user-guides/sending-documents.md
+    - Managing Directory: user-guides/managing-directory.md
+    - Processing Responses: user-guides/processing-responses.md
+    - Creating Expenses: user-guides/creating-expenses.md
+  - Administration:
+    - Settings: administration/settings.md
+    - Providers: administration/providers.md
+    - Logs: administration/logs.md
+    - Automation: administration/automation.md
+  - Developer Guide:
+    - Architecture: developer/architecture.md
+    - Extending: developer/extending.md
+    - Custom Providers: developer/custom-providers.md
+    - Hooks: developer/hooks.md
+  - API Reference:
+    - Core Classes: api/core-classes.md
+    - Providers: api/providers.md
+    - Models: api/models.md
+    - Helpers: api/helpers.md
+  - Troubleshooting: troubleshooting.md
+  - FAQ: faq.md
+
+markdown_extensions:
+  - toc:
+      permalink: true
+  - admonition
+  - codehilite:
+      guess_lang: false
+  - def_list
+  - footnotes
+  - meta
+  - pymdownx.arithmatex
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.caret
+  - pymdownx.critic
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink
+  - pymdownx.mark
+  - pymdownx.smartsymbols
+  - pymdownx.superfences
+  - pymdownx.tabbed
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde
+
+plugins:
+  - search
+  - minify:
+      minify_html: true
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/your-org/perfex-peppol
+    - icon: fontawesome/solid/globe
+      link: https://your-website.com
+
+copyright: Copyright &copy; 2023-2024 Your Organization

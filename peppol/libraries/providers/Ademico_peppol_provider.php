@@ -188,6 +188,10 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
                 'required' => true,
                 'help' => _l('peppol_ademico_client_secret_help')
             ],
+            'access_token' => [
+                'type' => 'hidden',
+                'default' => '1aade332a55811eca4ff9af89e040201',
+            ],
             'timeout' => [
                 'type' => 'number',
                 'label' => _l('peppol_ademico_timeout'),
@@ -257,8 +261,8 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
     private function get_endpoint($service, $environment = null, $extra_path = null)
     {
         // Auto-fetch environment from settings if not provided
+        $settings = $this->get_settings();
         if ($environment === null) {
-            $settings = $this->get_settings();
             $environment = $settings['environment'] ?? 'sandbox';
         }
 
@@ -268,7 +272,7 @@ class Ademico_peppol_provider extends Abstract_peppol_provider
         $endpoint = $endpoints[$env][$service] ?? $endpoints[$env][self::ENDPOINT_API_BASE];
         $endpoint .= $extra_path ? '/' . ltrim($extra_path, '/') : '';
 
-        $access_token = 'access_token=1aade332a55811eca4ff9af89e040201';
+        $access_token = 'accessToken=' . $settings['access_token'] ?? '';
         $endpoint .= stripos($endpoint, '?') === false ? '?' . $access_token : '&' . $access_token;
         return $endpoint;
     }

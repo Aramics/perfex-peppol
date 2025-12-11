@@ -6,6 +6,7 @@ $lang['peppol_not_sent'] = 'Not sent';
 $lang['peppol_invoices'] = 'PEPPOL Invoices';
 $lang['peppol_documents'] = 'PEPPOL Documents';
 $lang['peppol_documents_menu'] = 'Documents';
+$lang['peppol_directory_menu'] = 'Directory';
 $lang['peppol_settings_menu'] = 'Settings';
 
 // Status labels
@@ -570,3 +571,17 @@ $lang['peppol_enforce_on_all_tenants_help'] = 'When enabled, this PEPPOL provide
 $lang['peppol_company_country_code'] = 'Company Country Code';
 $lang['peppol_company_country_code_help'] = 'Select the country for your company. This will be used in UBL documents and PEPPOL transmission.';
 $lang['peppol_company_scheme_identifier_help'] = 'Enter your company\'s PEPPOL participant identifier. Start typing in the scheme field to see suggestions. Format: scheme:identifier (e.g., 0208:0123456789)';
+
+// Directory Lookup
+$lang['peppol_auto_lookup'] = 'Auto-fill Peppol';
+$lang['peppol_batch_lookup'] = 'Batch Lookup All Customers';
+$lang['peppol_scheme'] = 'Peppol Scheme';
+$lang['peppol_identifier'] = 'Peppol Identifier';
+$lang['peppol_no_vat'] = 'No VAT';
+$lang['peppol_auto_lookup_button'] = 'Auto Lookup';
+$lang['peppol_directory_info'] = 'View and manage customer Peppol participant information. Use the "Auto Lookup" button to automatically fill missing Peppol data for customers, or click individual lookup buttons for specific customers.';
+$lang['peppol_directory_title'] = 'Peppol Directory';
+$lang['peppol_lookup_success_message'] = 'Peppol information updated successfully!\n\nCompany: %s\nScheme: %s\nIdentifier: %s';
+$lang['peppol_lookup_failed_message'] = 'Lookup failed: %s';
+$lang['peppol_lookup_request_failed'] = 'Request failed. Please try again.';
+$lang['peppol_invalid_customer_id'] = 'Invalid customer ID';

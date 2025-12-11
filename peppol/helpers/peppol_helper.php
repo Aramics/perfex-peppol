@@ -81,3 +81,36 @@ if (!function_exists('peppol_get_option')) {
         return  hooks()->apply_filters('peppol_get_option', $value !== false ? $value : $default, $option_name);
     }
 }
+
+if (!function_exists('peppol_auto_lookup_button')) {
+    /**
+     * Simple auto-lookup button for customer forms
+     * 
+     * @param int $customer_id Customer ID
+     * @return string HTML button
+     */
+    function peppol_auto_lookup_button($customer_id)
+    {
+        return '<button type="button" class="btn btn-info btn-sm" onclick="peppolAutoLookup(' . (int)$customer_id . ')">
+            <i class="fa fa-search"></i> Auto-fill Peppol
+        </button>';
+    }
+}
+
+if (!function_exists('peppol_batch_lookup_button')) {
+    /**
+     * Button for batch processing all customers
+     * 
+     * @return string HTML button
+     */
+    function peppol_batch_lookup_button()
+    {
+        if (!is_admin()) {
+            return '';
+        }
+        
+        return '<button type="button" class="btn btn-success" onclick="peppolBatchLookup()">
+            <i class="fa fa-users"></i> Batch Lookup All Customers
+        </button>';
+    }
+}

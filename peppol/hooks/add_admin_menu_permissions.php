@@ -46,12 +46,19 @@ function peppol_add_admin_menu()
             'position' => 1,
         ]);
 
+        $CI->app_menu->add_sidebar_children_item('peppol-menu', [
+            'slug'     => 'peppol-directory',
+            'name'     => _l('peppol_directory_menu'),
+            'href'     => admin_url('peppol/directory'),
+            'position' => 2,
+        ]);
+
         if (staff_can('view', 'peppol_logs')) {
             $CI->app_menu->add_sidebar_children_item('peppol-menu', [
                 'slug'     => 'peppol-logs',
                 'name'     => _l('peppol_logs_menu'),
                 'href'     => admin_url('peppol/logs'),
-                'position' => 2,
+                'position' => 3,
             ]);
         }
 
@@ -60,7 +67,7 @@ function peppol_add_admin_menu()
                 'slug'     => 'peppol-settings',
                 'name'     => _l('peppol_settings_menu'),
                 'href'     => admin_url('settings?group=peppol'),
-                'position' => 3,
+                'position' => 4,
             ]);
         }
     }

@@ -63,13 +63,26 @@ class Peppol_directory_lookup
                     // Single result - auto-update
                     return $this->update_customer_fields($customer_id, $result['participants'][0]);
                 } else {
-                    // Multiple results - return for manual selection
-                    return [
-                        'success' => false,
-                        'message' => 'Multiple participants found (' . count($result['participants']) . ' results). Manual selection required.',
-                        'multiple_results' => true,
-                        'participants' => $result['participants']
-                    ];
+                    // Multiple results - apply smart VAT matching
+                    $selected_participant = $this->smart_vat_matching($customer, $result['participants']);
+                    
+                    if ($selected_participant) {
+                        // Exact VAT match found - auto-update
+                        return $this->update_customer_fields($customer_id, $selected_participant);
+                    } else {
+                        // No clear match - return for manual selection
+                        return [
+                            'success' => false,
+                            'message' => 'Multiple participants found (' . count($result['participants']) . ' results). Manual selection required.',
+                            'multiple_results' => true,
+                            'participants' => $result['participants'],
+                            'customer_data' => [
+                                'userid' => $customer_id,
+                                'company' => $customer->company,
+                                'vat' => $customer->vat
+                            ]
+                        ];
+                    }
                 }
             }
         }
@@ -78,7 +91,7 @@ class Peppol_directory_lookup
     }
 
     /**
-     * Search directory by terms
+     * Search directory by terms - updated for real Peppol directory response format
      */
     public function search_directory($search_terms)
     {
@@ -90,12 +103,48 @@ class Peppol_directory_lookup
             return $response;
         }
 
-        $participants = [];
-        foreach ($response['data'] as $item) {
-            $participants[] = $this->format_participant($item);
+        // Parse real Peppol directory response format
+        $directory_data = $response['data'];
+        $matches = $directory_data['matches'] ?? [];
+        
+        if (empty($matches)) {
+            return ['success' => true, 'participants' => []];
         }
 
-        return ['success' => true, 'participants' => $participants];
+        $participants = [];
+        foreach ($matches as $match) {
+            $participants[] = $this->format_participant($match);
+        }
+
+        return ['success' => true, 'participants' => $participants, 'total_count' => $directory_data['total-result-count'] ?? count($participants)];
+    }
+
+    /**
+     * Smart VAT matching - finds exact VAT match if any, returns null if multiple or none
+     */
+    private function smart_vat_matching($customer, $participants)
+    {
+        if (empty($customer->vat)) {
+            return null; // No customer VAT to match against
+        }
+        
+        // Clean customer VAT (remove non-digits for comparison)
+        $customer_vat_clean = preg_replace('/\D/', '', $customer->vat);
+        
+        $exact_matches = [];
+        foreach ($participants as $participant) {
+            if (!empty($participant['vat'])) {
+                // Clean participant VAT for comparison
+                $participant_vat_clean = preg_replace('/\D/', '', $participant['vat']);
+                
+                if ($participant_vat_clean === $customer_vat_clean) {
+                    $exact_matches[] = $participant;
+                }
+            }
+        }
+        
+        // Return participant only if exactly one VAT match found
+        return (count($exact_matches) === 1) ? $exact_matches[0] : null;
     }
 
     /**
@@ -129,18 +178,53 @@ class Peppol_directory_lookup
     }
 
     /**
-     * Format participant data
+     * Format participant data from real Peppol directory response structure
      */
-    private function format_participant($data)
+    private function format_participant($match)
     {
-        $identifiers = $data['identifiers'] ?? [];
-        $primary = !empty($identifiers) ? $identifiers[0] : null;
+        // Extract participant ID information
+        $participant_id = $match['participantID'] ?? [];
+        $scheme = $participant_id['scheme'] ?? '';
+        $identifier = $participant_id['value'] ?? '';
+        
+        // Convert scheme format: "iso6523-actorid-upis" -> extract numeric scheme
+        if ($scheme === 'iso6523-actorid-upis' && strpos($identifier, ':') !== false) {
+            $parts = explode(':', $identifier);
+            $scheme = $parts[0] ?? ''; // e.g., "0208"
+            $identifier = $parts[1] ?? ''; // e.g., "0552912569"
+        }
+        
+        // Extract entity information (use first entity)
+        $entities = $match['entities'] ?? [];
+        $entity = !empty($entities) ? $entities[0] : [];
+        
+        // Extract name (use first name entry)
+        $names = $entity['name'] ?? [];
+        $name = !empty($names) ? ($names[0]['name'] ?? 'Unknown') : 'Unknown';
+        
+        // Extract country code
+        $country_code = $entity['countryCode'] ?? '';
+        
+        // Extract VAT from identifiers
+        $vat = null;
+        $identifiers = $entity['identifiers'] ?? [];
+        foreach ($identifiers as $id) {
+            if (($id['scheme'] ?? '') === 'VAT') {
+                $vat = $id['value'] ?? null;
+                break;
+            }
+        }
 
         return [
-            'name' => $data['name'] ?? 'Unknown',
-            'scheme' => $primary['scheme'] ?? null,
-            'identifier' => $primary['value'] ?? null,
-            'country' => $data['countryCode'] ?? null
+            'name' => $name,
+            'company' => $name, // Alias for compatibility
+            'scheme' => $scheme,
+            'identifier' => $identifier,
+            'country' => $country_code,
+            'vat' => $vat,
+            'geo_info' => $entity['geoInfo'] ?? '',
+            'websites' => $entity['websites'] ?? [],
+            'reg_date' => $entity['regDate'] ?? ''
         ];
     }
 

@@ -156,16 +156,34 @@ class Peppol_directory_lookup
             return ['success' => false, 'message' => 'Invalid participant data'];
         }
 
-        // Update custom fields using existing slugs from install.php
-        $update_data = [
-            'custom_fields' => [
-                'customers_peppol_scheme' => $participant['scheme'],
-                'customers_peppol_identifier' => $participant['identifier']
+        // Get custom field IDs for the Peppol fields
+        $this->CI->load->model('custom_fields_model');
+
+        $scheme_field = get_custom_fields('customers', [
+            'slug' => 'customers_peppol_scheme'
+        ]);
+
+        $identifier_field = get_custom_fields('customers', [
+            'slug' => 'customers_peppol_identifier'
+        ]);
+
+        if (empty($scheme_field) || empty($identifier_field)) {
+            return [
+                'success' => false,
+                'message' => 'Peppol custom fields not found. Please ensure the module is properly installed.'
+            ];
+        }
+
+        // Prepare CF update data using the correct format
+        $cf_post = [
+            'customers' => [
+                $scheme_field[0]['id'] => $participant['scheme'],
+                $identifier_field[0]['id'] => $participant['identifier']
             ]
         ];
 
-        $updated = $this->CI->clients_model->update($customer_id, $update_data);
-
+        // Perform update using the correct custom fields handler
+        $updated = handle_custom_fields_post($customer_id, $cf_post);
         if ($updated) {
             return [
                 'success' => true,

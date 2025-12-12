@@ -1,844 +1,1646 @@
 /**
- * Peppol Directory Lookup JavaScript with Modal
+ * PEPPOL Directory Lookup Module
+ * Professional implementation for managing PEPPOL participant directory lookups
+ * with both single customer and batch processing capabilities
+ *
+ * @version 2.0
+ * @author PEPPOL Module
  */
 
-// Modal-based lookup functionality (handles both batch and single customer)
-var PeppolLookup = {
-	isProcessing: false,
-	currentProgress: 0,
-	totalProcessed: 0,
+"use strict";
+
+/**
+ * PEPPOL Directory Lookup Manager
+ * Handles modal-based lookup functionality for both single and batch customer processing
+ */
+const PeppolLookup = {
+	// Configuration constants
+	CONSTANTS: {
+		MODAL_SELECTOR: "#peppol-batch-lookup-modal",
+		BATCH_SIZE: 10,
+		AUTO_START_DELAY: 100,
+		EVENTS: {
+			MODAL_SHOWN: "shown.bs.modal.peppolLookup",
+			LOOKUP_SUCCESS: "peppolLookupSuccess",
+		},
+	},
+
+	// Core state management
+	state: {
+		isProcessing: false,
+		currentProgress: 0,
+		totalProcessed: 0,
+		singleCustomerId: null,
+		autoStartSingleLookup: false,
+		pendingMultipleSelections: [],
+	},
+
+	// Processing results tracking
 	results: {
 		successful: 0,
 		failed: 0,
 		multipleResults: 0,
 	},
-	pendingMultipleSelections: [], // Array to store all customers needing selection
-	$modal: null, // Reference to the modal container for scoped DOM operations
-	
-	// Initialize modal container reference
-	initModal: function() {
-		this.$modal = $("#peppol-batch-lookup-modal");
-		return this.$modal.length > 0;
+
+	// DOM references cache
+	dom: {
+		$modal: null,
+		$progressBar: null,
+		$progressDetails: null,
+		$customerSelection: null,
+		$startButton: null,
+		$clientSelect: null,
 	},
 
-	// Show the batch lookup modal
-	showModal: function (customerId) {
-		var self = this;
+	// Template cache
+	templates: {
+		customerHeader: null,
+		noneOption: null,
+		resultOption: null,
+		progressMessage: null,
+	},
 
-		// Initialize modal container reference
-		if (!this.initModal()) {
-			console.error("Peppol modal not found");
-			return;
+	/**
+	 * Initialize the module and cache DOM references
+	 * @returns {boolean} Success status
+	 */
+	init() {
+		try {
+			this.cacheDOMElements();
+			this.attachGlobalEventHandlers();
+			window.PeppolLookup = this; // Global access for backward compatibility
+			return true;
+		} catch (error) {
+			console.error("PeppolLookup initialization failed:", error);
+			return false;
+		}
+	},
+
+	/**
+	 * Cache frequently used DOM elements and templates
+	 * @private
+	 */
+	cacheDOMElements() {
+		this.dom.$modal = $(this.CONSTANTS.MODAL_SELECTOR);
+
+		if (this.dom.$modal.length === 0) {
+			throw new Error("PEPPOL modal not found in DOM");
 		}
 
-		// Reset modal state
-		this.resetModal();
+		// Cache modal-specific elements
+		this.dom.$progressBar = this.dom.$modal.find(".progress-bar");
+		this.dom.$progressDetails = this.dom.$modal.find("#progress-details");
+		this.dom.$customerSelection = this.dom.$modal.find(
+			"#peppol-customer-selection"
+		);
+		this.dom.$startButton = this.dom.$modal.find("#start-lookup-btn");
+		this.dom.$clientSelect = this.dom.$modal.find("#peppol_clientid");
 
-		// Store customer ID for single lookup mode (only if explicitly passed)
-		// Reset single customer state when showing modal for auto lookup
-		this.singleCustomerId = customerId || null;
+		// Cache templates
+		this.cacheTemplates();
+	},
 
-		// Show modal
-		this.$modal.modal("show");
+	/**
+	 * Cache HTML templates for reuse
+	 * @private
+	 * @throws {Error} If required templates are missing
+	 */
+	cacheTemplates() {
+		const templates = {
+			"peppol-customer-header-template": "customerHeader",
+			"peppol-none-option-template": "noneOption",
+			"peppol-result-option-template": "resultOption",
+			"peppol-progress-message-template": "progressMessage",
+		};
 
-		// Initialize selectpicker for client dropdown when modal is shown
-		this.$modal.off("shown.bs.modal.peppolLookup").on("shown.bs.modal.peppolLookup", function () {
-			var $clientSelect = self.$modal.find("#peppol_clientid");
-			
-			if (!$clientSelect.hasClass("selectpicker-initialized")) {
-				init_ajax_search("customers", "#peppol_clientid");
-				$clientSelect.addClass("selectpicker-initialized");
-			}
+		const missingTemplates = [];
 
-			// Initialize button click handler if not already done
-			var $startBtn = self.$modal.find("#start-lookup-btn");
-			if (!$startBtn.hasClass("handler-initialized")) {
-				$startBtn
-					.on("click", function () {
-						PeppolLookup.startLookup();
-					})
-					.addClass("handler-initialized");
-			}
-
-			// If single customer mode, pre-select and configure UI
-			// Only setup single customer mode if we actually have a customer ID
-			if (self.singleCustomerId) {
-				if (self.autoStartSingleLookup) {
-					// Hide selection and start immediately
-					self.$modal.find("#peppol-customer-selection").hide();
-					self.$modal.find("#peppol-progress").show();
-					$startBtn.prop("disabled", true);
-
-					// Start lookup immediately for single customer
-					setTimeout(function () {
-						self.startLookup();
-					}, 100);
-					
-					// Reset flag
-					self.autoStartSingleLookup = false;
-				} else {
-					self.setupSingleCustomerMode();
-				}
+		Object.entries(templates).forEach(([templateId, propertyName]) => {
+			const template = document.getElementById(templateId);
+			if (template) {
+				this.templates[propertyName] = template.content.cloneNode(true);
 			} else {
-				// Ensure we're in batch mode - show customer selection
-				self.$modal.find("#peppol-customer-selection").show();
-				self.$modal.find("#peppol-progress").hide();
-				$startBtn.prop("disabled", false);
+				missingTemplates.push(templateId);
 			}
 		});
+
+		if (missingTemplates.length > 0) {
+			throw new Error(
+				`Required templates not found: ${missingTemplates.join(", ")}`
+			);
+		}
 	},
 
-	// Single customer lookup - shows modal and starts lookup immediately
-	singleCustomerLookup: function (customerId) {
-		if (!customerId) {
-			alert("Invalid customer ID");
+	/**
+	 * Attach global event handlers
+	 * @private
+	 */
+	attachGlobalEventHandlers() {
+		// Handle lookup mode radio button changes
+		$(document)
+			.off("change.peppolLookup")
+			.on(
+				"change.peppolLookup",
+				'input[name="lookup_mode"]',
+				this.handleLookupModeChange.bind(this)
+			);
+	},
+
+	/**
+	 * Show the batch lookup modal
+	 * @param {number|null} customerId - Optional customer ID for single customer mode
+	 * @public
+	 */
+	showModal(customerId = null) {
+		try {
+			this.validateModalAvailability();
+			this.resetModal();
+			this.configureModalForCustomer(customerId);
+			this.displayModal();
+		} catch (error) {
+			console.error("Failed to show modal:", error);
+			this.showErrorMessage(
+				window.peppolTranslations?.lookupDialogError
+			);
+		}
+	},
+
+	/**
+	 * Single customer lookup - shows modal and starts lookup immediately
+	 * @param {number} customerId - Customer ID to lookup
+	 * @public
+	 */
+	singleCustomerLookup(customerId) {
+		if (!this.validateCustomerId(customerId)) {
+			this.showErrorMessage(
+				window.peppolTranslations?.invalidCustomerId
+			);
 			return;
 		}
 
-		// Use showModal with the customer ID - this will handle all the setup
+		this.state.autoStartSingleLookup = true;
 		this.showModal(customerId);
-		
-		// Mark that this should start automatically
-		this.autoStartSingleLookup = true;
 	},
 
-	// Setup single customer mode (used for batch modal with pre-selected customer)
-	setupSingleCustomerMode: function () {
-		if (!this.$modal || !this.singleCustomerId) return;
-		
-		// Pre-select the customer in the dropdown
-		// Set selected mode and show client selection
-		this.$modal.find('input[name="lookup_mode"][value="selected"]').prop("checked", true);
-		this.$modal.find("#client-selection").show();
+	/**
+	 * Validate modal availability
+	 * @private
+	 * @throws {Error} If modal is not available
+	 */
+	validateModalAvailability() {
+		if (!this.dom.$modal || this.dom.$modal.length === 0) {
+			this.cacheDOMElements();
+		}
+	},
 
-		// Pre-select the customer (add option and select it)
-		var $clientSelect = this.$modal.find("#peppol_clientid");
-		$clientSelect.append(
-			'<option value="' + this.singleCustomerId + '" selected>Loading...</option>'
+	/**
+	 * Validate customer ID
+	 * @private
+	 * @param {*} customerId - Customer ID to validate
+	 * @returns {boolean} Validation result
+	 */
+	validateCustomerId(customerId) {
+		return (
+			customerId &&
+			(typeof customerId === "number" ||
+				typeof customerId === "string") &&
+			!isNaN(Number(customerId))
 		);
-		$clientSelect.selectpicker("refresh");
-
-		// Disable the radio buttons and hide the all customers option
-		this.$modal.find("#peppol-customer-selection .form-group:first-child").hide();
-		this.$modal.find('input[name="lookup_mode"]').prop("disabled", true);
 	},
 
-	// Add customer to multiple results queue
-	addToMultipleResultsQueue: function (customerData, multipleResults) {
-		var customerId = customerData.userid;
-		
-		// Check if customer already exists in queue to prevent duplicates
-		var existingIndex = -1;
-		for (var i = 0; i < this.pendingMultipleSelections.length; i++) {
-			if (this.pendingMultipleSelections[i].customer.userid === customerId) {
-				existingIndex = i;
-				break;
-			}
-		}
-		
-		if (existingIndex !== -1) {
-			// Customer already exists, update their results instead of adding duplicate
-			console.warn('Customer already in multiple results queue, updating:', customerId);
-			this.pendingMultipleSelections[existingIndex].results = multipleResults;
-			return;
-		}
-
-		// Add to pending selections (customer not found, safe to add)
-		this.pendingMultipleSelections.push({
-			customer: customerData,
-			results: multipleResults,
-		});
-
-		// Just collect them for now - don't show UI until processing is complete
-		// Show a progress message that we found multiple results
-		if (this.$modal) {
-			var html =
-				'<div><i class="fa fa-warning text-warning"></i> ' +
-				customerData.company +
-				": Multiple participants found - will require manual selection</div>";
-			var $progressDetails = this.$modal.find("#progress-details");
-			$progressDetails.append(html);
-			$progressDetails.scrollTop($progressDetails[0].scrollHeight);
-		}
+	/**
+	 * Configure modal for specific customer or batch mode
+	 * @private
+	 * @param {number|null} customerId - Customer ID or null for batch mode
+	 */
+	configureModalForCustomer(customerId) {
+		this.state.singleCustomerId = customerId || null;
 	},
 
-	// Render all customers needing multiple result selections
-	renderAllMultipleSelections: function () {
-		var html = "";
-		var totalPending = this.pendingMultipleSelections.length;
+	/**
+	 * Display the modal and setup event handlers
+	 * @private
+	 */
+	displayModal() {
+		this.dom.$modal.modal("show");
 
-		// Update alert message
-		var alertMsg =
-			totalPending === 1
-				? "Multiple participants found for <strong>" +
-				  this.pendingMultipleSelections[0].customer.company +
-				  "</strong>"
-				: "Multiple participants found for <strong>" +
-				  totalPending +
-				  " customers</strong>";
-		$(".alert-warning").html(
-			"<strong>" +
-				alertMsg +
-				"</strong> - Please select the correct participant for each customer."
-		);
-
-		this.pendingMultipleSelections.forEach(function (
-			selection,
-			selectionIndex
-		) {
-			var customerData = selection.customer;
-			var multipleResults = selection.results;
-			var customerVat = customerData.vat
-				? customerData.vat.replace(/\D/g, "")
-				: null;
-			var customerId = customerData.userid; // Use customer ID for unique identification
-
-			// Customer header with skip option
-			html +=
-				'<div style="margin: 20px 0 10px 0; padding: 10px; background: #f0f0f0; border-left: 4px solid #337ab7; border-radius: 4px;">';
-			html +=
-				'<div style="display: flex; justify-content: space-between; align-items: center;">';
-			html += '<h5 style="margin: 0; font-weight: 600; color: #337ab7;">';
-			html += '<i class="fa fa-building"></i> ' + customerData.company;
-			if (customerData.vat)
-				html +=
-					' <small style="color: #666;">(VAT: ' +
-					customerData.vat +
-					")</small>";
-			html += "</h5>";
-			html +=
-				'<button type="button" class="btn btn-xs btn-default" onclick="PeppolLookup.skipSingleCustomer(' +
-				customerId +
-				')" style="margin-left: 10px;">';
-			html += '<i class="fa fa-times"></i> Skip this company';
-			html += "</button>";
-			html += "</div>";
-			html += "</div>";
-
-			// Add "None of these" option first
-			var noneRadioId = "participant_" + customerId + "_none";
-			html +=
-				'<div style="padding: 12px; margin: 6px 0 6px 20px; border: 1px solid #ddd; border-radius: 4px; background: #fff3cd; border-color: #ffeeba;">';
-			html += '<div class="radio radio-warning">';
-			html +=
-				'<input type="radio" id="' +
-				noneRadioId +
-				'" name="selected_participant_' +
-				customerId +
-				'" value="none" data-customer-id="' +
-				customerId +
-				'">';
-			html +=
-				'<label for="' +
-				noneRadioId +
-				'" style="font-weight: normal; cursor: pointer;">';
-			html +=
-				'<div style="font-size: 15px; font-weight: 500; margin-bottom: 3px; color: #856404;">';
-			html +=
-				'<i class="fa fa-ban"></i> None of these options are correct';
-			html += "</div>";
-			html += '<div style="font-size: 12px; color: #856404;">';
-			html +=
-				"Company is not registered or these participants do not match";
-			html += "</div>";
-			html += "</label>";
-			html += "</div>";
-			html += "</div>";
-
-			// Results for this customer
-			multipleResults.forEach(function (result, resultIndex) {
-				// Check if this result matches customer's VAT
-				var isVatMatch = false;
-				if (customerVat && result.vat) {
-					var resultVat = result.vat.replace(/\D/g, "");
-					isVatMatch = resultVat === customerVat;
-				}
-
-				var vatBadge = isVatMatch
-					? '<span class="label label-success" style="margin-left: 8px;">VAT Match</span>'
-					: "";
-				var radioId =
-					"participant_" + customerId + "_" + resultIndex;
-
-				html +=
-					'<div style="padding: 12px; margin: 6px 0 6px 20px; border: 1px solid #ddd; border-radius: 4px; background: #f9f9f9;">';
-				html += '<div class="radio radio-primary">';
-				html +=
-					'<input type="radio" id="' +
-					radioId +
-					'" name="selected_participant_' +
-					customerId +
-					'" value="' +
-					resultIndex +
-					'" data-customer-id="' +
-					customerId +
-					'">';
-				html +=
-					'<label for="' +
-					radioId +
-					'" style="font-weight: normal; cursor: pointer;">';
-				html +=
-					'<div style="font-size: 15px; font-weight: 500; margin-bottom: 3px;">' +
-					(result.name || result.company || "Unknown Company") +
-					vatBadge +
-					"</div>";
-				html += '<div style="font-size: 12px; color: #666;">';
-				html +=
-					'<span style="margin-right: 15px;"><strong>Scheme:</strong> ' +
-					(result.scheme || "N/A") +
-					"</span>";
-				html +=
-					'<span style="margin-right: 15px;"><strong>ID:</strong> ' +
-					(result.identifier || "N/A") +
-					"</span>";
-				if (result.vat)
-					html +=
-						'<span style="margin-right: 15px;"><strong>VAT:</strong> ' +
-						result.vat +
-						"</span>";
-				if (result.country)
-					html +=
-						"<span><strong>Country:</strong> " +
-						result.country +
-						"</span>";
-				html += "</div>";
-				html += "</label>";
-				html += "</div>";
-				html += "</div>";
-			});
-		});
-
-		if (this.$modal) {
-			this.$modal.find("#multiple-results-list").html(html);
-		}
-
-		// Update selection handling
-		this.updateSelectionHandling();
+		// Setup modal shown event handler (remove previous to prevent stacking)
+		this.dom.$modal
+			.off(this.CONSTANTS.EVENTS.MODAL_SHOWN)
+			.on(
+				this.CONSTANTS.EVENTS.MODAL_SHOWN,
+				this.handleModalShown.bind(this)
+			);
 	},
 
-	// Update selection handling for multiple customers
-	updateSelectionHandling: function () {
-		if (!this.$modal) return;
-		
-		var self = this;
-		var $resultsContainer = this.$modal.find('#multiple-results-list');
-
-		// Remove ALL change handlers from the container to prevent stacking
-		$resultsContainer.off('change', 'input[name^="selected_participant_"]');
-		
-		// Add single delegated event handler to the container
-		$resultsContainer.on('change', 'input[name^="selected_participant_"]', function () {
-			self.checkAllSelectionsComplete();
-		});
-	},
-
-	// Check if any selections have been made (enable button if at least one)
-	checkAllSelectionsComplete: function () {
-		var totalCustomers = this.pendingMultipleSelections.length;
-		var selectedCount = 0;
-
-		if (!this.$modal) return;
-
-		// Count selections by checking each customer's radio buttons within modal
-		var self = this;
-		this.pendingMultipleSelections.forEach(function(selection) {
-			var customerId = selection.customer.userid;
-			if (self.$modal.find('input[name="selected_participant_' + customerId + '"]:checked').length > 0) {
-				selectedCount++;
-			}
-		});
-
-		// Enable confirm button if at least one selection is made
-		var $confirmBtn = this.$modal.find("#confirm-selection-btn");
-		$confirmBtn.prop("disabled", selectedCount === 0);
-
-		// Update button text to show progress
-		var buttonText = 
-			selectedCount === 0
-				? "Make Selections to Continue"
-				: selectedCount === totalCustomers
-				? "Confirm All Selections (" + selectedCount + "/" + totalCustomers + ")"
-				: "Confirm Selected (" + selectedCount + "/" + totalCustomers + ")";
-		$confirmBtn.text(buttonText);
-	},
-
-	// Skip a single customer from the multiple results queue
-	skipSingleCustomer: function (customerId) {
-		// Find customer by ID
-		var customerIndex = -1;
-		var skippedCustomer = null;
-		
-		for (var i = 0; i < this.pendingMultipleSelections.length; i++) {
-			if (this.pendingMultipleSelections[i].customer.userid == customerId) {
-				customerIndex = i;
-				skippedCustomer = this.pendingMultipleSelections[i];
-				break;
-			}
-		}
-		
-		if (customerIndex === -1) {
-			console.error('Customer not found in pending selections');
-			return;
-		}
-
-		// Log as skipped
-		if (this.$modal) {
-			var html =
-				'<div><i class="fa fa-info text-warning"></i> ' +
-				skippedCustomer.customer.company +
-				": Skipped by user</div>";
-			var $progressDetails = this.$modal.find("#progress-details");
-			$progressDetails.append(html);
-			$progressDetails.scrollTop($progressDetails[0].scrollHeight);
-		}
-
-		// Remove from pending selections
-		this.pendingMultipleSelections.splice(customerIndex, 1);
-
-		// Re-render the list
-		this.renderAllMultipleSelections();
-
-		// If no more pending selections, continue processing
-		if (this.pendingMultipleSelections.length === 0) {
-			this.continueAfterMultipleResults();
+	/**
+	 * Handle modal shown event
+	 * @private
+	 */
+	handleModalShown() {
+		try {
+			this.initializeSelectPicker();
+			this.setupStartButton();
+			this.configureModalBehavior();
+		} catch (error) {
+			console.error("Modal setup failed:", error);
+			this.showErrorMessage(
+				window.peppolTranslations?.modalInitFailed
+			);
 		}
 	},
 
-	// Skip all multiple selections
-	skipMultipleSelection: function () {
-		var self = this;
-
-		// Log all as skipped and continue processing
-		if (this.$modal) {
-			var $progressDetails = this.$modal.find("#progress-details");
-			this.pendingMultipleSelections.forEach(function (selection) {
-				var html =
-					'<div><i class="fa fa-info text-warning"></i> ' +
-					selection.customer.company +
-					": Skipped by user</div>";
-				$progressDetails.append(html);
-			});
-			$progressDetails.scrollTop($progressDetails[0].scrollHeight);
-		}
-
-		this.continueAfterMultipleResults();
-	},
-
-	// Confirm multiple selections (send all in single batch request)
-	confirmMultipleSelection: function () {
-		var self = this;
-		var selectionsToSend = [];
-		var processedCustomers = []; // Track processed customers to prevent duplicates
-		
-		// Collect all customers with selections made
-		this.pendingMultipleSelections.forEach(function (selection) {
-			var customerId = selection.customer.userid;
-			
-			// Skip if we already processed this customer (prevent duplicates)
-			if (processedCustomers.indexOf(customerId) !== -1) {
-				console.warn('Duplicate customer found in pendingMultipleSelections:', customerId);
-				return;
-			}
-			processedCustomers.push(customerId);
-			
-			var selectedRadio = self.$modal ? self.$modal.find('input[name="selected_participant_' + customerId + '"]:checked') : $();
-			
-			if (selectedRadio.length > 1) {
-				console.warn('Multiple radio buttons selected for customer:', customerId);
-				// Use only the first one
-				selectedRadio = selectedRadio.first();
-			}
-			
-			if (selectedRadio.length > 0) {
-				var selectedValue = selectedRadio.val();
-				
-				if (selectedValue === "none") {
-					// User selected "none of these"
-					selectionsToSend.push({
-						customer_id: customerId,
-						type: 'none'
-					});
-				} else {
-					// User selected a specific result
-					var resultIndex = parseInt(selectedValue);
-					var selectedResult = selection.results[resultIndex];
-					
-					if (selectedResult) {
-						selectionsToSend.push({
-							customer_id: customerId,
-							type: 'participant',
-							scheme: selectedResult.scheme,
-							identifier: selectedResult.identifier,
-							name: selectedResult.name || selectedResult.company,
-							country: selectedResult.country
-						});
-					} else {
-						console.warn('Selected result not found for customer:', customerId, 'index:', resultIndex);
-					}
-				}
-			}
-		});
-
-		if (selectionsToSend.length === 0) {
-			alert("Please make at least one selection before confirming.");
-			return;
-		}
-
-		// Debug output
-		console.log('Sending selections:', selectionsToSend.length, selectionsToSend);
-
-		// Log unselected customers as skipped
-		if (this.$modal) {
-			var $progressDetails = this.$modal.find("#progress-details");
-			this.pendingMultipleSelections.forEach(function (selection) {
-				var customerId = selection.customer.userid;
-				var selectedRadio = self.$modal.find('input[name="selected_participant_' + customerId + '"]:checked');
-				
-				if (selectedRadio.length === 0) {
-					// No selection made - skip this customer
-					var html = '<div><i class="fa fa-info text-warning"></i> ' + 
-							   selection.customer.company + ': Skipped (no selection made)</div>';
-					$progressDetails.append(html);
-				}
-			});
-			$progressDetails.scrollTop($progressDetails[0].scrollHeight);
-		}
-
-		// Send single batch request
-		$.ajax({
-			url: admin_url + "peppol/ajax_apply_batch_selections",
-			type: "POST",
-			data: {
-				selections: selectionsToSend
-			},
-			dataType: "json"
-		})
-		.done(function (response) {
-			if (response.success) {
-				// Log all results from batch
-				response.results.forEach(function(result) {
-					var icon = result.success ? "fa-check text-success" : "fa-times text-danger";
-					var html = '<div><i class="fa ' + icon + '"></i> ' + 
-							   result.company + ': ' + result.message + '</div>';
-					$("#progress-details").append(html);
-					
-					if (result.success) {
-						self.results.successful++;
-					} else {
-						self.results.failed++;
-					}
-				});
-				
-				$("#progress-details").scrollTop($("#progress-details")[0].scrollHeight);
-				
-				// Continue to final results
-				self.continueAfterMultipleResults();
+	/**
+	 * Initialize select picker if not already initialized
+	 * @private
+	 */
+	initializeSelectPicker() {
+		if (!this.dom.$clientSelect.hasClass("selectpicker-initialized")) {
+			if (typeof init_ajax_search === "function") {
+				init_ajax_search("customers", "#peppol_clientid");
+				this.dom.$clientSelect.addClass("selectpicker-initialized");
 			} else {
-				alert('Failed to apply selections: ' + (response.message || 'Unknown error'));
+				console.warn("init_ajax_search function not available");
 			}
-		})
-		.fail(function () {
-			alert('Request failed. Please try again.');
-		});
+		}
 	},
 
-	// Continue after multiple results handling (show final results)
-	continueAfterMultipleResults: function () {
-		// Reset multiple results state
-		this.pendingMultipleSelections = [];
-
-		// Hide multiple results section
-		$("#peppol-multiple-results").hide();
-		$("#confirm-selection-btn").prop("disabled", true);
-
-		// Clear selection UI
-		$("#multiple-results-list").empty();
-
-		// Show final results now that all selections are complete
-		this.showResults();
+	/**
+	 * Setup start button event handler
+	 * @private
+	 */
+	setupStartButton() {
+		if (!this.dom.$startButton.hasClass("handler-initialized")) {
+			this.dom.$startButton
+				.off("click.peppolLookup")
+				.on("click.peppolLookup", this.startLookup.bind(this))
+				.addClass("handler-initialized");
+		}
 	},
 
-	// Start the lookup process
-	startLookup: function () {
-		var mode = $('input[name="lookup_mode"]:checked').val();
-		var customerIds = [];
+	/**
+	 * Configure modal behavior based on current state
+	 * @private
+	 */
+	configureModalBehavior() {
+		if (this.state.singleCustomerId) {
+			this.handleSingleCustomerMode();
+		} else {
+			this.handleBatchMode();
+		}
+	},
 
-		// Handle single customer mode - only if explicitly set and customer selection is hidden
-		// This prevents single customer state from interfering with batch lookups
-		if (this.singleCustomerId && $("#peppol-customer-selection").is(":hidden")) {
-			customerIds = [this.singleCustomerId];
-		} else if (mode === "selected") {
-			// Reset single customer state when doing batch lookup
-			this.singleCustomerId = null;
-			customerIds = $("#peppol_clientid").val() || [];
+	/**
+	 * Handle single customer mode configuration
+	 * @private
+	 */
+	handleSingleCustomerMode() {
+		if (this.state.autoStartSingleLookup) {
+			this.startImmediateLookup();
+		} else {
+			this.setupSingleCustomerUI();
+		}
+	},
 
-			if (customerIds.length === 0) {
-				alert("Please select at least one customer.");
+	/**
+	 * Handle batch mode configuration
+	 * @private
+	 */
+	handleBatchMode() {
+		this.showCustomerSelection();
+		this.enableStartButton();
+	},
+
+	/**
+	 * Start immediate lookup for single customer
+	 * @private
+	 */
+	startImmediateLookup() {
+		this.hideCustomerSelection();
+		this.showProgress();
+		this.disableStartButton();
+
+		setTimeout(() => {
+			this.startLookup();
+		}, this.CONSTANTS.AUTO_START_DELAY);
+
+		this.state.autoStartSingleLookup = false;
+	},
+
+	/**
+	 * Setup UI for single customer mode with manual start
+	 * @private
+	 */
+	setupSingleCustomerUI() {
+		// Pre-select the customer in the dropdown
+		this.dom.$modal
+			.find('input[name="lookup_mode"][value="selected"]')
+			.prop("checked", true);
+		this.dom.$modal.find("#client-selection").show();
+
+		// Add customer option to select dropdown
+		this.dom.$clientSelect.append(
+			`<option value="${this.state.singleCustomerId}" selected>Loading...</option>`
+		);
+
+		if (this.dom.$clientSelect.data("selectpicker")) {
+			this.dom.$clientSelect.selectpicker("refresh");
+		}
+
+		// Configure UI for single customer mode
+		this.dom.$modal
+			.find("#peppol-customer-selection .form-group:first-child")
+			.hide();
+		this.dom.$modal
+			.find('input[name="lookup_mode"]')
+			.prop("disabled", true);
+
+		// Start the lookup
+		this.startLookup();
+	},
+
+	/**
+	 * Start the lookup process
+	 * @public
+	 */
+	startLookup() {
+		try {
+			const mode = $('input[name="lookup_mode"]:checked').val();
+			const customerIds = this.determineCustomerIds(mode);
+
+			if (!this.validateLookupRequest(customerIds, mode)) {
 				return;
 			}
-		} else {
-			// Reset single customer state for "all customers" mode
-			this.singleCustomerId = null;
-		}
 
-		// Hide selection, show progress (only if not already done for single customer)
+			this.prepareForProcessing();
+			this.initiateLookupProcess(customerIds);
+		} catch (error) {
+			console.error("Lookup start failed:", error);
+			this.showErrorMessage(
+				window.peppolTranslations?.lookupStartFailed
+			);
+		}
+	},
+
+	/**
+	 * Determine customer IDs based on lookup mode
+	 * @private
+	 * @param {string} mode - Lookup mode ('all' or 'selected')
+	 * @returns {Array} Array of customer IDs
+	 */
+	determineCustomerIds(mode) {
+		// Handle single customer mode
 		if (
-			!this.singleCustomerId ||
-			$("#peppol-customer-selection").is(":visible")
+			this.state.singleCustomerId &&
+			this.dom.$customerSelection.is(":hidden")
 		) {
-			$("#peppol-customer-selection").hide();
-			$("#peppol-progress").show();
-			$("#start-lookup-btn").prop("disabled", true);
+			return [this.state.singleCustomerId];
 		}
 
-		this.isProcessing = true;
-		this.currentProgress = 0;
-		this.results = {successful: 0, failed: 0, multipleResults: 0};
+		// Handle batch modes
+		if (mode === "selected") {
+			this.clearSingleCustomerState();
+			return this.dom.$clientSelect.val() || [];
+		}
 
-		// Start processing
+		// All customers mode
+		this.clearSingleCustomerState();
+		return [];
+	},
+
+	/**
+	 * Validate lookup request parameters
+	 * @private
+	 * @param {Array} customerIds - Customer IDs array
+	 * @param {string} mode - Lookup mode
+	 * @returns {boolean} Validation result
+	 */
+	validateLookupRequest(customerIds, mode) {
+		if (mode === "selected" && customerIds.length === 0) {
+			this.showErrorMessage(
+				window.peppolTranslations?.selectOneCustomer
+			);
+			return false;
+		}
+		return true;
+	},
+
+	/**
+	 * Prepare UI for processing
+	 * @private
+	 */
+	prepareForProcessing() {
+		if (
+			!this.state.singleCustomerId ||
+			this.dom.$customerSelection.is(":visible")
+		) {
+			this.hideCustomerSelection();
+			this.showProgress();
+			this.disableStartButton();
+		}
+
+		this.resetProcessingState();
+	},
+
+	/**
+	 * Reset processing state
+	 * @private
+	 */
+	resetProcessingState() {
+		this.state.isProcessing = true;
+		this.state.currentProgress = 0;
+		this.results = {successful: 0, failed: 0, multipleResults: 0};
+	},
+
+	/**
+	 * Initiate lookup process
+	 * @private
+	 * @param {Array} customerIds - Customer IDs to process
+	 */
+	initiateLookupProcess(customerIds) {
 		this.processNextBatch(customerIds, 0);
 	},
 
-	// Process next batch of customers
-	processNextBatch: function (customerIds, offset) {
-		var self = this;
+	/**
+	 * Process next batch of customers
+	 * @private
+	 * @param {Array} customerIds - Customer IDs array
+	 * @param {number} offset - Current batch offset
+	 */
+	processNextBatch(customerIds, offset) {
+		const requestData = {
+			customer_ids: customerIds.join(","),
+			offset: offset,
+		};
 
 		$.ajax({
-			url: admin_url + "peppol/ajax_batch_lookup_progress",
+			url: `${admin_url}peppol/ajax_batch_lookup_progress`,
 			type: "POST",
-			data: {
-				customer_ids: customerIds.join(","),
-				offset: offset,
-			},
+			data: requestData,
 			dataType: "json",
+			timeout: 30000,
 		})
-			.done(function (response) {
-				if (response.success) {
-					self.updateProgress(response);
-
-					if (response.completed) {
-						self.showResults();
-					} else {
-						// Continue with next batch
-						self.processNextBatch(
-							customerIds,
-							response.next_offset
-						);
-					}
-				} else {
-					alert(
-						"Processing failed: " +
-							(response.message || "Unknown error")
-					);
-					self.resetModal();
-				}
-			})
-			.fail(function () {
-				alert("Request failed. Please try again.");
-				self.resetModal();
-			});
+			.done((response) => this.handleBatchResponse(response, customerIds))
+			.fail((xhr, status, error) =>
+				this.handleBatchError(xhr, status, error)
+			);
 	},
 
-	// Update progress display
-	updateProgress: function (response) {
-		// Validate response data with fallbacks
-		var processed = parseInt(response.processed) || 0;
-		var total = parseInt(response.total) || 1; // Avoid division by zero
-
-		// Calculate percentage safely
-		var percentage = total > 0 ? Math.round((processed / total) * 100) : 0;
-
-		// Update progress bar with validation
-		if (this.$modal) {
-			var $progressBar = this.$modal.find(".progress-bar");
-			$progressBar.css("width", percentage + "%");
-			$progressBar.text(processed + " / " + total);
+	/**
+	 * Handle successful batch response
+	 * @private
+	 * @param {Object} response - Server response
+	 * @param {Array} customerIds - Original customer IDs
+	 */
+	handleBatchResponse(response, customerIds) {
+		if (!response.success) {
+			this.showErrorMessage(
+				`${window.peppolTranslations?.processingFailed}: ${response.message || window.peppolTranslations?.unknownError}`
+			);
+			this.resetModal();
+			return;
 		}
 
-		// Add batch results to details and handle multiple results
-		if (response.batch_results) {
-			response.batch_results.forEach(function (result) {
-				// Check for multiple results that need user intervention
-				if (
-					result.multiple_results &&
-					result.multiple_results.length > 1
-				) {
-					// Add to multiple results queue instead of immediately showing
-					PeppolLookup.addToMultipleResultsQueue(
-						result.customer_data,
-						result.multiple_results
-					);
-					PeppolLookup.results.multipleResults++;
-				} else {
-					// Regular single result or error
-					var icon = result.success
-						? "fa-check text-success"
-						: "fa-times text-danger";
-					if (self.$modal) {
-						var html =
-							'<div><i class="fa ' +
-							icon +
-							'"></i> ' +
-							result.company +
-							": " +
-							result.message +
-							"</div>";
-						var $progressDetails = self.$modal.find("#progress-details");
-						$progressDetails.append(html);
-						$progressDetails.scrollTop($progressDetails[0].scrollHeight);
-					}
+		this.updateProgress(response);
 
-					if (result.success) {
-						PeppolLookup.results.successful++;
-					} else {
-						PeppolLookup.results.failed++;
-					}
-				}
-			});
+		if (response.completed) {
+			this.showResults();
+		} else {
+			this.processNextBatch(customerIds, response.next_offset);
 		}
 	},
 
-	// Show final results (or multiple results selection if pending)
-	showResults: function () {
-		if (!this.$modal) return;
+	/**
+	 * Handle batch processing error
+	 * @private
+	 * @param {Object} xhr - XMLHttpRequest object
+	 * @param {string} status - Error status
+	 * @param {string} error - Error message
+	 */
+	handleBatchError(xhr, status, error) {
+		console.error("Batch processing error:", {xhr, status, error});
 
-		// If there are pending multiple selections, show selection UI instead of final results
-		if (this.pendingMultipleSelections.length > 0) {
-			this.$modal.find("#peppol-progress").hide();
-			this.$modal.find("#peppol-multiple-results").show();
-			this.renderAllMultipleSelections();
-			return; // Don't show final results yet
+		let errorMessage = window.peppolTranslations?.requestFailed;
+		if (status === "timeout") {
+			errorMessage = window.peppolTranslations?.requestTimeout;
+		} else if (xhr.status === 500) {
+			errorMessage = window.peppolTranslations?.serverError;
 		}
 
-		// Show final results
-		this.$modal.find("#peppol-progress").hide();
-		this.$modal.find("#peppol-results").show();
+		this.showErrorMessage(errorMessage);
+		this.resetModal();
+	},
 
-		this.$modal.find("#successful-count").text(this.results.successful);
-		this.$modal.find("#failed-count").text(this.results.failed);
-		this.$modal.find("#multiple-count").text(this.results.multipleResults);
+	/**
+	 * Update progress display
+	 * @private
+	 * @param {Object} response - Progress response from server
+	 */
+	updateProgress(response) {
+		const processed = parseInt(response.processed) || 0;
+		const total = Math.max(parseInt(response.total) || 1, 1); // Prevent division by zero
+		const percentage = Math.round((processed / total) * 100);
 
-		// Copy progress details to results
-		this.$modal.find("#detailed-results").html(this.$modal.find("#progress-details").html());
+		this.updateProgressBar(percentage, processed, total);
+		this.processBatchResults(response.batch_results || []);
+	},
 
-		// Change button to close modal instead of resubmitting
-		var self = this;
-		this.$modal.find("#start-lookup-btn")
-			.prop("disabled", false)
-			.text("Done")
-			.off("click")
-			.on("click", function () {
-				self.$modal.modal("hide");
-			});
+	/**
+	 * Update progress bar display
+	 * @private
+	 * @param {number} percentage - Progress percentage
+	 * @param {number} processed - Number of processed items
+	 * @param {number} total - Total number of items
+	 */
+	updateProgressBar(percentage, processed, total) {
+		this.dom.$progressBar
+			.css("width", `${percentage}%`)
+			.text(`${processed} / ${total}`);
+	},
 
-		// Reset single customer state when lookup completes
-		this.singleCustomerId = null;
+	/**
+	 * Process batch results and update UI
+	 * @private
+	 * @param {Array} batchResults - Array of batch processing results
+	 */
+	processBatchResults(batchResults) {
+		batchResults.forEach((result) => {
+			if (this.hasMultipleResults(result)) {
+				this.handleMultipleResults(result);
+			} else {
+				this.handleSingleResult(result);
+			}
+		});
+	},
 
-		// Handle post-lookup actions
+	/**
+	 * Check if result has multiple participants
+	 * @private
+	 * @param {Object} result - Processing result
+	 * @returns {boolean} True if multiple results exist
+	 */
+	hasMultipleResults(result) {
+		return (
+			result.multiple_results &&
+			Array.isArray(result.multiple_results) &&
+			result.multiple_results.length > 1
+		);
+	},
+
+	/**
+	 * Handle multiple results scenario
+	 * @private
+	 * @param {Object} result - Processing result with multiple participants
+	 */
+	handleMultipleResults(result) {
+		this.addToMultipleResultsQueue(
+			result.customer_data,
+			result.multiple_results
+		);
+		this.results.multipleResults++;
+		this.logMultipleResultsFound(result.customer_data);
+	},
+
+	/**
+	 * Handle single result scenario
+	 * @private
+	 * @param {Object} result - Processing result
+	 */
+	handleSingleResult(result) {
+		const icon = result.success
+			? "fa-check text-success"
+			: "fa-times text-danger";
+		this.logProcessingResult(icon, result.company, result.message);
+
+		if (result.success) {
+			this.results.successful++;
+		} else {
+			this.results.failed++;
+		}
+	},
+
+	/**
+	 * Log multiple results found message
+	 * @private
+	 * @param {Object} customerData - Customer data
+	 */
+	logMultipleResultsFound(customerData) {
+		this.logProgressMessage(
+			"fa-warning text-warning",
+			`${customerData.company}: Multiple participants found - will require manual selection`
+		);
+	},
+
+	/**
+	 * Log processing result
+	 * @private
+	 * @param {string} iconClass - CSS icon class
+	 * @param {string} company - Company name
+	 * @param {string} message - Result message
+	 */
+	logProcessingResult(iconClass, company, message) {
+		this.logProgressMessage(iconClass, `${company}: ${message}`);
+	},
+
+	/**
+	 * Log progress message using template
+	 * @private
+	 * @param {string} iconClass - CSS icon class
+	 * @param {string} message - Message text
+	 */
+	logProgressMessage(iconClass, message) {
+		const template = this.templates.progressMessage.cloneNode(true);
+		const $template = $(template);
+
+		$template.find(".progress-icon").addClass(iconClass);
+		$template.find(".progress-message").text(message);
+
+		this.appendToProgressLog($template);
+	},
+
+	/**
+	 * Append message to progress log
+	 * @private
+	 * @param {string|jQuery} content - HTML string or jQuery element to append
+	 */
+	appendToProgressLog(content) {
+		this.dom.$progressDetails.append(content);
+		this.scrollProgressLogToBottom();
+	},
+
+	/**
+	 * Scroll progress log to bottom
+	 * @private
+	 */
+	scrollProgressLogToBottom() {
+		if (this.dom.$progressDetails.length) {
+			this.dom.$progressDetails.scrollTop(
+				this.dom.$progressDetails[0].scrollHeight
+			);
+		}
+	},
+
+	/**
+	 * Add customer to multiple results queue
+	 * @private
+	 * @param {Object} customerData - Customer information
+	 * @param {Array} multipleResults - Array of participant results
+	 */
+	addToMultipleResultsQueue(customerData, multipleResults) {
+		const customerId = customerData.userid;
+
+		// Check for existing customer to prevent duplicates
+		const existingIndex = this.state.pendingMultipleSelections.findIndex(
+			(selection) => selection.customer.userid === customerId
+		);
+
+		if (existingIndex !== -1) {
+			console.warn(
+				"Customer already in multiple results queue, updating:",
+				customerId
+			);
+			this.state.pendingMultipleSelections[existingIndex].results =
+				multipleResults;
+			return;
+		}
+
+		// Add to pending selections
+		this.state.pendingMultipleSelections.push({
+			customer: customerData,
+			results: multipleResults,
+		});
+	},
+
+	/**
+	 * Show final results or multiple results selection UI
+	 * @public
+	 */
+	showResults() {
+		if (this.state.pendingMultipleSelections.length > 0) {
+			this.showMultipleResultsSelection();
+		} else {
+			this.showFinalResults();
+		}
+	},
+
+	/**
+	 * Show multiple results selection interface
+	 * @private
+	 */
+	showMultipleResultsSelection() {
+		this.hideProgress();
+		this.dom.$modal.find("#peppol-multiple-results").show();
+		this.renderAllMultipleSelections();
+	},
+
+	/**
+	 * Show final processing results
+	 * @private
+	 */
+	showFinalResults() {
+		this.hideProgress();
+		this.dom.$modal.find("#peppol-results").show();
+		this.updateFinalResultsCounts();
+		this.setupCompletionHandler();
+		this.clearSingleCustomerState();
 		this.handlePostLookupActions();
 	},
 
-	// Handle actions after lookup completion
-	handlePostLookupActions: function () {
-		// Refresh directory table if it exists
-		if (typeof directoryTable !== "undefined" && directoryTable) {
-			directoryTable.ajax.reload();
-		} else if ($(".table-peppol-directory").length > 0) {
-			$(".table-peppol-directory").DataTable().ajax.reload();
+	/**
+	 * Update final results counts in UI
+	 * @private
+	 */
+	updateFinalResultsCounts() {
+		this.dom.$modal.find("#successful-count").text(this.results.successful);
+		this.dom.$modal.find("#failed-count").text(this.results.failed);
+		this.dom.$modal
+			.find("#multiple-count")
+			.text(this.results.multipleResults);
+		this.dom.$modal
+			.find("#detailed-results")
+			.html(this.dom.$progressDetails.html());
+	},
+
+	/**
+	 * Setup completion handler for final results
+	 * @private
+	 */
+	setupCompletionHandler() {
+		this.dom.$startButton
+			.prop("disabled", false)
+			.text("Done")
+			.off("click.peppolLookup")
+			.on("click.peppolLookup", () => this.dom.$modal.modal("hide"));
+	},
+
+	/**
+	 * Handle post-lookup actions
+	 * @private
+	 */
+	handlePostLookupActions() {
+		this.refreshDirectoryTable();
+		this.triggerCustomEvent();
+		this.handleSingleCustomerPageReload();
+	},
+
+	/**
+	 * Refresh directory table if it exists
+	 * @private
+	 */
+	refreshDirectoryTable() {
+		try {
+			// Try different table refresh methods
+			if (
+				typeof directoryTable !== "undefined" &&
+				directoryTable &&
+				directoryTable.ajax
+			) {
+				directoryTable.ajax.reload();
+			} else {
+				const $table = $(".table-peppol-directory");
+				if ($table.length && $table.DataTable) {
+					$table.DataTable().ajax.reload();
+				}
+			}
+		} catch (error) {
+			console.warn("Table refresh failed:", error);
 		}
+	},
 
-		// Trigger custom event for other components to listen
-		$(document).trigger("peppolLookupSuccess");
+	/**
+	 * Trigger custom success event
+	 * @private
+	 */
+	triggerCustomEvent() {
+		$(document).trigger(this.CONSTANTS.EVENTS.LOOKUP_SUCCESS);
+	},
 
-		// If single customer mode and on client page, reload page
+	/**
+	 * Handle page reload for single customer mode
+	 * @private
+	 */
+	handleSingleCustomerPageReload() {
 		if (
-			this.singleCustomerId &&
-			window.location.href.indexOf("clients/client/") > -1
+			this.state.singleCustomerId &&
+			window.location.href.includes("clients/client/")
 		) {
-			// Close modal and reload after short delay
-			setTimeout(function () {
-				$("#peppol-batch-lookup-modal").modal("hide");
+			setTimeout(() => {
+				this.dom.$modal.modal("hide");
 				location.reload();
 			}, 2000);
 		}
 	},
 
-	// Reset modal
-	resetModal: function () {
-		this.isProcessing = false;
-		this.currentProgress = 0;
-		this.totalProcessed = 0;
+	/**
+	 * Render all customers needing multiple result selections
+	 * @private
+	 */
+	renderAllMultipleSelections() {
+		const html = this.generateMultipleSelectionsHTML();
+		this.dom.$modal.find("#multiple-results-list").html(html);
+		this.updateMultipleSelectionsAlert();
+		this.setupSelectionEventHandlers();
+	},
+
+	/**
+	 * Generate HTML for multiple selections interface
+	 * @private
+	 * @returns {jQuery} Generated elements
+	 */
+	generateMultipleSelectionsHTML() {
+		const $container = $("<div>");
+
+		this.state.pendingMultipleSelections.forEach((selection) => {
+			const $customerSelection =
+				this.generateCustomerSelectionHTML(selection);
+			$container.append($customerSelection);
+		});
+
+		return $container.html();
+	},
+
+	/**
+	 * Generate HTML for single customer selection
+	 * @private
+	 * @param {Object} selection - Selection data containing customer and results
+	 * @returns {jQuery} Generated customer selection element
+	 */
+	generateCustomerSelectionHTML(selection) {
+		const {customer, results} = selection;
+		const customerId = customer.userid;
+		const customerVat = customer.vat
+			? customer.vat.replace(/\D/g, "")
+			: null;
+
+		const $container = $("<div>");
+
+		// Add customer header
+		$container.append(this.generateCustomerHeader(customer, customerId));
+
+		// Add none option
+		$container.append(this.generateNoneOption(customerId));
+
+		// Add result options
+		results.forEach((result, index) => {
+			$container.append(
+				this.generateResultOption(
+					result,
+					index,
+					customerId,
+					customerVat
+				)
+			);
+		});
+
+		return $container;
+	},
+
+	/**
+	 * Generate customer header using template
+	 * @private
+	 * @param {Object} customer - Customer data
+	 * @param {number} customerId - Customer ID
+	 * @returns {jQuery} Header element
+	 */
+	generateCustomerHeader(customer, customerId) {
+		const template = this.templates.customerHeader.cloneNode(true);
+		const $template = $(template);
+
+		const vatDisplay = customer.vat
+			? ` <small style="color: #666;">(VAT: ${customer.vat})</small>`
+			: "";
+
+		$template.find(".customer-company").text(customer.company);
+		$template.find(".customer-vat").html(vatDisplay);
+		$template
+			.find(".skip-customer-btn")
+			.on("click", () => this.skipSingleCustomer(customerId));
+
+		return $template;
+	},
+
+	/**
+	 * Generate "none of these" option using template
+	 * @private
+	 * @param {number} customerId - Customer ID
+	 * @returns {jQuery} None option element
+	 */
+	generateNoneOption(customerId) {
+		const noneRadioId = `participant_${customerId}_none`;
+
+		const template = this.templates.noneOption.cloneNode(true);
+		const $template = $(template);
+
+		$template.find(".none-radio").attr({
+			id: noneRadioId,
+			name: `selected_participant_${customerId}`,
+			"data-customer-id": customerId,
+		});
+
+		$template.find(".none-radio-label").attr("for", noneRadioId);
+
+		return $template;
+	},
+
+	/**
+	 * Generate result option using template
+	 * @private
+	 * @param {Object} result - Participant result data
+	 * @param {number} index - Result index
+	 * @param {number} customerId - Customer ID
+	 * @param {string|null} customerVat - Customer VAT number
+	 * @returns {jQuery} Result option element
+	 */
+	generateResultOption(result, index, customerId, customerVat) {
+		const isVatMatch = this.checkVATMatch(result.vat, customerVat);
+		const vatBadge = isVatMatch
+			? '<span class="label label-success" style="margin-left: 8px;">VAT Match</span>'
+			: "";
+		const radioId = `participant_${customerId}_${index}`;
+
+		const template = this.templates.resultOption.cloneNode(true);
+		const $template = $(template);
+
+		$template.find(".result-radio").attr({
+			id: radioId,
+			name: `selected_participant_${customerId}`,
+			value: index,
+			"data-customer-id": customerId,
+		});
+
+		$template.find(".result-radio-label").attr("for", radioId);
+		$template
+			.find(".result-name")
+			.text(result.name || result.company || window.peppolTranslations?.unknownCompany);
+		$template.find(".result-vat-badge").html(vatBadge);
+		$template
+			.find(".result-details")
+			.html(this.generateResultDetails(result));
+
+		return $template;
+	},
+
+	/**
+	 * Check if VAT numbers match
+	 * @private
+	 * @param {string|null} resultVat - Result VAT number
+	 * @param {string|null} customerVat - Customer VAT number
+	 * @returns {boolean} True if VAT numbers match
+	 */
+	checkVATMatch(resultVat, customerVat) {
+		if (!customerVat || !resultVat) return false;
+		const cleanResultVat = resultVat.replace(/\D/g, "");
+		return cleanResultVat === customerVat;
+	},
+
+	/**
+	 * Generate result details HTML
+	 * @private
+	 * @param {Object} result - Result data
+	 * @returns {string} Details HTML
+	 */
+	generateResultDetails(result) {
+		const details = [];
+
+		details.push(`<strong>Scheme:</strong> ${result.scheme || "N/A"}`);
+		details.push(`<strong>ID:</strong> ${result.identifier || "N/A"}`);
+
+		if (result.vat) {
+			details.push(`<strong>VAT:</strong> ${result.vat}`);
+		}
+
+		if (result.country) {
+			details.push(`<strong>Country:</strong> ${result.country}`);
+		}
+
+		return details
+			.map(
+				(detail) => `<span style="margin-right: 15px;">${detail}</span>`
+			)
+			.join("");
+	},
+
+	/**
+	 * Update alert message for multiple selections
+	 * @private
+	 */
+	updateMultipleSelectionsAlert() {
+		const totalPending = this.state.pendingMultipleSelections.length;
+		const alertMsg =
+			totalPending === 1
+				? `Multiple participants found for <strong>${this.state.pendingMultipleSelections[0].customer.company}</strong>`
+				: `Multiple participants found for <strong>${totalPending} customers</strong>`;
+
+		$(".alert-warning").html(
+			`<strong>${alertMsg}</strong> - ${window.peppolTranslations?.selectCorrectParticipant}`
+		);
+	},
+
+	/**
+	 * Setup event handlers for selection interface
+	 * @private
+	 */
+	setupSelectionEventHandlers() {
+		const $resultsContainer = this.dom.$modal.find(
+			"#multiple-results-list"
+		);
+
+		// Remove previous handlers to prevent stacking
+		$resultsContainer.off("change.peppolSelection");
+
+		// Add delegated event handler
+		$resultsContainer.on(
+			"change.peppolSelection",
+			'input[name^="selected_participant_"]',
+			this.checkAllSelectionsComplete.bind(this)
+		);
+	},
+
+	/**
+	 * Check if selections are complete and update UI accordingly
+	 * @public
+	 */
+	checkAllSelectionsComplete() {
+		const totalCustomers = this.state.pendingMultipleSelections.length;
+		const selectedCount = this.countSelectedCustomers();
+
+		this.updateConfirmButton(selectedCount, totalCustomers);
+	},
+
+	/**
+	 * Count customers with selections made
+	 * @private
+	 * @returns {number} Number of customers with selections
+	 */
+	countSelectedCustomers() {
+		return this.state.pendingMultipleSelections.filter((selection) => {
+			const customerId = selection.customer.userid;
+			return (
+				this.dom.$modal.find(
+					`input[name="selected_participant_${customerId}"]:checked`
+				).length > 0
+			);
+		}).length;
+	},
+
+	/**
+	 * Update confirm button state and text
+	 * @private
+	 * @param {number} selectedCount - Number of selected customers
+	 * @param {number} totalCustomers - Total number of customers
+	 */
+	updateConfirmButton(selectedCount, totalCustomers) {
+		const $confirmBtn = this.dom.$modal.find("#confirm-selection-btn");
+
+		$confirmBtn.prop("disabled", selectedCount === 0);
+
+		const buttonText = this.getConfirmButtonText(
+			selectedCount,
+			totalCustomers
+		);
+		$confirmBtn.text(buttonText);
+	},
+
+	/**
+	 * Get appropriate confirm button text
+	 * @private
+	 * @param {number} selectedCount - Number of selected customers
+	 * @param {number} totalCustomers - Total number of customers
+	 * @returns {string} Button text
+	 */
+	getConfirmButtonText(selectedCount, totalCustomers) {
+		if (selectedCount === 0) {
+			return window.peppolTranslations?.makeSelectionsContinue;
+		} else if (selectedCount === totalCustomers) {
+			return `Confirm All Selections (${selectedCount}/${totalCustomers})`;
+		} else {
+			return `Confirm Selected (${selectedCount}/${totalCustomers})`;
+		}
+	},
+
+	/**
+	 * Skip a single customer from multiple results queue
+	 * @public
+	 * @param {number} customerId - Customer ID to skip
+	 */
+	skipSingleCustomer(customerId) {
+		const customerIndex = this.findCustomerInQueue(customerId);
+
+		if (customerIndex === -1) {
+			console.error(
+				"Customer not found in pending selections:",
+				customerId
+			);
+			return;
+		}
+
+		const skippedCustomer =
+			this.state.pendingMultipleSelections[customerIndex];
+		this.logCustomerSkipped(skippedCustomer.customer);
+		this.removeCustomerFromQueue(customerIndex);
+		this.handleQueueUpdate();
+	},
+
+	/**
+	 * Find customer index in pending queue
+	 * @private
+	 * @param {number} customerId - Customer ID to find
+	 * @returns {number} Customer index or -1 if not found
+	 */
+	findCustomerInQueue(customerId) {
+		return this.state.pendingMultipleSelections.findIndex(
+			(selection) => selection.customer.userid == customerId
+		);
+	},
+
+	/**
+	 * Log that customer was skipped
+	 * @private
+	 * @param {Object} customer - Customer data
+	 */
+	logCustomerSkipped(customer) {
+		this.logProgressMessage(
+			"fa-info text-warning",
+			`${customer.company}: Skipped by user`
+		);
+	},
+
+	/**
+	 * Remove customer from queue
+	 * @private
+	 * @param {number} index - Index to remove
+	 */
+	removeCustomerFromQueue(index) {
+		this.state.pendingMultipleSelections.splice(index, 1);
+	},
+
+	/**
+	 * Handle queue update after removal
+	 * @private
+	 */
+	handleQueueUpdate() {
+		this.renderAllMultipleSelections();
+
+		if (this.state.pendingMultipleSelections.length === 0) {
+			this.continueAfterMultipleResults();
+		}
+	},
+
+	/**
+	 * Skip all multiple selections
+	 * @public
+	 */
+	skipMultipleSelection() {
+		this.logAllCustomersSkipped();
+		this.continueAfterMultipleResults();
+	},
+
+	/**
+	 * Log all customers as skipped
+	 * @private
+	 */
+	logAllCustomersSkipped() {
+		this.state.pendingMultipleSelections.forEach((selection) => {
+			this.logCustomerSkipped(selection.customer);
+		});
+	},
+
+	/**
+	 * Confirm multiple selections and send to server
+	 * @public
+	 */
+	confirmMultipleSelection() {
+		try {
+			const selectionsToSend = this.collectValidSelections();
+
+			if (selectionsToSend.length === 0) {
+				this.showErrorMessage(
+					window.peppolTranslations?.makeSelection
+				);
+				return;
+			}
+
+			this.logUnselectedCustomers();
+			this.sendSelectionsToServer(selectionsToSend);
+		} catch (error) {
+			console.error("Multiple selection confirmation failed:", error);
+			this.showErrorMessage(
+				window.peppolTranslations?.processSelectionsFailed
+			);
+		}
+	},
+
+	/**
+	 * Collect valid selections from UI
+	 * @private
+	 * @returns {Array} Array of selection objects
+	 */
+	collectValidSelections() {
+		const selectionsToSend = [];
+		const processedCustomers = new Set();
+
+		this.state.pendingMultipleSelections.forEach((selection) => {
+			const customerId = selection.customer.userid;
+
+			// Prevent duplicates
+			if (processedCustomers.has(customerId)) {
+				console.warn("Duplicate customer found:", customerId);
+				return;
+			}
+			processedCustomers.add(customerId);
+
+			const selectedRadio = this.getSelectedRadioForCustomer(customerId);
+			if (selectedRadio.length > 0) {
+				const selectionData = this.createSelectionData(
+					selectedRadio,
+					selection,
+					customerId
+				);
+				if (selectionData) {
+					selectionsToSend.push(selectionData);
+				}
+			}
+		});
+
+		return selectionsToSend;
+	},
+
+	/**
+	 * Get selected radio button for customer
+	 * @private
+	 * @param {number} customerId - Customer ID
+	 * @returns {jQuery} Selected radio button element
+	 */
+	getSelectedRadioForCustomer(customerId) {
+		const selectedRadios = this.dom.$modal.find(
+			`input[name="selected_participant_${customerId}"]:checked`
+		);
+
+		if (selectedRadios.length > 1) {
+			console.warn(
+				"Multiple radio buttons selected for customer:",
+				customerId
+			);
+			return selectedRadios.first();
+		}
+
+		return selectedRadios;
+	},
+
+	/**
+	 * Create selection data object
+	 * @private
+	 * @param {jQuery} selectedRadio - Selected radio button
+	 * @param {Object} selection - Selection data
+	 * @param {number} customerId - Customer ID
+	 * @returns {Object|null} Selection data object
+	 */
+	createSelectionData(selectedRadio, selection, customerId) {
+		const selectedValue = selectedRadio.val();
+
+		if (selectedValue === "none") {
+			return {
+				customer_id: customerId,
+				type: "none",
+			};
+		}
+
+		const resultIndex = parseInt(selectedValue);
+		const selectedResult = selection.results[resultIndex];
+
+		if (!selectedResult) {
+			console.warn(
+				"Selected result not found for customer:",
+				customerId,
+				"index:",
+				resultIndex
+			);
+			return null;
+		}
+
+		return {
+			customer_id: customerId,
+			type: "participant",
+			scheme: selectedResult.scheme,
+			identifier: selectedResult.identifier,
+			name: selectedResult.name || selectedResult.company,
+			country: selectedResult.country,
+		};
+	},
+
+	/**
+	 * Log unselected customers as skipped
+	 * @private
+	 */
+	logUnselectedCustomers() {
+		this.state.pendingMultipleSelections.forEach((selection) => {
+			const customerId = selection.customer.userid;
+			const selectedRadio = this.dom.$modal.find(
+				`input[name="selected_participant_${customerId}"]:checked`
+			);
+
+			if (selectedRadio.length === 0) {
+				this.logCustomerSkipped(selection.customer);
+			}
+		});
+	},
+
+	/**
+	 * Send selections to server
+	 * @private
+	 * @param {Array} selectionsToSend - Array of selection data
+	 */
+	sendSelectionsToServer(selectionsToSend) {
+		$.ajax({
+			url: `${admin_url}peppol/ajax_apply_batch_selections`,
+			type: "POST",
+			data: {selections: selectionsToSend},
+			dataType: "json",
+			timeout: 30000,
+		})
+			.done((response) => this.handleSelectionResponse(response))
+			.fail((xhr, status, error) =>
+				this.handleSelectionError(xhr, status, error)
+			);
+	},
+
+	/**
+	 * Handle selection response from server
+	 * @private
+	 * @param {Object} response - Server response
+	 */
+	handleSelectionResponse(response) {
+		if (!response.success) {
+			this.showErrorMessage(
+				`Failed to apply selections: ${
+					response.message || window.peppolTranslations?.unknownError
+				}`
+			);
+			return;
+		}
+
+		this.processSelectionResults(response.results || []);
+		this.continueAfterMultipleResults();
+	},
+
+	/**
+	 * Handle selection request error
+	 * @private
+	 * @param {Object} xhr - XMLHttpRequest object
+	 * @param {string} status - Error status
+	 * @param {string} error - Error message
+	 */
+	handleSelectionError(xhr, status, error) {
+		console.error("Selection request failed:", {xhr, status, error});
+
+		let errorMessage = window.peppolTranslations?.requestFailed;
+		if (status === "timeout") {
+			errorMessage = "Request timed out. Please try again.";
+		}
+
+		this.showErrorMessage(errorMessage);
+	},
+
+	/**
+	 * Process selection results from server
+	 * @private
+	 * @param {Array} results - Selection results
+	 */
+	processSelectionResults(results) {
+		results.forEach((result) => {
+			const icon = result.success
+				? "fa-check text-success"
+				: "fa-times text-danger";
+			this.logProcessingResult(icon, result.company, result.message);
+
+			if (result.success) {
+				this.results.successful++;
+			} else {
+				this.results.failed++;
+			}
+		});
+	},
+
+	/**
+	 * Continue after multiple results handling
+	 * @public
+	 */
+	continueAfterMultipleResults() {
+		this.clearMultipleResultsState();
+		this.hideMultipleResultsUI();
+		this.showFinalResults();
+	},
+
+	/**
+	 * Clear multiple results state
+	 * @private
+	 */
+	clearMultipleResultsState() {
+		this.state.pendingMultipleSelections = [];
+	},
+
+	/**
+	 * Hide multiple results UI elements
+	 * @private
+	 */
+	hideMultipleResultsUI() {
+		this.dom.$modal.find("#peppol-multiple-results").hide();
+		this.dom.$modal.find("#confirm-selection-btn").prop("disabled", true);
+		this.dom.$modal.find("#multiple-results-list").empty();
+	},
+
+	/**
+	 * Handle lookup mode change
+	 * @private
+	 * @param {Event} event - Change event
+	 */
+	handleLookupModeChange(event) {
+		const mode = $(event.target).val();
+		const $clientSelection = $("#client-selection");
+
+		if (mode === "selected") {
+			$clientSelection.show();
+		} else {
+			$clientSelection.hide();
+		}
+	},
+
+	/**
+	 * Reset modal to initial state
+	 * @public
+	 */
+	resetModal() {
+		try {
+			this.resetState();
+			this.resetFormElements();
+			this.resetProgressElements();
+			this.resetResultElements();
+			this.resetUIVisibility();
+			this.resetStartButton();
+		} catch (error) {
+			console.error("Modal reset failed:", error);
+		}
+	},
+
+	/**
+	 * Reset internal state
+	 * @private
+	 */
+	resetState() {
+		this.state.isProcessing = false;
+		this.state.currentProgress = 0;
+		this.state.totalProcessed = 0;
+		this.state.singleCustomerId = null;
+		this.state.autoStartSingleLookup = false;
+		this.state.pendingMultipleSelections = [];
 		this.results = {successful: 0, failed: 0, multipleResults: 0};
+	},
 
-		// Reset single customer mode - ensure it's cleared for auto lookup
-		this.singleCustomerId = null;
-		this.autoStartSingleLookup = false;
-
-		// Reset multiple results queue
-		this.pendingMultipleSelections = [];
-
-		// Reset form elements
+	/**
+	 * Reset form elements
+	 * @private
+	 */
+	resetFormElements() {
 		$('input[name="lookup_mode"][value="all"]').prop("checked", true);
 		$('input[name="lookup_mode"][value="selected"]').prop("checked", false);
 		$('input[name="lookup_mode"]').prop("disabled", false);
 		$("#client-selection").hide();
-
-		// Show hidden elements for batch mode
 		$("#peppol-customer-selection .form-group:first-child").show();
 
-		// Reset selectpicker if it's initialized
-		if ($("#peppol_clientid").hasClass("selectpicker-initialized")) {
-			$("#peppol_clientid").empty().selectpicker("refresh");
+		// Reset selectpicker
+		if (this.dom.$clientSelect.hasClass("selectpicker-initialized")) {
+			this.dom.$clientSelect.empty();
+			if (this.dom.$clientSelect.data("selectpicker")) {
+				this.dom.$clientSelect.selectpicker("refresh");
+			}
 		}
+	},
 
-		// Reset progress elements
-		$(".progress-bar").css("width", "0%");
-		$(".progress-bar").text("0 / 0");
-		$("#progress-details").empty();
+	/**
+	 * Reset progress elements
+	 * @private
+	 */
+	resetProgressElements() {
+		this.dom.$progressBar.css("width", "0%").text("0 / 0");
+		this.dom.$progressDetails.empty();
+	},
 
-		// Reset result elements
-		$("#successful-count").text("0");
-		$("#failed-count").text("0");
-		$("#multiple-count").text("0");
-		$("#detailed-results").empty();
-
-		// Show/hide sections
-		$("#peppol-customer-selection").show();
-		$("#peppol-progress").hide();
-		$("#peppol-multiple-results").hide();
-		$("#peppol-results").hide();
-
-		// Reset multiple results UI
-		$("#multiple-results-list").empty();
-		$("#confirm-selection-btn")
+	/**
+	 * Reset result elements
+	 * @private
+	 */
+	resetResultElements() {
+		this.dom.$modal.find("#successful-count").text("0");
+		this.dom.$modal.find("#failed-count").text("0");
+		this.dom.$modal.find("#multiple-count").text("0");
+		this.dom.$modal.find("#detailed-results").empty();
+		this.dom.$modal.find("#multiple-results-list").empty();
+		this.dom.$modal
+			.find("#confirm-selection-btn")
 			.prop("disabled", true)
-			.text("Confirm All Selections");
+			.text(window.peppolTranslations?.confirmAllSelections);
 		$('input[name^="selected_participant_"]').prop("checked", false);
+	},
 
-		// Reset button (restore original text, keep proper click handler)
-		var originalButtonText =
-			$("#start-lookup-btn").data("original-text") || "Start Auto Lookup";
-		$("#start-lookup-btn")
+	/**
+	 * Reset UI visibility
+	 * @private
+	 */
+	resetUIVisibility() {
+		this.showCustomerSelection();
+		this.hideProgress();
+		this.dom.$modal.find("#peppol-multiple-results").hide();
+		this.dom.$modal.find("#peppol-results").hide();
+	},
+
+	/**
+	 * Reset start button
+	 * @private
+	 */
+	resetStartButton() {
+		const originalButtonText =
+			this.dom.$startButton.data("original-text") || window.peppolTranslations?.startAutoLookup;
+
+		this.dom.$startButton
 			.prop("disabled", false)
-			.html('<i class="fa fa-play"></i> ' + originalButtonText)
-			.off("click")
-			.on("click", function () {
-				PeppolLookup.startLookup();
-			});
+			.html(`<i class="fa fa-play"></i> ${originalButtonText}`)
+			.off("click.peppolLookup")
+			.on("click.peppolLookup", this.startLookup.bind(this));
+	},
+
+	// UI helper methods
+	/**
+	 * Show customer selection section
+	 * @private
+	 */
+	showCustomerSelection() {
+		this.dom.$customerSelection.show();
+	},
+
+	/**
+	 * Hide customer selection section
+	 * @private
+	 */
+	hideCustomerSelection() {
+		this.dom.$customerSelection.hide();
+	},
+
+	/**
+	 * Show progress section
+	 * @private
+	 */
+	showProgress() {
+		this.dom.$modal.find("#peppol-progress").show();
+	},
+
+	/**
+	 * Hide progress section
+	 * @private
+	 */
+	hideProgress() {
+		this.dom.$modal.find("#peppol-progress").hide();
+	},
+
+	/**
+	 * Enable start button
+	 * @private
+	 */
+	enableStartButton() {
+		this.dom.$startButton.prop("disabled", false);
+	},
+
+	/**
+	 * Disable start button
+	 * @private
+	 */
+	disableStartButton() {
+		this.dom.$startButton.prop("disabled", true);
+	},
+
+	/**
+	 * Clear single customer state
+	 * @private
+	 */
+	clearSingleCustomerState() {
+		this.state.singleCustomerId = null;
+		this.state.autoStartSingleLookup = false;
+	},
+
+	/**
+	 * Show error message to user
+	 * @private
+	 * @param {string} message - Error message to display
+	 */
+	showErrorMessage(message) {
+		if (typeof alert === "function") {
+			alert(message);
+		} else {
+			console.error("Error:", message);
+		}
 	},
 };
 
-// Show radio button behavior
-$(document).on("change", 'input[name="lookup_mode"]', function () {
-	if ($(this).val() === "selected") {
-		$("#client-selection").show();
-	} else {
-		$("#client-selection").hide();
-	}
-});
-
-// Initialize when document ready
-$(document).ready(function () {
-	// Make PeppolLookup available globally
-	window.PeppolLookup = PeppolLookup;
+// Initialize when document is ready
+$(document).ready(() => {
+	PeppolLookup.init();
 });

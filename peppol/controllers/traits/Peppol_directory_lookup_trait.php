@@ -3,7 +3,8 @@
 defined('BASEPATH') or exit('No direct script access allowed');
 
 /**
- * Simplified Peppol Directory Lookup Controller Trait
+ * Peppol Directory Lookup Controller Trait
+ * Used for search local customers in Peppol Directory and update their Peppol details
  */
 trait Peppol_directory_lookup_trait
 {
@@ -106,12 +107,12 @@ trait Peppol_directory_lookup_trait
         $customer_id = (int) $this->input->post('customer_id');
         $scheme = $this->input->post('scheme');
         $identifier = $this->input->post('identifier');
-        $method = $this->input->post('method', 'User Selected');
+        $method = $this->input->post('method', _l('peppol_user_selected'));
 
         if (empty($customer_id) || empty($scheme) || empty($identifier)) {
             $this->json_output([
                 'success' => false,
-                'message' => 'Missing required parameters'
+                'message' => _l('peppol_missing_required_parameters')
             ]);
         }
 
@@ -149,7 +150,7 @@ trait Peppol_directory_lookup_trait
         if (empty($selections) || !is_array($selections)) {
             $this->json_output([
                 'success' => false,
-                'message' => 'No selections provided'
+                'message' => _l('peppol_no_selections_provided')
             ]);
         }
 
@@ -163,12 +164,12 @@ trait Peppol_directory_lookup_trait
         foreach ($selections as $selection) {
             $customer_id = (int) $selection['customer_id'];
             $customer = $this->clients_model->get($customer_id);
-            
+
             if (!$customer) {
                 $results[] = [
                     'customer_id' => $customer_id,
                     'success' => false,
-                    'message' => 'Customer not found'
+                    'message' => _l('peppol_customer_not_found')
                 ];
                 $failed++;
                 continue;
@@ -180,7 +181,7 @@ trait Peppol_directory_lookup_trait
                     'customer_id' => $customer_id,
                     'company' => $customer->company,
                     'success' => true,
-                    'message' => 'No matching participant found (user selected none)',
+                    'message' => _l('peppol_no_matching_participant_user_none'),
                     'type' => 'none'
                 ];
             } elseif ($selection['type'] === 'participant') {
@@ -188,20 +189,20 @@ trait Peppol_directory_lookup_trait
                 $participant = [
                     'scheme' => $selection['scheme'],
                     'identifier' => $selection['identifier'],
-                    'name' => $selection['name'] ?? 'Selected Participant',
+                    'name' => $selection['name'] ?? _l('peppol_selected_participant'),
                     'country' => $selection['country'] ?? '',
-                    'method' => 'User Selected'
+                    'method' => _l('peppol_user_selected')
                 ];
 
                 $result = $this->peppol_directory_lookup->update_customer_fields($customer_id, $participant);
-                
+
                 $results[] = [
                     'customer_id' => $customer_id,
                     'company' => $customer->company,
                     'success' => $result['success'],
-                    'message' => $result['success'] ? 
-                        'Applied - ' . ($participant['name']) . ' (User Selected)' : 
-                        'Failed to apply - ' . ($result['message'] ?? 'Unknown error'),
+                    'message' => $result['success'] ?
+                        sprintf(_l('peppol_applied_user_selected'), $participant['name']) :
+                        sprintf(_l('peppol_failed_to_apply'), $result['message'] ?? _l('peppol_unknown_error')),
                     'type' => 'participant',
                     'participant' => $participant
                 ];
@@ -238,7 +239,7 @@ trait Peppol_directory_lookup_trait
         if (!$customer_id) {
             $this->json_output([
                 'success' => false,
-                'message' => 'Invalid customer ID'
+                'message' => _l('peppol_invalid_customer_id_simple')
             ]);
         }
 

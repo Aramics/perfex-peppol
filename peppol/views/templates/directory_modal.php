@@ -131,3 +131,75 @@
         </div>
     </div>
 </div>
+
+<!-- HTML Templates for Dynamic Content -->
+<template id="peppol-customer-header-template">
+    <div style="margin: 20px 0 10px 0; padding: 10px; background: #f0f0f0; border-left: 4px solid #337ab7; border-radius: 4px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h5 style="margin: 0; font-weight: 600; color: #337ab7;">
+                <i class="fa fa-building"></i> <span class="customer-company"></span><span class="customer-vat"></span>
+            </h5>
+            <button type="button" class="btn btn-xs btn-default skip-customer-btn" style="margin-left: 10px;">
+                <i class="fa fa-times"></i> <?php echo _l('peppol_skip_company'); ?>
+            </button>
+        </div>
+    </div>
+</template>
+
+<template id="peppol-none-option-template">
+    <div style="padding: 12px; margin: 6px 0 6px 20px; border: 1px solid #ddd; border-radius: 4px; background: #fff3cd; border-color: #ffeeba;">
+        <div class="radio radio-warning">
+            <input type="radio" class="none-radio" value="none">
+            <label class="none-radio-label" style="font-weight: normal; cursor: pointer;">
+                <div style="font-size: 15px; font-weight: 500; margin-bottom: 3px; color: #856404;">
+                    <i class="fa fa-ban"></i> <?php echo _l('peppol_none_correct_option'); ?>
+                </div>
+                <div style="font-size: 12px; color: #856404;">
+                    <?php echo _l('peppol_company_not_registered'); ?>
+                </div>
+            </label>
+        </div>
+    </div>
+</template>
+
+<template id="peppol-result-option-template">
+    <div style="padding: 12px; margin: 6px 0 6px 20px; border: 1px solid #ddd; border-radius: 4px; background: #f9f9f9;">
+        <div class="radio radio-primary">
+            <input type="radio" class="result-radio">
+            <label class="result-radio-label" style="font-weight: normal; cursor: pointer;">
+                <div style="font-size: 15px; font-weight: 500; margin-bottom: 3px;">
+                    <span class="result-name"></span><span class="result-vat-badge"></span>
+                </div>
+                <div style="font-size: 12px; color: #666;" class="result-details">
+                </div>
+            </label>
+        </div>
+    </div>
+</template>
+
+<template id="peppol-progress-message-template">
+    <div><i class="fa progress-icon"></i> <span class="progress-message"></span></div>
+</template>
+
+<!-- JavaScript translations for PEPPOL Lookup -->
+<script>
+window.peppolTranslations = {
+    lookupDialogError: '<?php echo addslashes(_l('peppol_lookup_dialog_error')); ?>',
+    invalidCustomerId: '<?php echo addslashes(_l('peppol_invalid_customer_id')); ?>',
+    modalInitFailed: '<?php echo addslashes(_l('peppol_modal_init_failed')); ?>',
+    lookupStartFailed: '<?php echo addslashes(_l('peppol_lookup_start_failed')); ?>',
+    selectOneCustomer: '<?php echo addslashes(_l('peppol_select_one_customer')); ?>',
+    requestFailed: '<?php echo addslashes(_l('peppol_request_failed')); ?>',
+    requestTimeout: '<?php echo addslashes(_l('peppol_request_timeout')); ?>',
+    serverError: '<?php echo addslashes(_l('peppol_server_error')); ?>',
+    selectCorrectParticipant: '<?php echo addslashes(_l('peppol_select_correct_participant')); ?>',
+    makeSelection: '<?php echo addslashes(_l('peppol_make_selection')); ?>',
+    processSelectionsFailed: '<?php echo addslashes(_l('peppol_process_selections_failed')); ?>',
+    processingFailed: '<?php echo addslashes(_l('peppol_processing_failed')); ?>',
+    unknownError: '<?php echo addslashes(_l('peppol_unknown_error')); ?>',
+    unknownCompany: '<?php echo addslashes(_l('peppol_unknown_company')); ?>',
+    makeSelectionsContinue: '<?php echo addslashes(_l('peppol_make_selections_continue')); ?>',
+    confirmAllSelections: '<?php echo addslashes(_l('peppol_confirm_all_selections')); ?>',
+    startAutoLookup: '<?php echo addslashes(_l('peppol_start_auto_lookup')); ?>'
+};
+</script>

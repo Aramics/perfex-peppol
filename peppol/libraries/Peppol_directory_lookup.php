@@ -37,7 +37,7 @@ class Peppol_directory_lookup
     {
         $customer = $this->CI->clients_model->get($customer_id);
         if (!$customer) {
-            return ['success' => false, 'message' => 'Customer not found'];
+            return ['success' => false, 'message' => _l('peppol_customer_not_found')];
         }
 
         // Build search terms
@@ -73,7 +73,7 @@ class Peppol_directory_lookup
                         // No clear match - return for manual selection
                         return [
                             'success' => false,
-                            'message' => 'Multiple participants found (' . count($result['participants']) . ' results). Manual selection required.',
+                            'message' => sprintf(_l('peppol_multiple_participants_manual_selection'), count($result['participants'])),
                             'multiple_results' => true,
                             'participants' => $result['participants'],
                             'customer_data' => [
@@ -87,7 +87,7 @@ class Peppol_directory_lookup
             }
         }
 
-        return ['success' => false, 'message' => 'No participants found'];
+        return ['success' => false, 'message' => _l('peppol_no_participants_found')];
     }
 
     /**
@@ -153,7 +153,7 @@ class Peppol_directory_lookup
     public function update_customer_fields($customer_id, $participant)
     {
         if (empty($participant['scheme']) || empty($participant['identifier'])) {
-            return ['success' => false, 'message' => 'Invalid participant data'];
+            return ['success' => false, 'message' => _l('peppol_invalid_participant_data')];
         }
 
         // Get custom field IDs for the Peppol fields
@@ -170,7 +170,7 @@ class Peppol_directory_lookup
         if (empty($scheme_field) || empty($identifier_field)) {
             return [
                 'success' => false,
-                'message' => 'Peppol custom fields not found. Please ensure the module is properly installed.'
+                'message' => _l('peppol_custom_fields_not_found')
             ];
         }
 
@@ -187,12 +187,12 @@ class Peppol_directory_lookup
         if ($updated) {
             return [
                 'success' => true,
-                'message' => 'Customer Peppol fields updated successfully',
+                'message' => _l('peppol_fields_updated_successfully'),
                 'participant' => $participant
             ];
         }
 
-        return ['success' => false, 'message' => 'Failed to update customer'];
+        return ['success' => false, 'message' => _l('peppol_failed_to_update_customer')];
     }
 
     /**
@@ -217,7 +217,7 @@ class Peppol_directory_lookup
 
         // Extract name (use first name entry)
         $names = $entity['name'] ?? [];
-        $name = !empty($names) ? ($names[0]['name'] ?? 'Unknown') : 'Unknown';
+        $name = !empty($names) ? ($names[0]['name'] ?? _l('peppol_unknown_participant')) : _l('peppol_unknown_participant');
 
         // Extract country code
         $country_code = $entity['countryCode'] ?? '';

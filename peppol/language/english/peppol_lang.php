@@ -597,11 +597,11 @@ $lang['peppol_failed'] = 'Failed';
 $lang['peppol_multiple_results'] = 'Multiple Results';
 $lang['peppol_start_auto_lookup'] = 'Start Auto Lookup';
 
-// Multiple Results Handling
+// Multiple Results Selection
 $lang['peppol_multiple_results_found'] = 'Multiple PEPPOL participants found';
 $lang['peppol_multiple_results_help'] = 'Please select the correct participant for this customer';
 $lang['peppol_select_correct_participant'] = 'Select the correct participant';
 $lang['peppol_skip_selection'] = 'Skip';
 $lang['peppol_confirm_selection'] = 'Confirm Selection';
-$lang['peppol_vat_match_found'] = 'VAT Match Found';
-$lang['peppol_auto_selected_vat'] = 'Automatically selected based on VAT number match';
+$lang['peppol_vat_match'] = 'VAT Match';
+$lang['peppol_no_selection_made'] = 'Please select a participant first';

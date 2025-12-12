@@ -65,7 +65,7 @@ class Peppol_directory_lookup
                 } else {
                     // Multiple results - apply smart VAT matching
                     $selected_participant = $this->smart_vat_matching($customer, $result['participants']);
-                    
+
                     if ($selected_participant) {
                         // Exact VAT match found - auto-update
                         return $this->update_customer_fields($customer_id, $selected_participant);
@@ -106,7 +106,7 @@ class Peppol_directory_lookup
         // Parse real Peppol directory response format
         $directory_data = $response['data'];
         $matches = $directory_data['matches'] ?? [];
-        
+
         if (empty($matches)) {
             return ['success' => true, 'participants' => []];
         }
@@ -127,22 +127,22 @@ class Peppol_directory_lookup
         if (empty($customer->vat)) {
             return null; // No customer VAT to match against
         }
-        
+
         // Clean customer VAT (remove non-digits for comparison)
         $customer_vat_clean = preg_replace('/\D/', '', $customer->vat);
-        
+
         $exact_matches = [];
         foreach ($participants as $participant) {
             if (!empty($participant['vat'])) {
                 // Clean participant VAT for comparison
                 $participant_vat_clean = preg_replace('/\D/', '', $participant['vat']);
-                
+
                 if ($participant_vat_clean === $customer_vat_clean) {
                     $exact_matches[] = $participant;
                 }
             }
         }
-        
+
         // Return participant only if exactly one VAT match found
         return (count($exact_matches) === 1) ? $exact_matches[0] : null;
     }
@@ -186,25 +186,24 @@ class Peppol_directory_lookup
         $participant_id = $match['participantID'] ?? [];
         $scheme = $participant_id['scheme'] ?? '';
         $identifier = $participant_id['value'] ?? '';
-        
-        // Convert scheme format: "iso6523-actorid-upis" -> extract numeric scheme
-        if ($scheme === 'iso6523-actorid-upis' && strpos($identifier, ':') !== false) {
+
+        if (strpos($identifier, ':') !== false) {
             $parts = explode(':', $identifier);
             $scheme = $parts[0] ?? ''; // e.g., "0208"
             $identifier = $parts[1] ?? ''; // e.g., "0552912569"
         }
-        
+
         // Extract entity information (use first entity)
         $entities = $match['entities'] ?? [];
         $entity = !empty($entities) ? $entities[0] : [];
-        
+
         // Extract name (use first name entry)
         $names = $entity['name'] ?? [];
         $name = !empty($names) ? ($names[0]['name'] ?? 'Unknown') : 'Unknown';
-        
+
         // Extract country code
         $country_code = $entity['countryCode'] ?? '';
-        
+
         // Extract VAT from identifiers
         $vat = null;
         $identifiers = $entity['identifiers'] ?? [];
@@ -226,14 +225,6 @@ class Peppol_directory_lookup
             'websites' => $entity['websites'] ?? [],
             'reg_date' => $entity['regDate'] ?? ''
         ];
-    }
-
-    /**
-     * Clean VAT number
-     */
-    private function clean_vat($vat)
-    {
-        return strtoupper(str_replace([' ', '-', '.', 'VAT', 'BTW'], '', trim($vat)));
     }
 
     /**

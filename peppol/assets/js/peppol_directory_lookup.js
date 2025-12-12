@@ -34,14 +34,15 @@ var PeppolLookup = {
 		// Reset modal state
 		this.resetModal();
 
-		// Store customer ID for single lookup mode
+		// Store customer ID for single lookup mode (only if explicitly passed)
+		// Reset single customer state when showing modal for auto lookup
 		this.singleCustomerId = customerId || null;
 
 		// Show modal
 		this.$modal.modal("show");
 
 		// Initialize selectpicker for client dropdown when modal is shown
-		this.$modal.on("shown.bs.modal", function () {
+		this.$modal.off("shown.bs.modal.peppolLookup").on("shown.bs.modal.peppolLookup", function () {
 			var $clientSelect = self.$modal.find("#peppol_clientid");
 			
 			if (!$clientSelect.hasClass("selectpicker-initialized")) {
@@ -60,8 +61,29 @@ var PeppolLookup = {
 			}
 
 			// If single customer mode, pre-select and configure UI
+			// Only setup single customer mode if we actually have a customer ID
 			if (self.singleCustomerId) {
-				self.setupSingleCustomerMode();
+				if (self.autoStartSingleLookup) {
+					// Hide selection and start immediately
+					self.$modal.find("#peppol-customer-selection").hide();
+					self.$modal.find("#peppol-progress").show();
+					$startBtn.prop("disabled", true);
+
+					// Start lookup immediately for single customer
+					setTimeout(function () {
+						self.startLookup();
+					}, 100);
+					
+					// Reset flag
+					self.autoStartSingleLookup = false;
+				} else {
+					self.setupSingleCustomerMode();
+				}
+			} else {
+				// Ensure we're in batch mode - show customer selection
+				self.$modal.find("#peppol-customer-selection").show();
+				self.$modal.find("#peppol-progress").hide();
+				$startBtn.prop("disabled", false);
 			}
 		});
 	},
@@ -73,52 +95,11 @@ var PeppolLookup = {
 			return;
 		}
 
-		var self = this;
-
-		// Initialize modal container reference
-		if (!this.initModal()) {
-			console.error("Peppol modal not found");
-			return;
-		}
-
-		// Reset modal state
-		this.resetModal();
-
-		// Store customer ID for single lookup mode
-		this.singleCustomerId = customerId;
-
-		// Show modal
-		this.$modal.modal("show");
-
-		// Initialize selectpicker if needed and start lookup immediately
-		this.$modal.on("shown.bs.modal", function () {
-			var $clientSelect = self.$modal.find("#peppol_clientid");
-			
-			if (!$clientSelect.hasClass("selectpicker-initialized")) {
-				init_ajax_search("customers", "#peppol_clientid");
-				$clientSelect.addClass("selectpicker-initialized");
-			}
-
-			// Initialize button click handler if not already done
-			var $startBtn = self.$modal.find("#start-lookup-btn");
-			if (!$startBtn.hasClass("handler-initialized")) {
-				$startBtn
-					.on("click", function () {
-						PeppolLookup.startLookup();
-					})
-					.addClass("handler-initialized");
-			}
-
-			// Hide customer selection section and start processing immediately
-			self.$modal.find("#peppol-customer-selection").hide();
-			self.$modal.find("#peppol-progress").show();
-			$startBtn.prop("disabled", true);
-
-			// Start lookup immediately for single customer
-			setTimeout(function () {
-				self.startLookup();
-			}, 100);
-		});
+		// Use showModal with the customer ID - this will handle all the setup
+		this.showModal(customerId);
+		
+		// Mark that this should start automatically
+		this.autoStartSingleLookup = true;
 	},
 
 	// Setup single customer mode (used for batch modal with pre-selected customer)
@@ -582,16 +563,22 @@ var PeppolLookup = {
 		var mode = $('input[name="lookup_mode"]:checked').val();
 		var customerIds = [];
 
-		// Handle single customer mode
-		if (this.singleCustomerId) {
+		// Handle single customer mode - only if explicitly set and customer selection is hidden
+		// This prevents single customer state from interfering with batch lookups
+		if (this.singleCustomerId && $("#peppol-customer-selection").is(":hidden")) {
 			customerIds = [this.singleCustomerId];
 		} else if (mode === "selected") {
+			// Reset single customer state when doing batch lookup
+			this.singleCustomerId = null;
 			customerIds = $("#peppol_clientid").val() || [];
 
 			if (customerIds.length === 0) {
 				alert("Please select at least one customer.");
 				return;
 			}
+		} else {
+			// Reset single customer state for "all customers" mode
+			this.singleCustomerId = null;
 		}
 
 		// Hide selection, show progress (only if not already done for single customer)
@@ -783,8 +770,9 @@ var PeppolLookup = {
 		this.totalProcessed = 0;
 		this.results = {successful: 0, failed: 0, multipleResults: 0};
 
-		// Reset single customer mode
+		// Reset single customer mode - ensure it's cleared for auto lookup
 		this.singleCustomerId = null;
+		this.autoStartSingleLookup = false;
 
 		// Reset multiple results queue
 		this.pendingMultipleSelections = [];
